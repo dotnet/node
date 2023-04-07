@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.Build.Traversal">
+  <ItemGroup>
+    <ProjectReference Include="Microsoft.NETCore.Runtime.Wasm.Node.Transport\Microsoft.NETCore.Runtime.Wasm.Node.Transport.builds" />
+  </ItemGroup>
+</Project>
