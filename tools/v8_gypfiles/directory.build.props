@@ -7,4 +7,7 @@
       <PreprocessedFileName Condition="'%(PreprocessedFileName)' == ''">$(IntDir)%(FileName)%(Extension).pp</PreprocessedFileName>
     </MARMASM>
   </ItemDefinitionGroup>
+  <PropertyGroup>
+    <_SuppressSdkImports>true</_SuppressSdkImports>
+  </PropertyGroup>
 </Project>
