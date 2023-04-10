@@ -1,0 +1,113 @@
+From 4595a0e5f661818e1eb3cf279aeeb3b3a70dcaf3 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Micha=C3=ABl=20Zasso?= <targos@protonmail.com>
+Date: Mon, 30 Aug 2021 16:53:08 +0200
+Subject: [PATCH] tools: update gyp-next to v0.10.0
+
+PR-URL: https://github.com/nodejs/node/pull/39857
+Reviewed-By: James M Snell <jasnell@gmail.com>
+Reviewed-By: Richard Lau <rlau@redhat.com>
+---
+ tools/gyp/.github/workflows/Python_tests.yml |  2 +-
+ tools/gyp/CHANGELOG.md                       | 15 +++++++++++++
+ tools/gyp/pylib/gyp/MSVSVersion.py           | 17 ++++++++++++++-
+ tools/gyp/pylib/gyp/generator/msvs.py        | 23 +++++++++++++++-----
+ tools/gyp/pylib/gyp/msvs_emulation.py        |  4 ++--
+ tools/gyp/setup.py                           |  2 +-
+ 6 files changed, 52 insertions(+), 11 deletions(-)
+
+Index: node/tools/gyp/pylib/gyp/MSVSVersion.py
+===================================================================
+--- node.orig/tools/gyp/pylib/gyp/MSVSVersion.py
++++ node/tools/gyp/pylib/gyp/MSVSVersion.py
+@@ -279,6 +279,18 @@ def _CreateVersion(name, path, sdk_based
+     if path:
+         path = os.path.normpath(path)
+     versions = {
++        "2022": VisualStudioVersion(
++            "2022",
++            "Visual Studio 2022",
++            solution_version="12.00",
++            project_version="17.0",
++            flat_sln=False,
++            uses_vcxproj=True,
++            path=path,
++            sdk_based=sdk_based,
++            default_toolset="v143",
++            compatible_sdks=["v8.1", "v10.0"],
++        ),
+         "2019": VisualStudioVersion(
+             "2019",
+             "Visual Studio 2019",
+@@ -448,6 +460,7 @@ def _DetectVisualStudioVersions(versions
+       2015    - Visual Studio 2015 (14)
+       2017    - Visual Studio 2017 (15)
+       2019    - Visual Studio 2019 (16)
++      2022    - Visual Studio 2022 (17)
+     Where (e) is e for express editions of MSVS and blank otherwise.
+   """
+     version_to_year = {
+@@ -459,6 +472,7 @@ def _DetectVisualStudioVersions(versions
+         "14.0": "2015",
+         "15.0": "2017",
+         "16.0": "2019",
++        "17.0": "2022",
+     }
+     versions = []
+     for version in versions_to_check:
+@@ -534,7 +548,7 @@ def SelectVisualStudioVersion(version="a
+     if version == "auto":
+         version = os.environ.get("GYP_MSVS_VERSION", "auto")
+     version_map = {
+-        "auto": ("16.0", "15.0", "14.0", "12.0", "10.0", "9.0", "8.0", "11.0"),
++        "auto": ("17.0", "16.0", "15.0", "14.0", "12.0", "10.0", "9.0", "8.0", "11.0"),
+         "2005": ("8.0",),
+         "2005e": ("8.0",),
+         "2008": ("9.0",),
+@@ -548,6 +562,7 @@ def SelectVisualStudioVersion(version="a
+         "2015": ("14.0",),
+         "2017": ("15.0",),
+         "2019": ("16.0",),
++        "2022": ("17.0",),
+     }
+     override_path = os.environ.get("GYP_MSVS_OVERRIDE_PATH")
+     if override_path:
+Index: node/tools/gyp/pylib/gyp/generator/msvs.py
+===================================================================
+--- node.orig/tools/gyp/pylib/gyp/generator/msvs.py
++++ node/tools/gyp/pylib/gyp/generator/msvs.py
+@@ -157,7 +157,7 @@ def _NormalizedSource(source):
+     return source
+ 
+ 
+-def _FixPath(path):
++def _FixPath(path, separator="\\"):
+     """Convert paths to a form that will make sense in a vcproj file.
+ 
+   Arguments:
+@@ -173,9 +173,12 @@ def _FixPath(path):
+         and not _IsWindowsAbsPath(path)
+     ):
+         path = os.path.join(fixpath_prefix, path)
+-    path = path.replace("/", "\\")
++    if separator == "\\":
++        path = path.replace("/", "\\")
+     path = _NormalizedSource(path)
+-    if path and path[-1] == "\\":
++    if separator == "/":
++        path = path.replace("\\", "/")
++    if path and path[-1] == separator:
+         path = path[:-1]
+     return path
+ 
+@@ -190,9 +193,9 @@ def _IsWindowsAbsPath(path):
+     return path.startswith("c:") or path.startswith("C:")
+ 
+ 
+-def _FixPaths(paths):
++def _FixPaths(paths, separator="\\"):
+     """Fix each of the paths of the list."""
+-    return [_FixPath(i) for i in paths]
++    return [_FixPath(i, separator) for i in paths]
+ 
+ 
+ def _ConvertSourcesToFilterHierarchy(
