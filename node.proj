@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.Build.Traversal">
+  <ItemGroup>
+    <PackageReference Include="runtime.$(BuildOS)-$(BuildArchitecture).Microsoft.NETCore.Runtime.Wasm.Python.Transport"
+                      Version="$(runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion)" />
+  </ItemGroup>
+
+  <Target Name="CopyPythonToTree" BeforeTargets="Build" Condition="!Exists('$(PythonDir)\$(BuildOS)-$(BuildArchitecture)\.emsdk_version')">
+    <Makedir Directories="$(PythonDir)" />
+    <ItemGroup>
+      <PythonFiles Include="$(NuGetPackageRoot)\$([System.String]::Copy(%(PackageReference.Identity)).ToLowerInvariant())\%(PackageReference.Version)\tools\**"
+                 Condition="$([System.String]::Copy(%(PackageReference.Identity)).Contains('Microsoft.NETCore.Runtime.Wasm.Python')) == 'true'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PythonFiles)" DestinationFolder="$(PythonDir)\%(RecursiveDir)">
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
+    </Copy>
+  </Target>
+
+  <Target Name="ReallyBuildWindows" AfterTargets="CopyPythonToTree" Condition="'$(BuildOS)' == 'win'">
+    <PropertyGroup>
+      <PythonPrefixedPath>$(PythonDir)$(BuildOS)-$(BuildArchitecture)\;$(PATH)</PythonPrefixedPath>
+      <VcBuildCommand Condition="'$(Configuration)' == 'Release'" >$(VcBuildCommand) release</VcBuildCommand>
+      <VcBuildCommand Condition="'$(Configuration)' != 'Release'" >$(VcBuildCommand) debug</VcBuildCommand>
+      <VcBuildCommand>$(VcBuildCommand) $(TargetArchitecture)</VcBuildCommand>
+      <VcBuildCommand>$(VcBuildCommand) openssl-no-asm</VcBuildCommand>
+      <VcBuildCommand>$(VcBuildCommand) without-intl</VcBuildCommand>
+      <VcBuildCommand>$(VcBuildCommand) static</VcBuildCommand>
+      <VcBuildCommand>$(VcBuildCommand) vs2022</VcBuildCommand>
+    </PropertyGroup>
+    <Exec Command=".\vcbuild.bat $(VcBuildCommand)"
+      IgnoreStandardErrorWarningFormat="true"
+      EnvironmentVariables="PATH=$([MSBuild]::Escape($(PythonPrefixedPath)))" />
+  </Target>
+
+  <Target Name="ReallyBuildUnix" AfterTargets="CopyPythonToTree" Condition="'$(BuildOS)' != 'win'">
+    <PropertyGroup>
+      <PythonSuffixedPath>$(PATH);$(PythonDir)\$(BuildOS)-$(BuildArchitecture)\</PythonSuffixedPath>
+    </PropertyGroup>
+    <Exec Command="./configure --help"
+      IgnoreStandardErrorWarningFormat="true"
+      EnvironmentVariables="PATH='$(PythonSuffixedPath.Replace(';','%3B'))'" />
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="ReallyBuild" />
+  <Target Name="Test" />
+  <Target Name="ReallyPack" BeforeTargets="Pack">
+    <MSBuild Projects="eng/nuget/packages.builds" Targets="Build" />
+  </Target>
+</Project>

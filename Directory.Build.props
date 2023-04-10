@@ -28,9 +28,9 @@
     <BuildType Condition="'$(__BuildType)' == 'release'">Release</BuildType>
 
     <BuildOS>$(__BuildOS)</BuildOS>
-    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">Windows_NT</BuildOS>
-    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Linux))' == 'true'">Linux</BuildOS>
-    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">win</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Linux))' == 'true'">linux</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">osx</BuildOS>
 
     <!-- TODO: converge on one property for BuildOS and __BuildOS (and similar), and remove these extra lines. -->
     <__BuildOS>$(BuildOS)</__BuildOS>
@@ -60,17 +60,9 @@
 
     <BinDir>$(__BinDir)\</BinDir>
     <BinDir Condition="'$(__BinDir)'==''">$(RootBinDir)bin\$(PlatformConfigPathPart)\</BinDir>
-
-    <MonoLLVMDir>$(ProjectDir)artifacts\obj\$(PlatformConfigPathPart)\llvm</MonoLLVMDir>
   </PropertyGroup>
 
   <PropertyGroup>
-    <BuildLLVM>$(MonoLLVMDir)\$(BuildArchitecture)\</BuildLLVM>
-    <PackageLLVM>$(MonoLLVMDir)\$(TargetArchitecture)\</PackageLLVM>
-    <PythonBuildDir>$(BaseIntermediateOutputPath)cpython\</PythonBuildDir>
-    <PythonInstallDir>$(BinDir)cpython\</PythonInstallDir>
-    <ProvisionedOpenSSLDir>$(BaseIntermediateOutputPath)openssl-merged\</ProvisionedOpenSSLDir>
-    <HomebrewX64>$(BaseIntermediateOutputPath)\brew-x64\</HomebrewX64>
-    <HomebrewARM64>$(BaseIntermediateOutputPath)\brew-arm64\</HomebrewARM64>
+    <PythonDir>$(BaseIntermediateOutputPath)cpython\</PythonDir>
   </PropertyGroup>
 </Project>
