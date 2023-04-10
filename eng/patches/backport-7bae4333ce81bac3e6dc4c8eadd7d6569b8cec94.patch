@@ -1,0 +1,57 @@
+From 7bae4333ce81bac3e6dc4c8eadd7d6569b8cec94 Mon Sep 17 00:00:00 2001
+From: "Vladimir Morozov (REDMOND)" <vmorozov@microsoft.com>
+Date: Mon, 16 Jan 2023 13:21:18 -0800
+Subject: [PATCH] build: fix MSVC 2022 Release compilation
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+PR-URL: https://github.com/nodejs/node/pull/46228
+Reviewed-By: Michaël Zasso <targos@protonmail.com>
+Reviewed-By: Michael Dawson <midawson@redhat.com>
+---
+ .github/workflows/build-windows.yml     |  2 +-
+ .github/workflows/coverage-windows.yml  |  2 +-
+ tools/v8_gypfiles/directory.build.props | 10 ++++++++++
+ tools/v8_gypfiles/v8.gyp                |  8 ++++++++
+ 4 files changed, 20 insertions(+), 2 deletions(-)
+ create mode 100644 tools/v8_gypfiles/directory.build.props
+
+diff --git a/tools/v8_gypfiles/directory.build.props b/tools/v8_gypfiles/directory.build.props
+new file mode 100644
+index 0000000000..f0fdb0f394
+--- /dev/null
++++ b/tools/v8_gypfiles/directory.build.props
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<Project>
++  <ItemDefinitionGroup>
++    <MARMASM>
++      <!-- Works around a situation when we preprocess file in $(IntDir). In such case the output file is the same as input file
++      and we get access violation. Appending '.pp' file extension to the output file name resolves this issue. -->
++      <PreprocessedFileName Condition="'%(PreprocessedFileName)' == ''">$(IntDir)%(FileName)%(Extension).pp</PreprocessedFileName>
++    </MARMASM>
++  </ItemDefinitionGroup>
++</Project>
+diff --git a/tools/v8_gypfiles/v8.gyp b/tools/v8_gypfiles/v8.gyp
+index 42d74b619b..c29d66976f 100644
+--- a/tools/v8_gypfiles/v8.gyp
++++ b/tools/v8_gypfiles/v8.gyp
+@@ -1437,6 +1437,14 @@
+         ['want_separate_host_toolset', {
+           'toolsets': ['host'],
+         }],
++        ['OS=="win"', {
++          'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
++          'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
++          'sources': [
++            '<(_msvs_precompiled_header)',
++            '<(_msvs_precompiled_source)',
++          ],
++        }],
+       ],
+     },  # mksnapshot
+     {
+-- 
+2.34.1
+
