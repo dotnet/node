@@ -64,5 +64,7 @@
 
   <PropertyGroup>
     <PythonDir>$(BaseIntermediateOutputPath)cpython\</PythonDir>
+    <NodeBuildDir>$(RootRepoDir)artifacts\obj\node\$(Configuration)\</NodeBuildDir>
+    <NodeInstallDir>$(BinDir)\node\</NodeInstallDir>
   </PropertyGroup>
 </Project>

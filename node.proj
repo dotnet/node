@@ -31,6 +31,41 @@
       EnvironmentVariables="PATH=$([MSBuild]::Escape($(PythonPrefixedPath)))" />
   </Target>
 
+  <Target Name="LayoutNodeWindows" AfterTargets="ReallyBuildWindows">
+    <ItemGroup>
+      <NodeFiles Include="$(NodeBuildDir)**" />
+      <NodeFiles Include="$(ProjectDir)deps\npm\bin\np*.*" />
+      <NodeFiles Include="$(ProjectDir)tools\msvs\nodevars.*" />
+      <NodeFiles Include="$(ProjectDir)tools\msvs\install_tools\*.*" />
+      <NodeFiles Include="$(ProjectDir)CHANGELOG.md" />
+      <NodeFiles Include="$(ProjectDir)LICENSE" />
+      <NodeFiles Include="$(ProjectDir)README.md" />
+      <NodeFiles Include="$(ProjectDir)src\res\node_etw_provider.man" />
+      <NodeFiles Remove="$(ProjectDir)deps\npm\bin\np*-cli.js" />
+      <NodeFiles Remove="$(NodeBuildDir)node_mksnapshot.*" />
+      <NodeFiles Remove="$(NodeBuildDir)*_host.*" />
+      <NodeFiles Remove="$(NodeBuildDir)openssl*.*" />
+      <NodeFiles Remove="$(NodeBuildDir)obj\**" />
+      <NodeFiles Remove="$(NodeBuildDir)lib\**" />
+      <NodeFiles Remove="$(NodeBuildDir)*test*.*" />
+      <NodeFiles Remove="$(NodeBuildDir)mkcodecache*.*" />
+      <NodeFiles Remove="$(NodeBuildDir)node.xlf\**" />
+      <NodeFiles Remove="$(NodeBuildDir)node.exp" />
+      <NodeFiles Remove="$(NodeBuildDir)node.iobj" />
+      <NodeFiles Remove="$(NodeBuildDir)node.ipdb" />
+      <NodeFiles Remove="$(NodeBuildDir)node.lib" />
+      <NodeFiles Remove="$(NodeBuildDir)node.map" />
+      <NodeFiles Remove="$(NodeBuildDir)node.pdb" />
+      <NpmFiles Include="$(ProjectDir)deps\npm\**" />
+      <NpmTestDirs Include="$([System.IO.Directory]::GetDirectories('$(ProjectDir)deps\npm\', 'test', SearchOption.AllDirectories))" />
+      <NpmFiles Remove="%(NpmTestDirs.Identity)\**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NodeFiles)"
+      DestinationFiles="@(NodeFiles->'$(NodeInstallDir)\bin\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(NpmFiles)"
+      DestinationFiles="@(NpmFiles->'$(NodeInstallDir)\bin\node_modules\npm\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
   <Target Name="ReallyBuildUnix" AfterTargets="CopyPythonToTree" Condition="'$(BuildOS)' != 'win'">
     <PropertyGroup>
       <PythonSuffixedPath>$(PATH);$(PythonDir)\$(BuildOS)-$(BuildArchitecture)\</PythonSuffixedPath>
@@ -38,6 +73,15 @@
     <Exec Command="./configure --help"
       IgnoreStandardErrorWarningFormat="true"
       EnvironmentVariables="PATH='$(PythonSuffixedPath.Replace(';','%3B'))'" />
+  </Target>
+
+  <Target Name="WriteVersionFile" AfterTargets="LayoutNodeWindows">
+    <PropertyGroup>
+      <NodeEmsdkVersion>node-$(VersionPrefix)-dotnet</NodeEmsdkVersion>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(NodeInstallDir)\.emsdk_version"
+      Overwrite="true"
+      Lines="$(NodeEmsdkVersion)" />
   </Target>
 
   <Target Name="Build" DependsOnTargets="ReallyBuild" />
