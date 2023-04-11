@@ -154,3 +154,8 @@ install_manifest.txt
 __pycache__
 .DS_Store
 *~
+
+# MSFT ignores
+/.dotnet
+/.packages
+/artifacts

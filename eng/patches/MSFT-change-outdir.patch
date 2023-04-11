@@ -1,0 +1,13 @@
+diff --git a/common.gypi b/common.gypi
+index e610650a01..27e62f3bf0 100644
+--- a/common.gypi
++++ b/common.gypi
+@@ -309,7 +309,7 @@
+     'conditions': [
+       [ 'configuring_node', {
+         'msvs_configuration_attributes': {
+-          'OutputDirectory': '<(DEPTH)/out/$(Configuration)/',
++          'OutputDirectory': '<(DEPTH)/artifacts/obj/$(Configuration)/',
+           'IntermediateDirectory': '$(OutDir)obj/$(ProjectName)/'
+         },
+       }],

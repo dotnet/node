@@ -3,3 +3,4 @@ backport-c5eadb4f72482df41a089100c9dc18ea149e412e.patch
 backport-4595a0e5f661818e1eb3cf279aeeb3b3a70dcaf3.patch
 MSFT-fix-arm64-compile.patch
 MSFT-fix-arcade-incompatibility.patch
+MSFT-change-outdir.patch

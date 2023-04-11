@@ -316,7 +316,7 @@
     'conditions': [
       [ 'configuring_node', {
         'msvs_configuration_attributes': {
-          'OutputDirectory': '<(DEPTH)/out/$(Configuration)/',
+          'OutputDirectory': '<(DEPTH)/artifacts/obj/node/$(Configuration)/',
           'IntermediateDirectory': '$(OutDir)obj/$(ProjectName)/'
         },
       }],
