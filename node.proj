@@ -68,11 +68,22 @@
 
   <Target Name="ReallyBuildUnix" AfterTargets="CopyPythonToTree" Condition="'$(BuildOS)' != 'win'">
     <PropertyGroup>
-      <PythonSuffixedPath>$(PATH);$(PythonDir)\$(BuildOS)-$(BuildArchitecture)\</PythonSuffixedPath>
+      <PythonPrefixedPath>$(PythonDir)$(BuildOS)-$(BuildArchitecture)/bin:$(PATH)</PythonPrefixedPath>
     </PropertyGroup>
-    <Exec Command="./configure --help"
+    <PropertyGroup>
+      <ConfigureFlags Condition="'$(Configuration)' != 'Release'">$(ConfigureFlags) --debug</ConfigureFlags>
+      <ConfigureFlags>$(ConfigureFlags) --dest-cpu=$(TargetArchitecture)</ConfigureFlags>
+      <ConfigureFlags>$(ConfigureFlags) --without-intl</ConfigureFlags>
+    </PropertyGroup>
+    <Exec Command="./configure $(ConfigureFlags)"
       IgnoreStandardErrorWarningFormat="true"
-      EnvironmentVariables="PATH='$(PythonSuffixedPath.Replace(';','%3B'))'" />
+      EnvironmentVariables="PATH=$(PythonPrefixedPath)" />
+    <Exec Command="make"
+      IgnoreStandardErrorWarningFormat="true"
+      EnvironmentVariables="PATH=$(PythonPrefixedPath);PREFIX=/" />
+    <Exec Command="make install"
+      IgnoreStandardErrorWarningFormat="true"
+      EnvironmentVariables="PATH=$(PythonPrefixedPath);PREFIX=/;DESTDIR=$(NodeInstallDir)" />
   </Target>
 
   <Target Name="WriteVersionFile" AfterTargets="LayoutNodeWindows">
