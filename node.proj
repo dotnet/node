@@ -75,6 +75,7 @@
       <ConfigureFlags Condition="'$(Configuration)' != 'Release'">$(ConfigureFlags) --debug</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --dest-cpu=$(TargetArchitecture)</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --without-intl</ConfigureFlags>
+      <ConfigureFlags>$(ConfigureFlags) --openssl-no-asm</ConfigureFlags>
     </PropertyGroup>
     <Exec Command="./configure $(ConfigureFlags)"
       IgnoreStandardErrorWarningFormat="true"
