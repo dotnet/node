@@ -31,7 +31,7 @@
       EnvironmentVariables="PATH=$([MSBuild]::Escape($(PythonPrefixedPath)))" />
   </Target>
 
-  <Target Name="LayoutNodeWindows" AfterTargets="ReallyBuildWindows">
+  <Target Name="LayoutNodeWindows" AfterTargets="ReallyBuildWindows" Condition="'$(BuildOS)' == 'win'">
     <ItemGroup>
       <NodeFiles Include="$(NodeBuildDir)**" />
       <NodeFiles Include="$(ProjectDir)deps\npm\bin\np*.*" />
@@ -76,6 +76,7 @@
       <ConfigureFlags>$(ConfigureFlags) --dest-cpu=$(TargetArchitecture)</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --without-intl</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --openssl-no-asm</ConfigureFlags>
+      <ConfigureFlags>$(ConfigureFlags) --prefix=/</ConfigureFlags>
     </PropertyGroup>
     <Exec Command="./configure $(ConfigureFlags)"
       IgnoreStandardErrorWarningFormat="true"
@@ -88,7 +89,10 @@
       EnvironmentVariables="PATH=$(PythonPrefixedPath);PREFIX=/;DESTDIR=$(NodeInstallDir)" />
   </Target>
 
-  <Target Name="WriteVersionFile" AfterTargets="LayoutNodeWindows">
+  <Target Name="LayoutNodeUnix" AfterTargets="ReallyBuildUnix" Condition="'$(BuildOS)' != 'win'">
+  </Target>
+
+  <Target Name="WriteVersionFile" AfterTargets="LayoutNodeWindows;LayoutNodeUnix">
     <PropertyGroup>
       <NodeEmsdkVersion>node-$(VersionPrefix)-dotnet</NodeEmsdkVersion>
     </PropertyGroup>
