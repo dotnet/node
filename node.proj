@@ -45,6 +45,7 @@
       <NodeFiles Remove="$(NodeBuildDir)node_mksnapshot.*" />
       <NodeFiles Remove="$(NodeBuildDir)*_host.*" />
       <NodeFiles Remove="$(NodeBuildDir)openssl*.*" />
+      <NodeFiles Remove="$(NodeBuildDir)overlapped*.*" />
       <NodeFiles Remove="$(NodeBuildDir)obj\**" />
       <NodeFiles Remove="$(NodeBuildDir)lib\**" />
       <NodeFiles Remove="$(NodeBuildDir)*test*.*" />
