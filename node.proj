@@ -90,6 +90,13 @@
   </Target>
 
   <Target Name="LayoutNodeUnix" AfterTargets="ReallyBuildUnix" Condition="'$(BuildOS)' != 'win'">
+    <ItemGroup>
+      <NodeFiles Include="$(ProjectDir)CHANGELOG.md" />
+      <NodeFiles Include="$(ProjectDir)LICENSE" />
+      <NodeFiles Include="$(ProjectDir)README.md" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NodeFiles)"
+      DestinationFiles="@(NodeFiles->'$(NodeInstallDir)\bin\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
   <Target Name="WriteVersionFile" AfterTargets="LayoutNodeWindows;LayoutNodeUnix">
