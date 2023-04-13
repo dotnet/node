@@ -29,7 +29,7 @@ stages:
       ############ MACOS BUILD ############
       - job: Build_macOS
         displayName: macOS
-        timeoutInMinutes: 120
+        timeoutInMinutes: 180
         variables:
         - _BuildConfig: Release
         strategy:
