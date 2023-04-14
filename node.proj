@@ -42,10 +42,13 @@
       <NodeFiles Include="$(ProjectDir)README.md" />
       <NodeFiles Include="$(ProjectDir)src\res\node_etw_provider.man" />
       <NodeFiles Remove="$(ProjectDir)deps\npm\bin\np*-cli.js" />
+      <NodeFiles Remove="$(NodeBuildDir)bytecode_*.*" />
+      <NodeFiles Remove="$(NodeBuildDir)mksnapshot.*" />
       <NodeFiles Remove="$(NodeBuildDir)node_mksnapshot.*" />
       <NodeFiles Remove="$(NodeBuildDir)*_host.*" />
       <NodeFiles Remove="$(NodeBuildDir)openssl*.*" />
       <NodeFiles Remove="$(NodeBuildDir)overlapped*.*" />
+      <NodeFiles Remove="$(NodeBuildDir)torque.*" />
       <NodeFiles Remove="$(NodeBuildDir)obj\**" />
       <NodeFiles Remove="$(NodeBuildDir)lib\**" />
       <NodeFiles Remove="$(NodeBuildDir)*test*.*" />
