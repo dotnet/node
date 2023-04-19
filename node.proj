@@ -97,6 +97,21 @@
     </ItemGroup>
     <Copy SourceFiles="@(NodeFiles)"
       DestinationFiles="@(NodeFiles->'$(NodeInstallDir)\bin\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <ItemGroup>
+      <NodeToStrip Include="$(NodeInstallDir)\bin\node" />
+    </ItemGroup>
+    <Message Importance="High" Text="** Running dsymutil -flat %(NodeToStrip.Identity)" />
+    <Exec IgnoreStandardErrorWarningFormat="true"
+      Command="dsymutil -flat %(NodeToStrip.Identity)"
+      Condition="'$(BuildOS)' == 'OSX'" />
+    <Message Importance="High" Text="** Running strip -no_code_signature_warning -S %(NodeToStrip.Identity)" />
+    <Exec IgnoreStandardErrorWarningFormat="true"
+      Command="strip -no_code_signature_warning -S %(NodeToStrip.Identity)"
+      Condition="'$(BuildOS)' == 'OSX'" />
+    <Message Importance="High" Text="** Running codesign -f -s - %(NodeToStrip.Identity)" />
+    <Exec IgnoreStandardErrorWarningFormat="true"
+      Command="codesign -f -s - %(NodeToStrip.Identity)"
+      Condition="'$(BuildOS)' == 'OSX'" />
   </Target>
 
   <Target Name="WriteVersionFile" AfterTargets="LayoutNodeWindows;LayoutNodeUnix">
