@@ -26,6 +26,50 @@ stages:
       enablePublishUsingPipelines: true
       jobs:
 
+      ############ LINUX BUILD ############
+      - job: Build_Linux
+        displayName: Linux
+        timeoutInMinutes: 360
+        variables:
+        - _BuildConfig: Release
+        strategy:
+          matrix:
+            x64:
+              assetManifestOS: linux
+              assetManifestPlatform: x64
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-18.04-cross-20230215165054-0ea3466
+              rootfs: /crossrootfs/x64
+              archflag: --arch x64
+            arm64:
+              assetManifestOS: linux
+              assetManifestPlatform: arm64
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-18.04-cross-arm64-20230215165054-0ea3466
+              rootfs: /crossrootfs/arm64
+              archflag: --arch arm64
+        pool:
+          ${{ if eq(variables['System.TeamProject'], 'public') }}:
+            name: $(DncEngPublicBuildPool)
+            demands: ImageOverride -equals build.ubuntu.2204.amd64.open
+          ${{ if eq(variables['System.TeamProject'], 'internal') }}:
+            name: $(DncEngInternalBuildPool)
+            demands: ImageOverride -equals build.ubuntu.2204.amd64
+        container:
+          image: $(imagename)
+        steps:
+        - script: |
+            git clean -ffdx
+            git reset --hard HEAD
+          displayName: 'Clean up working directory'
+
+        - bash: |
+            ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
+          displayName: 'Build and package'
+
+        - bash:
+            ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=$(assetManifestOS) /p:PlatformName=$(assetManifestPlatform) --projects $(Build.SourcesDirectory)/node.proj
+          displayName: Publish packages
+          condition: and(succeeded(), ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest'))
+
       ############ MACOS BUILD ############
       - job: Build_macOS
         displayName: macOS

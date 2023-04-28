@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.Build.Traversal">
   <ItemGroup>
     <PackageReference Include="runtime.$(BuildOS)-$(BuildArchitecture).Microsoft.NETCore.Runtime.Wasm.Python.Transport"
-                      Version="$(runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion)" />
+                      Version="$(runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion)"
+                      Condition="'$(BuildOS)' != 'linux'"/>
   </ItemGroup>
 
-  <Target Name="CopyPythonToTree" BeforeTargets="Build" Condition="!Exists('$(PythonDir)\$(BuildOS)-$(BuildArchitecture)\.emsdk_version')">
+  <Target Name="CopyPythonToTree" BeforeTargets="Build" Condition="!Exists('$(PythonDir)\$(BuildOS)-$(BuildArchitecture)\.emsdk_version') and '$(BuildOS)' != 'linux'">
     <Makedir Directories="$(PythonDir)" />
     <ItemGroup>
       <PythonFiles Include="$(NuGetPackageRoot)\$([System.String]::Copy(%(PackageReference.Identity)).ToLowerInvariant())\%(PackageReference.Version)\tools\**"
@@ -103,18 +104,27 @@
     <ItemGroup>
       <NodeToStrip Include="$(NodeInstallDir)\bin\node" />
     </ItemGroup>
-    <Message Importance="High" Text="** Running dsymutil -flat %(NodeToStrip.Identity)" />
+    <Message Importance="High" Text="** Running dsymutil -flat %(NodeToStrip.FullPath)" />
     <Exec IgnoreStandardErrorWarningFormat="true"
-      Command="dsymutil -flat %(NodeToStrip.Identity)"
+      Command="dsymutil -flat %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'OSX'" />
-    <Message Importance="High" Text="** Running strip -no_code_signature_warning -S %(NodeToStrip.Identity)" />
+    <Message Importance="High" Text="** Running strip -no_code_signature_warning -S %(NodeToStrip.FullPath)" />
     <Exec IgnoreStandardErrorWarningFormat="true"
-      Command="strip -no_code_signature_warning -S %(NodeToStrip.Identity)"
+      Command="strip -no_code_signature_warning -S %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'OSX'" />
-    <Message Importance="High" Text="** Running codesign -f -s - %(NodeToStrip.Identity)" />
+    <Message Importance="High" Text="** Running codesign -f -s - %(NodeToStrip.FullPath)" />
     <Exec IgnoreStandardErrorWarningFormat="true"
-      Command="codesign -f -s - %(NodeToStrip.Identity)"
+      Command="codesign -f -s - %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'OSX'" />
+    <Exec IgnoreStandardErrorWarningFormat="true"
+      Command="llvm-objcopy --only-keep-debug %(NodeToStrip.FullPath) %(NodeToStrip.FullPath).dbg"
+      Condition="'$(BuildOS)' == 'Linux'" />
+    <Exec IgnoreStandardErrorWarningFormat="true"
+      Command="llvm-objcopy --strip-debug --strip-unneeded %(NodeToStrip.FullPath)"
+      Condition="'$(BuildOS)' == 'Linux'" />
+    <Exec IgnoreStandardErrorWarningFormat="true"
+      Command="llvm-objcopy --add-gnu-debuglink=%(NodeToStrip.FullPath).dbg %(NodeToStrip.FullPath)"
+      Condition="'$(BuildOS)' == 'Linux'" />
   </Target>
 
   <Target Name="WriteVersionFile" AfterTargets="LayoutNodeWindows;LayoutNodeUnix">
