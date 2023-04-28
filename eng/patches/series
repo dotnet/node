@@ -1,3 +1,4 @@
+MSFT-enable-llvm-ar.patch
 backport-7bae4333ce81bac3e6dc4c8eadd7d6569b8cec94.patch
 backport-c5eadb4f72482df41a089100c9dc18ea149e412e.patch
 backport-4595a0e5f661818e1eb3cf279aeeb3b3a70dcaf3.patch
