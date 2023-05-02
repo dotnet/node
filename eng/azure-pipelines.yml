@@ -66,6 +66,8 @@ stages:
         - bash: |
             ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) $(ClangVersionArg) /p:RestoreUsingNuGetTargets=false
           displayName: 'Build and package'
+          env:
+            ROOTFS_DIR: $(rootfs)
 
         - bash:
             ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=$(assetManifestOS) /p:PlatformName=$(assetManifestPlatform) --projects $(Build.SourcesDirectory)/node.proj
