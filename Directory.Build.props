@@ -28,9 +28,9 @@
     <BuildType Condition="'$(__BuildType)' == 'release'">Release</BuildType>
 
     <BuildOS>$(__BuildOS)</BuildOS>
-    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">win</BuildOS>
-    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Linux))' == 'true'">linux</BuildOS>
-    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">osx</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">Windows_NT</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Linux))' == 'true'">Linux</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</BuildOS>
 
     <!-- TODO: converge on one property for BuildOS and __BuildOS (and similar), and remove these extra lines. -->
     <__BuildOS>$(BuildOS)</__BuildOS>
