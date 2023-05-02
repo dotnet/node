@@ -94,8 +94,10 @@
       <GypEnvironment>$(GypEnvironment) v8_target_arch=$(TargetArchitecture)</GypEnvironment>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC=$(ClangVersion)</ConfigureEnvironment>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC_target=$(ClangVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC_host=$(ClangVersion)</ConfigureEnvironment>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX=$(ClangPlusVersion)</ConfigureEnvironment>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX_target=$(ClangPlusVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX_host=$(ClangPlusVersion)</ConfigureEnvironment>
       <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'Linux'">$(CFlags) --gcc-toolchain=$(ROOTFS_DIR)/usr/ --sysroot=$(ROOTFS_DIR)/</CFlags>
