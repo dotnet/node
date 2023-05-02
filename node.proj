@@ -76,19 +76,48 @@
       <PythonPrefixedPath>$(PythonDir)$(BuildOS)-$(BuildArchitecture)/bin:$(PATH)</PythonPrefixedPath>
     </PropertyGroup>
     <PropertyGroup>
+      <ClangVersion Condition="'$(ClangVersion)' == ''">clang</ClangVersion>
+      <ClangPlusVersion Condition="'$(ClangPlusVersion)' == ''">clang++</ClangPlusVersion>
+      <ObjCopy Condition="'$(ClangVersion)' == 'clang-9'">/usr/lib/llvm-9/bin/llvm-objcopy</ObjCopy>
+      <ObjCopy Condition="'$(ClangVersion)' != 'clang-9'">llvm-objcopy</ObjCopy>
+    </PropertyGroup>
+    <PropertyGroup>
       <ConfigureFlags Condition="'$(Configuration)' != 'Release'">$(ConfigureFlags) --debug</ConfigureFlags>
+      <ConfigureFlags>$(ConfigureFlags) --cross-compiling</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --dest-cpu=$(TargetArchitecture)</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --without-intl</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --openssl-no-asm</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --prefix=/</ConfigureFlags>
+      <ConfigureFlags Condition="'$(BuildOS)' == 'OSX'">$(ConfigureFlags) --dest-os=mac</ConfigureFlags>
+      <ConfigureFlags Condition="'$(BuildOS)' == 'Linux'">$(ConfigureFlags) --dest-os=linux</ConfigureFlags>
+      <GypEnvironment>$(GypEnvironment) target_arch=$(TargetArchitecture)</GypEnvironment>
+      <GypEnvironment>$(GypEnvironment) v8_target_arch=$(TargetArchitecture)</GypEnvironment>
+      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC=$(ClangVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC_target=$(ClangVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX=$(ClangPlusVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX_target=$(ClangPlusVersion)</ConfigureEnvironment>
+      <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</CFlags>
+      <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</CFlags>
+      <CFlags Condition="'$(BuildOS)' == 'Linux'">$(CFlags) --gcc-toolchain=$(ROOTFS_DIR)/usr/ --sysroot=$(ROOTFS_DIR)/</CFlags>
+      <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</LDFlags>
+      <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</LDFlags>
+      <LDFlags Condition="'$(BuildOS)' == 'Linux'">$(LDFlags) --gcc-toolchain=$(ROOTFS_DIR)/usr/ --sysroot=$(ROOTFS_DIR)/</LDFlags>
+      <CXXFlags>$(CFlags)</CXXFlags>
+<!--  Use BinUtils for now, set BOTH the below to use LLVM instead -->
+<!--      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) AR=llvm-ar</ConfigureEnvironment> -->
+<!--      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) AR_target=llvm-ar</ConfigureEnvironment> -->
+      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) GYP_DEFINES="$(GypEnvironment)"</ConfigureEnvironment>
     </PropertyGroup>
-    <Exec Command="./configure $(ConfigureFlags)"
+    <Message Importance="High" Text="** Running $(ConfigureEnvironment) ./configure $(ConfigureFlags)" />
+    <Exec Command="$(ConfigureEnvironment) ./configure $(ConfigureFlags)"
       IgnoreStandardErrorWarningFormat="true"
       EnvironmentVariables="PATH=$(PythonPrefixedPath)" />
-    <Exec Command="make"
+    <Message Importance="High" Text="** Running CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)" />
+    <Exec Command="CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)"
       IgnoreStandardErrorWarningFormat="true"
       EnvironmentVariables="PATH=$(PythonPrefixedPath);PREFIX=/" />
-    <Exec Command="make install"
+    <Message Importance="High" Text="** Running CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make install" />
+    <Exec Command="CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make install"
       IgnoreStandardErrorWarningFormat="true"
       EnvironmentVariables="PATH=$(PythonPrefixedPath);PREFIX=/;DESTDIR=$(NodeInstallDir)" />
   </Target>
@@ -100,30 +129,33 @@
       <NodeFiles Include="$(ProjectDir)README.md" />
     </ItemGroup>
     <Copy SourceFiles="@(NodeFiles)"
-      DestinationFiles="@(NodeFiles->'$(NodeInstallDir)\bin\%(RecursiveDir)%(Filename)%(Extension)')" />
+      DestinationFiles="@(NodeFiles->'$(NodeInstallDir)\%(RecursiveDir)%(Filename)%(Extension)')" />
     <ItemGroup>
       <NodeToStrip Include="$(NodeInstallDir)\bin\node" />
     </ItemGroup>
-    <Message Importance="High" Text="** Running dsymutil -flat %(NodeToStrip.FullPath)" />
+    <Message Importance="High" Text="** Running dsymutil -flat %(NodeToStrip.FullPath)" Condition="'$(BuildOS)' == 'OSX'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
       Command="dsymutil -flat %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'OSX'" />
-    <Message Importance="High" Text="** Running strip -no_code_signature_warning -S %(NodeToStrip.FullPath)" />
+    <Message Importance="High" Text="** Running strip -no_code_signature_warning -S %(NodeToStrip.FullPath)" Condition="'$(BuildOS)' == 'OSX'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
       Command="strip -no_code_signature_warning -S %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'OSX'" />
-    <Message Importance="High" Text="** Running codesign -f -s - %(NodeToStrip.FullPath)" />
+    <Message Importance="High" Text="** Running codesign -f -s - %(NodeToStrip.FullPath)" Condition="'$(BuildOS)' == 'OSX'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
       Command="codesign -f -s - %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'OSX'" />
+    <Message Importance="High" Text="** Running $(ObjCopy) --only-keep-debug %(NodeToStrip.FullPath) %(NodeToStrip.FullPath).dbg" Condition="'$(BuildOS)' == 'Linux'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
-      Command="llvm-objcopy --only-keep-debug %(NodeToStrip.FullPath) %(NodeToStrip.FullPath).dbg"
+      Command="$(ObjCopy) --only-keep-debug %(NodeToStrip.FullPath) %(NodeToStrip.FullPath).dbg"
       Condition="'$(BuildOS)' == 'Linux'" />
+    <Message Importance="High" Text="** Running $(ObjCopy) --strip-debug --strip-unneeded %(NodeToStrip.FullPath)" Condition="'$(BuildOS)' == 'Linux'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
-      Command="llvm-objcopy --strip-debug --strip-unneeded %(NodeToStrip.FullPath)"
+      Command="$(ObjCopy) --strip-debug --strip-unneeded %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'Linux'" />
+    <Message Importance="High" Text="** Running $(ObjCopy) --add-gnu-debuglink=%(NodeToStrip.FullPath).dbg %(NodeToStrip.FullPath)" Condition="'$(BuildOS)' == 'Linux'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
-      Command="llvm-objcopy --add-gnu-debuglink=%(NodeToStrip.FullPath).dbg %(NodeToStrip.FullPath)"
+      Command="$(ObjCopy) --add-gnu-debuglink=%(NodeToStrip.FullPath).dbg %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'Linux'" />
   </Target>
 
