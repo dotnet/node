@@ -38,7 +38,7 @@ stages:
               assetManifestOS: linux
               assetManifestPlatform: x64
               imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-18.04-cross-20230215165054-0ea3466
-              rootfs: /crossrootfs/x64
+              rootfs: 
               ClangVersionArg: /p:ClangVersion=clang-9 /p:ClangPlusVersion=clang++-9
               archflag: --arch x64
             arm64:
