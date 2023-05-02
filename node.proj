@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.Build.Traversal">
   <ItemGroup>
-    <PackageReference Include="runtime.$(BuildOS)-$(BuildArchitecture).Microsoft.NETCore.Runtime.Wasm.Python.Transport"
+    <PackageReference Include="runtime.$(BuildOSRid)-$(BuildArchitecture).Microsoft.NETCore.Runtime.Wasm.Python.Transport"
                       Version="$(runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion)"
                       Condition="'$(BuildOS)' != 'linux'"/>
   </ItemGroup>

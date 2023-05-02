@@ -32,6 +32,11 @@
     <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Linux))' == 'true'">Linux</BuildOS>
     <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</BuildOS>
 
+    <BuildOSRid>$(__BuildOS)</BuildOSRid>
+    <BuildOSRid Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">win</BuildOSRid>
+    <BuildOSRid Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Linux))' == 'true'">linux</BuildOSRid>
+    <BuildOSRid Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">osx</BuildOSRid>
+
     <!-- TODO: converge on one property for BuildOS and __BuildOS (and similar), and remove these extra lines. -->
     <__BuildOS>$(BuildOS)</__BuildOS>
     <__BuildArch>$(BuildArch)</__BuildArch>
