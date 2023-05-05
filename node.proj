@@ -92,18 +92,22 @@
       <ConfigureFlags Condition="'$(BuildOS)' == 'Linux'">$(ConfigureFlags) --dest-os=linux</ConfigureFlags>
       <GypEnvironment>$(GypEnvironment) target_arch=$(TargetArchitecture)</GypEnvironment>
       <GypEnvironment>$(GypEnvironment) v8_target_arch=$(TargetArchitecture)</GypEnvironment>
-      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC=$(ClangVersion)</ConfigureEnvironment>
-      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC_target=$(ClangVersion)</ConfigureEnvironment>
-      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CC_host=$(ClangVersion)</ConfigureEnvironment>
-      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX=$(ClangPlusVersion)</ConfigureEnvironment>
-      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX_target=$(ClangPlusVersion)</ConfigureEnvironment>
-      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) CXX_host=$(ClangPlusVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment>$(ConfigureEnvironment) CC=$(ClangVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment>$(ConfigureEnvironment) CC_target=$(ClangVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment>$(ConfigureEnvironment) CC_host=$(ClangVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment>$(ConfigureEnvironment) CXX=$(ClangPlusVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment>$(ConfigureEnvironment) CXX_target=$(ClangPlusVersion)</ConfigureEnvironment>
+      <ConfigureEnvironment>$(ConfigureEnvironment) CXX_host=$(ClangPlusVersion)</ConfigureEnvironment>
       <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'Linux'">$(CFlags) --gcc-toolchain=$(ROOTFS_DIR)/usr/ --sysroot=$(ROOTFS_DIR)/</CFlags>
+      <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</CFlags>
+      <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</CFlags>
       <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'Linux'">$(LDFlags) --gcc-toolchain=$(ROOTFS_DIR)/usr/ --sysroot=$(ROOTFS_DIR)/</LDFlags>
+      <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</LDFlags>
+      <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</LDFlags>
       <CXXFlags>$(CFlags)</CXXFlags>
 <!--  Use BinUtils for now, set BOTH the below to use LLVM instead -->
 <!--      <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) AR=llvm-ar</ConfigureEnvironment> -->
