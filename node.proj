@@ -139,6 +139,8 @@
     <ItemGroup>
       <NodeToStrip Include="$(NodeInstallDir)\bin\node" />
     </ItemGroup>
+    
+    <!-- OSX stripping -->
     <Message Importance="High" Text="** Running dsymutil -flat %(NodeToStrip.FullPath)" Condition="'$(BuildOS)' == 'OSX'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
       Command="dsymutil -flat %(NodeToStrip.FullPath)"
@@ -151,6 +153,8 @@
     <Exec IgnoreStandardErrorWarningFormat="true"
       Command="codesign -f -s - %(NodeToStrip.FullPath)"
       Condition="'$(BuildOS)' == 'OSX'" />
+    
+    <!-- Linux stripping -->
     <Message Importance="High" Text="** Running $(ObjCopy) --only-keep-debug %(NodeToStrip.FullPath) %(NodeToStrip.FullPath).dbg" Condition="'$(BuildOS)' == 'Linux'" />
     <Exec IgnoreStandardErrorWarningFormat="true"
       Command="$(ObjCopy) --only-keep-debug %(NodeToStrip.FullPath) %(NodeToStrip.FullPath).dbg"
