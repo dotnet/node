@@ -7,7 +7,7 @@ index e610650a01..27e62f3bf0 100644
        [ 'configuring_node', {
          'msvs_configuration_attributes': {
 -          'OutputDirectory': '<(DEPTH)/out/$(Configuration)/',
-+          'OutputDirectory': '<(DEPTH)/artifacts/obj/$(Configuration)/',
++          'OutputDirectory': '<(DEPTH)/artifacts/obj/$(ProjectName)/$(Configuration)/',
            'IntermediateDirectory': '$(OutDir)obj/$(ProjectName)/'
          },
        }],
