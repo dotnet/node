@@ -65,7 +65,7 @@
       <VcBuildCommand Condition="'$(Configuration)' != 'Release'" >$(VcBuildCommand) debug</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) $(TargetArchitecture)</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) openssl-no-asm</VcBuildCommand>
-      <VcBuildCommand>$(VcBuildCommand) without-intl</VcBuildCommand>
+      <VcBuildCommand>$(VcBuildCommand) full-icu</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) static</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) vs2022</VcBuildCommand>
     </PropertyGroup>
@@ -138,7 +138,7 @@
       <ConfigureFlags Condition="'$(Configuration)' != 'Release'">$(ConfigureFlags) --debug</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --cross-compiling</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --dest-cpu=$(TargetArchitecture)</ConfigureFlags>
-      <ConfigureFlags>$(ConfigureFlags) --without-intl</ConfigureFlags>
+      <ConfigureFlags>$(ConfigureFlags) --with-intl=full-icu</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --openssl-no-asm</ConfigureFlags>
       <ConfigureFlags>$(ConfigureFlags) --prefix=/</ConfigureFlags>
       <ConfigureFlags Condition="'$(BuildOS)' == 'OSX'">$(ConfigureFlags) --dest-os=mac</ConfigureFlags>
