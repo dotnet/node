@@ -10,6 +10,7 @@
 !.devcontainer/
 !.devcontainer/.devcontainer.json
 !test/fixtures/**/.*
+!.CodeQL.yml
 !.clang-format
 !.cpplint
 !.editorconfig

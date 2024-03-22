@@ -1,0 +1,7 @@
+path_classifiers:
+  library:
+    # All folders in this repo except for the eng folder are library code that we do not run
+    # static analysis over. We instead rely on CG and similar registration mechanisms to
+    # report issues to us.
+    - "**/*"
+    - exclude: eng
