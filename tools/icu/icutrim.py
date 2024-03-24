@@ -98,7 +98,7 @@ parser.add_option('-e', '--endian', action='store', dest='endian', help='endian,
 
 optVars = vars(options)
 
-for opt in [ "datfile", "filterfile", "tmpdir", "outfile" ]:
+for opt in [ "icupkg", "genrb", "iculslocs", "datfile", "filterfile", "tmpdir", "outfile" ]:
     if optVars[opt] is None:
         print("Missing required option: %s" % opt)
         sys.exit(1)
