@@ -37,10 +37,20 @@ endian=sys.byteorder
 
 parser = optparse.OptionParser(usage="usage: mkdir tmp ; %prog -D ~/Downloads/icudt53l.dat -T tmp -F trim_en.json -O icudt53l.dat" )
 
-parser.add_option("-P","--tool-path",
+parser.add_option("--icupkg",
                     action="store",
-                    dest="toolpath",
-                    help="set the prefix directory for ICU tools")
+                    dest="icupkg",
+                    help="set the path to the icupkg executable")
+
+parser.add_option("--genrb",
+                    action="store",
+                    dest="genrb",
+                    help="set the path to the genrb executable")
+
+parser.add_option("--iculslocs",
+                    action="store",
+                    dest="iculslocs",
+                    help="set the path to the iculslocs executable")
 
 parser.add_option("-D","--input-file",
                     action="store",
@@ -145,10 +155,7 @@ dataname=options.outfile[0:-4]
 
 ## TODO: need to improve this. Quotes, etc.
 def runcmd(tool, cmd, doContinue=False):
-    if(options.toolpath):
-        cmd = os.path.join(options.toolpath, tool) + " " + cmd
-    else:
-        cmd = tool + " " + cmd
+    cmd = tool + " " + cmd
 
     if(options.verbose>4):
         print("# " + cmd)
@@ -178,11 +185,11 @@ if "comment" in config:
 ## The first letter of endian_letter will be 'b' or 'l' for big or little
 endian_letter = options.endian[0]
 
-runcmd("icupkg", "-t%s %s %s""" % (endian_letter, options.datfile, outfile))
+runcmd(options.icupkg, "-t%s %s %s""" % (endian_letter, options.datfile, outfile))
 
 ## STEP 2 - get listing
 listfile = os.path.join(options.tmpdir,"icudata.lst")
-runcmd("icupkg", "-l %s > %s""" % (outfile, listfile))
+runcmd(options.icupkg, "-l %s > %s""" % (outfile, listfile))
 
 with open(listfile, 'rb') as fi:
     items = [line.strip() for line in fi.read().decode("utf-8").splitlines()]
@@ -284,7 +291,7 @@ for i in range(len(items)):
         trees[tree] = { "extension": ".res", "treeprefix": treeprefix, "hasIndex": True }
         # read in the resource list for the tree
         treelistfile = os.path.join(options.tmpdir,"%s.lst" % tree)
-        runcmd("iculslocs", "-i %s -N %s -T %s -l > %s" % (outfile, dataname, tree, treelistfile))
+        runcmd(options.iculslocs, "-i %s -N %s -T %s -l > %s" % (outfile, dataname, tree, treelistfile))
         with io.open(treelistfile, 'r', encoding='utf-8') as fi:
             treeitems = fi.readlines()
             trees[tree]["locs"] = [line.strip() for line in treeitems]
@@ -308,7 +315,7 @@ def removeList(count=0):
         removefile = os.path.join(options.tmpdir, "REMOVE.lst")
         with open(removefile, 'wb') as fi:
             fi.write('\n'.join(remove).encode("utf-8") + b'\n')
-        rc = runcmd("icupkg","-r %s %s 2> %s" %  (removefile,outfile,hackerrfile),True)
+        rc = runcmd(options.icupkg,"-r %s %s 2> %s" %  (removefile,outfile,hackerrfile),True)
         if rc != 0:
             if(options.verbose>5):
                 print("## Damage control, trying to parse stderr from icupkg..")
@@ -350,6 +357,6 @@ for tree in trees:
         os.mkdir(treebunddir)
     treebundres = os.path.join(treebunddir,RES_INDX)
     treebundtxt = "%s.txt" % (treebundres[0:-4])
-    runcmd("iculslocs", "-i %s -N %s -T %s -b %s" % (outfile, dataname, tree, treebundtxt))
-    runcmd("genrb","-d %s -s %s res_index.txt" % (treebunddir, treebunddir))
-    runcmd("icupkg","-s %s -a %s%s %s" % (options.tmpdir, trees[tree]["treeprefix"], RES_INDX, outfile))
+    runcmd(options.iculslocs, "-i %s -N %s -T %s -b %s" % (outfile, dataname, tree, treebundtxt))
+    runcmd(options.genrb,"-d %s -s %s res_index.txt" % (treebunddir, treebunddir))
+    runcmd(options.icupkg,"-s %s -a %s%s %s" % (options.tmpdir, trees[tree]["treeprefix"], RES_INDX, outfile))
