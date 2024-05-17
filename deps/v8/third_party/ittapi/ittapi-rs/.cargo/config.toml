@@ -1,5 +1,5 @@
 [registries]
-dotnet-public = { index = "sparse+https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public/Cargo/index/" }
+"dotnet-public" = { index = "sparse+https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public/Cargo/index/" }
 
 [source.crates-io]
-replace-with = dotnet-public
+replace-with = "dotnet-public"
