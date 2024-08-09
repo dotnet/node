@@ -190,7 +190,7 @@
     <Exec Command="$(ConfigureCommand)"
       IgnoreStandardErrorWarningFormat="true" />
     <Message Importance="High" Text="** Running $(MakeCommand)" />
-    <Exec Command=$(MakeCommand)""
+    <Exec Command="$(MakeCommand)"
       IgnoreStandardErrorWarningFormat="true" />
     <Message Importance="High" Text="** Running $(MakeInstallCommand)" />
     <Exec Command="$(MakeInstallCommand)"
