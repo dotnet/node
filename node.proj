@@ -61,6 +61,7 @@
   <Target Name="ReallyBuildWindows" AfterTargets="CopyPythonToTree" Condition="'$(BuildOS)' == 'Windows_NT'">
     <PropertyGroup>
       <PythonPrefixedPath>$(PythonDir)$(BuildOS)-$(BuildArchitecture)\;$(PATH)</PythonPrefixedPath>
+      <VcBuildCommand>.\vcbuild.bat</VcBuildCommand>
       <VcBuildCommand Condition="'$(Configuration)' == 'Release'" >$(VcBuildCommand) release</VcBuildCommand>
       <VcBuildCommand Condition="'$(Configuration)' != 'Release'" >$(VcBuildCommand) debug</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) $(TargetArchitecture)</VcBuildCommand>
@@ -69,7 +70,8 @@
       <VcBuildCommand>$(VcBuildCommand) static</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) vs2022</VcBuildCommand>
     </PropertyGroup>
-    <Exec Command=".\vcbuild.bat $(VcBuildCommand)"
+    <Message Importance="High" Text="** Running $(VcBuildCommand)" />
+    <Exec Command="$(VcBuildCommand)"
       IgnoreStandardErrorWarningFormat="true"
       EnvironmentVariables="PATH=$([MSBuild]::Escape($(PythonPrefixedPath)))" />
   </Target>
@@ -180,19 +182,19 @@
       <CXXFlagsHost>$(CFlagsHost) -Wno-error=enum-constexpr-conversion</CXXFlagsHost>
       <CXXFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib')) -lc++ -stdlib=libc++ -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</CXXFlagsHost>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) GYP_DEFINES="$(GypEnvironment)"</ConfigureEnvironment>
+      <ConfigureCommand>PATH=$(PythonPrefixedPath) $(ConfigureEnvironment) ./configure $(ConfigureFlags)</ConfigureCommand>
+      <MakeCommand>PATH=$(PythonPrefixedPath) PREFIX=/ CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)</MakeCommand>
+      <MakeInstallCommand>PATH=$(PythonPrefixedPath) PREFIX=/ DESTDIR=$(NodeInstallDir) CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make install</MakeInstallCommand>
     </PropertyGroup>
-    <Message Importance="High" Text="** Running $(ConfigureEnvironment) ./configure $(ConfigureFlags)" />
-    <Exec Command="$(ConfigureEnvironment) ./configure $(ConfigureFlags)"
-      IgnoreStandardErrorWarningFormat="true"
-      EnvironmentVariables="PATH=$(PythonPrefixedPath)" />
-    <Message Importance="High" Text="** Running CFLAGS=%22$(CFlags)%22 CFLAGS_host=%22$(CFlagsHost)%22 LDFLAGS=%22$(LDFlags)%22 LDFLAGS_host=%22$(LDFlagsHost)%22 CXXFLAGS=%22$(CXXFlags)%22 CXXFLAGS_host=%22$(CXXFlagsHost)%22 make -j1" />
-    <Exec Command="CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)"
-      IgnoreStandardErrorWarningFormat="true"
-      EnvironmentVariables="PATH=$(PythonPrefixedPath);PREFIX=/" />
-    <Message Importance="High" Text="** Running GYP_DEFINES=%22$(GypEnvironment)%22 CFLAGS=%22$(CFlags)%22 CFLAGS_host=%22$(CFlagsHost)%22 LDFLAGS=%22$(LDFlags)%22 LDFLAGS_host=%22$(LDFlagsHost)%22 CXXFLAGS=%22$(CXXFlags)%22 CXXFLAGS_host=%22$(CXXFlagsHost)%22 make install" />
-    <Exec Command="CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make install"
-      IgnoreStandardErrorWarningFormat="true"
-      EnvironmentVariables="PATH=$(PythonPrefixedPath);PREFIX=/;DESTDIR=$(NodeInstallDir)" />
+    <Message Importance="High" Text="** Running $(ConfigureCommand)" />
+    <Exec Command="$(ConfigureCommand)"
+      IgnoreStandardErrorWarningFormat="true" />
+    <Message Importance="High" Text="** Running $(MakeCommand)" />
+    <Exec Command=$(MakeCommand)""
+      IgnoreStandardErrorWarningFormat="true" />
+    <Message Importance="High" Text="** Running $(MakeInstallCommand)" />
+    <Exec Command="$(MakeInstallCommand)"
+      IgnoreStandardErrorWarningFormat="true" />
   </Target>
 
   <Target Name="LayoutNodeUnix" AfterTargets="ReallyBuildUnix" Condition="'$(BuildOS)' != 'Windows_NT'">
