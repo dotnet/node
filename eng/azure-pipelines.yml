@@ -59,15 +59,6 @@ extends:
     sdl:
       credscan:
         suppressionsFile: $(Build.SourcesDirectory)/.config/CredScanSuppressions.json
-      eslint:
-        enabled: false
-        justificationForDisabling: 'The checkIfEnableEslint.ps1 script for 1ES fails while getting the list of files. Tracking in https://dev.azure.com/mseng/1ES/_workitems/edit/2162474'
-      psscriptanalyzer:
-        enabled: false
-        justificationForDisabling: 'PSScriptAnalyzer fails while getting the list of files. Tracking in https://dev.azure.com/mseng/1ES/_workitems/edit/2162474'
-      armory:
-        enabled: false
-        justificationForDisabling: 'Armory runs into an OutOfMemoryException. Tracking in https://dev.azure.com/mseng/1ES/_workitems/edit/2162474'
       binskim:
         enabled: true
         scanOutputDirectoryOnly: true
