@@ -130,7 +130,7 @@ extends:
               timeoutInMinutes: 600
               pool:
                 name: Azure Pipelines
-                image: macOS-12
+                image: macOS-13
                 os: macOS
               steps:
               - script: |
