@@ -151,5 +151,11 @@ stages:
             git reset --hard HEAD
           displayName: 'Clean up working directory'
 
+        # nodejs configure needs python 3.11
+        - task: UsePythonVersion@0
+          inputs:
+            versionSpec: '3.11'
+            addToPath: true
+
         - powershell: eng\build.ps1 -ci -restore -build -pack $(archflag) -configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
           displayName: 'Build and package'
