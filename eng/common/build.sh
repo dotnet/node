@@ -136,7 +136,7 @@ while [[ $# > 0 ]]; do
       restore=true
       pack=true
       ;;
-    -productbuild|-pb)
+    -productBuild|-pb)
       build=true
       product_build=true
       restore=true
