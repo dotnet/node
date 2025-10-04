@@ -73,7 +73,7 @@
     <Message Importance="High" Text="** Running $(VcBuildCommand)" />
     <Exec Command="$(VcBuildCommand)"
       IgnoreStandardErrorWarningFormat="true"
-      EnvironmentVariables="PATH=$([MSBuild]::Escape($(PythonPrefixedPath)))" />
+      EnvironmentVariables="PATH=$([MSBuild]::Escape($(PythonPrefixedPath)));config_flags=--without-node-snapshot" />
   </Target>
 
   <Target Name="LayoutNodeWindows" AfterTargets="ReallyBuildWindows" Condition="'$(BuildOS)' == 'Windows_NT'">
