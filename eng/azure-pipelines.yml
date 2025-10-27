@@ -12,7 +12,7 @@ variables:
 - template: /eng/common/templates-official/variables/pool-providers.yml@self
   # prevent UsePythonVersion@0 from accessing pypi.org
 - name: PIP_INDEX_URL
-  value: INVALID
+  value: https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public/pypi/simple/
 
 resources:
   repositories:
