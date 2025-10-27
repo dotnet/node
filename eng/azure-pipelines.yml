@@ -10,6 +10,9 @@ pr: none
 variables:
 - template: /eng/common-variables.yml@self
 - template: /eng/common/templates-official/variables/pool-providers.yml@self
+  # prevent UsePythonVersion@0 from accessing pypi.org
+- name: PIP_INDEX_URL
+  value: INVALID
 
 resources:
   repositories:
