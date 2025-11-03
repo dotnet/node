@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Dependencies>
   <ProductDependencies>
-    <Dependency Name="runtime.osx-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25370.1">
+    <Dependency Name="runtime.osx-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25522.2">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>ceb64978242386813212db01465b093fa0973875</Sha>
+      <Sha>6c2fce8ae2f2596fda04965daa96f23c1ae38228</Sha>
     </Dependency>
-    <Dependency Name="runtime.osx-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25370.1">
+    <Dependency Name="runtime.osx-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25522.2">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>ceb64978242386813212db01465b093fa0973875</Sha>
+      <Sha>6c2fce8ae2f2596fda04965daa96f23c1ae38228</Sha>
     </Dependency>
-    <Dependency Name="runtime.win-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25370.1">
+    <Dependency Name="runtime.win-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25522.2">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>ceb64978242386813212db01465b093fa0973875</Sha>
+      <Sha>6c2fce8ae2f2596fda04965daa96f23c1ae38228</Sha>
     </Dependency>
-    <Dependency Name="runtime.win-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25370.1">
+    <Dependency Name="runtime.win-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="10.0.0-alpha.1.25522.2">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>ceb64978242386813212db01465b093fa0973875</Sha>
+      <Sha>6c2fce8ae2f2596fda04965daa96f23c1ae38228</Sha>
     </Dependency>
     <Dependency Name="runtime.linux-arm64.Microsoft.NETCore.Runtime.Mono.LLVM.Sdk" Version="19.1.0-alpha.1.25371.1">
       <Uri>https://github.com/dotnet/llvm-project</Uri>
