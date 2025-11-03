@@ -14,6 +14,9 @@ pr:
 variables:
 - template: /eng/common-variables.yml
 - template: /eng/common/templates/variables/pool-providers.yml
+  # prevent UsePythonVersion@0 from accessing pypi.org
+- name: PIP_INDEX_URL
+  value: https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public-pypi/pypi/simple/
 
 stages:
 - stage: build
