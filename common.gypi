@@ -371,8 +371,9 @@
           '_CRT_NONSTDC_NO_DEPRECATE',
           # Make sure the STL doesn't try to use exceptions
           '_HAS_EXCEPTIONS=0',
-          'BUILDING_V8_SHARED=1',
-          'BUILDING_UV_SHARED=1',
+          # DOTNET: disabled BUILDING_V8_SHARED and BUILDING_UV_SHARED to fix linking with MSVC
+          #'BUILDING_V8_SHARED=1',
+          #'BUILDING_UV_SHARED=1',
         ],
       }],
       [ 'OS in "linux freebsd openbsd solaris aix"', {

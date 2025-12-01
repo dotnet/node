@@ -6,6 +6,8 @@
 #include "src/objects/dictionary-inl.h"
 #include "src/objects/js-objects-inl.h"
 #include "src/objects/fixed-array-inl.h"
+// DOTNET: added include of off-thread-factory-inl.h to fix linking with MSVC
+#include "src/heap/off-thread-factory-inl.h"
 #include "src/utils/utils.h"
 #include "src/utils/vector.h"
 
