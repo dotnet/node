@@ -120,7 +120,7 @@ stages:
               assetManifestPlatform: arm64
               archflag: --arch arm64
         pool:
-          vmImage: macos-13
+          vmImage: macos-14
         steps:
         - script: |
             git clean -ffdx
