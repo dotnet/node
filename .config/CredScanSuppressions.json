@@ -5,6 +5,7 @@
       "file": [
         "deps/npm/node_modules/agent-base/test/ssl-cert-snakeoil.key",
         "deps/npm/node_modules/http-proxy-agent/test/ssl-cert-snakeoil.key",
+        "deps/npm/node_modules/node-gyp/test/fixtures/certs.js",
         "deps/npm/node_modules/node-gyp/test/fixtures/server.key",
         "deps/npm/node_modules/socks-proxy-agent/node_modules/agent-base/test/ssl-cert-snakeoil.key",
         "deps/npm/node_modules/socks-proxy-agent/test/ssl-cert-snakeoil.key",
