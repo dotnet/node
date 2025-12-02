@@ -68,7 +68,7 @@
     "columnify": "^1.6.0",
     "fastest-levenshtein": "^1.0.16",
     "fs-minipass": "^3.0.2",
-    "glob": "^10.2.4",
+    "glob": "^10.5.0",
     "graceful-fs": "^4.2.11",
     "hosted-git-info": "^6.1.1",
     "ini": "^4.1.0",
@@ -188,11 +188,9 @@
     "write-file-atomic"
   ],
   "devDependencies": {
-    "@npmcli/docs": "^1.0.0",
     "@npmcli/eslint-config": "^4.0.0",
     "@npmcli/fs": "^3.1.0",
     "@npmcli/git": "^4.0.4",
-    "@npmcli/mock-registry": "^1.0.0",
     "@npmcli/promise-spawn": "^6.0.2",
     "@npmcli/template-oss": "4.14.1",
     "licensee": "^10.0.0",
@@ -205,7 +203,6 @@
     "tap": "^16.3.4"
   },
   "scripts": {
-    "dependencies": "node scripts/bundle-and-gitignore-deps.js && node scripts/dependency-graph.js",
     "dumpconf": "env | grep npm | sort | uniq",
     "licenses": "licensee --production --errors-only",
     "test": "tap",
