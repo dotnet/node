@@ -3,6 +3,7 @@
   "suppressions": [
     {
       "file": [
+        "deps/npm/node_modules/node-gyp/test/fixtures/certs.js",
         "deps/npm/test/lib/commands/profile.js",
         "deps/npm/test/lib/utils/replace-info.js",
         "deps/openssl/openssl/apps/ca-key.pem",
