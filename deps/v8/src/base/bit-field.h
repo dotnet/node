@@ -40,14 +40,16 @@ class BitField final {
   static constexpr U kNumValues = U{1} << kSize;
 
   // Value for the field with all bits set.
-  static constexpr T kMax = static_cast<T>(kNumValues - 1);
+  // DOTNET: fix -Wenum-constexpr-conversion error on recent clang
+  static constexpr U kMax = kNumValues - 1;
 
   template <class T2, int size2>
   using Next = BitField<T2, kShift + kSize, size2, U>;
 
   // Tells whether the provided value fits into the bit field.
   static constexpr bool is_valid(T value) {
-    return (static_cast<U>(value) & ~static_cast<U>(kMax)) == 0;
+    // DOTNET: fix -Wenum-constexpr-conversion error on recent clang
+    return (static_cast<U>(value) & ~kMax) == 0;
   }
 
   // Returns a type U with the bit field value encoded.
