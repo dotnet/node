@@ -452,7 +452,7 @@ if "%use_x64_node_exe%"=="true" (
   if not exist "%x64_node_exe%" (
     echo Downloading x64 node.exe...
     if not exist "temp-vcbuild" mkdir temp-vcbuild
-    powershell -c "Invoke-WebRequest -Uri 'https://nodejs.org/dist/latest/win-x64/node.exe' -OutFile 'temp-vcbuild\node-x64-cross-compiling.exe'"
+    powershell -c "Invoke-WebRequest -UseBasicParsing -Uri 'https://nodejs.org/dist/latest/win-x64/node.exe' -OutFile 'temp-vcbuild\node-x64-cross-compiling.exe'"
   )
   if not exist "%x64_node_exe%" (
     echo Could not find the Node executable at the given x64_node_exe path. Aborting.
