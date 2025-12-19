@@ -268,7 +268,7 @@ class ScopeInfo : public FixedArray {
   static const int kFlagsOffset = OffsetOfElementAt(Fields::kFlags);
 
   STATIC_ASSERT(LanguageModeSize == 1 << LanguageModeBit::kSize);
-  STATIC_ASSERT(kLastFunctionKind <= FunctionKindBits::kMax);
+  STATIC_ASSERT(FunctionKindBits::is_valid(FunctionKind::kLastFunctionKind));
 
  private:
   // The layout of the variable part of a ScopeInfo is as follows:

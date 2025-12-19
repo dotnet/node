@@ -69,11 +69,11 @@ class JSDisplayNames
   // Bit positions in |flags|.
   DEFINE_TORQUE_GENERATED_JS_DISPLAY_NAMES_FLAGS()
 
-  STATIC_ASSERT(Style::kLong <= StyleBits::kMax);
-  STATIC_ASSERT(Style::kShort <= StyleBits::kMax);
-  STATIC_ASSERT(Style::kNarrow <= StyleBits::kMax);
-  STATIC_ASSERT(Fallback::kCode <= FallbackBit::kMax);
-  STATIC_ASSERT(Fallback::kNone <= FallbackBit::kMax);
+  STATIC_ASSERT(StyleBits::is_valid(Style::kLong));
+  STATIC_ASSERT(StyleBits::is_valid(Style::kShort));
+  STATIC_ASSERT(StyleBits::is_valid(Style::kNarrow));
+  STATIC_ASSERT(FallbackBit::is_valid(Fallback::kCode));
+  STATIC_ASSERT(FallbackBit::is_valid(Fallback::kNone));
 
   DECL_ACCESSORS(internal, Managed<DisplayNamesInternal>)
 

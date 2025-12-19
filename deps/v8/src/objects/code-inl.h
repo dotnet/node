@@ -352,8 +352,7 @@ Code::Kind Code::kind() const {
 void Code::initialize_flags(Kind kind, bool has_unwinding_info,
                             bool is_turbofanned, int stack_slots,
                             bool is_off_heap_trampoline) {
-  CHECK(0 <= stack_slots && stack_slots < StackSlotsField::kMax);
-  static_assert(Code::NUMBER_OF_KINDS <= KindField::kMax + 1, "field overflow");
+  CHECK(StackSlotsField::is_valid(stack_slots));
   uint32_t flags = HasUnwindingInfoField::encode(has_unwinding_info) |
                    KindField::encode(kind) |
                    IsTurbofannedField::encode(is_turbofanned) |
