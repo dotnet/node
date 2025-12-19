@@ -177,9 +177,7 @@
       <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</LDFlagsHost>
       <LDFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(LDFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</LDFlagsHost>
       <LDFlagsHost>$(LDFlagsHost) -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</LDFlagsHost>
-      <CXXFlags>$(CFlags) -Wno-error=enum-constexpr-conversion</CXXFlags>
       <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
-      <CXXFlagsHost>$(CFlagsHost) -Wno-error=enum-constexpr-conversion</CXXFlagsHost>
       <CXXFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib')) -lc++ -stdlib=libc++ -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</CXXFlagsHost>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) GYP_DEFINES="$(GypEnvironment)"</ConfigureEnvironment>
       <ConfigureCommand>PATH=$(PythonPrefixedPath) $(ConfigureEnvironment) ./configure $(ConfigureFlags)</ConfigureCommand>

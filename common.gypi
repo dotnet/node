@@ -400,7 +400,7 @@
       }],
       [ 'OS in "linux freebsd openbsd solaris android aix os400 cloudabi"', {
         'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
-        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++17', '-stdlib=libc++', '-Wno-error=enum-constexpr-conversion' ],
+        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++17', '-stdlib=libc++' ],
         'defines': [ '__STDC_FORMAT_MACROS' ],
         'ldflags': [ '-rdynamic', '-fuse-ld=lld', '-Wl,--build-id' ],
         'target_conditions': [
