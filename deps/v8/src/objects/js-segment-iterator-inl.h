@@ -31,7 +31,7 @@ BIT_FIELD_ACCESSORS(JSSegmentIterator, flags, is_break_type_set,
 
 inline void JSSegmentIterator::set_granularity(
     JSSegmenter::Granularity granularity) {
-  DCHECK_GE(GranularityBits::kMax, granularity);
+  DCHECK(GranularityBits::is_valid(granularity));
   int hints = flags();
   hints = GranularityBits::update(hints, granularity);
   set_flags(hints);

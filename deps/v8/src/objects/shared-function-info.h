@@ -633,12 +633,12 @@ class SharedFunctionInfo : public HeapObject {
   class BodyDescriptor;
 
   // Bailout reasons must fit in the DisabledOptimizationReason bitfield.
-  STATIC_ASSERT(BailoutReason::kLastErrorMessage <=
-                DisabledOptimizationReasonBits::kMax);
+  STATIC_ASSERT(DisabledOptimizationReasonBits::is_valid(
+      BailoutReason::kLastErrorMessage));
 
-  STATIC_ASSERT(kLastFunctionKind <= FunctionKindBits::kMax);
-  STATIC_ASSERT(FunctionSyntaxKind::kLastFunctionSyntaxKind <=
-                FunctionSyntaxKindBits::kMax);
+  STATIC_ASSERT(FunctionKindBits::is_valid(FunctionKind::kLastFunctionKind));
+  STATIC_ASSERT(FunctionSyntaxKindBits::is_valid(
+                FunctionSyntaxKind::kLastFunctionSyntaxKind));
 
   // Indicates that this function uses a super property (or an eval that may
   // use a super property).
