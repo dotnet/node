@@ -84,12 +84,12 @@ class JSListFormat
   // Bit positions in |flags|.
   DEFINE_TORQUE_GENERATED_JS_LIST_FORMAT_FLAGS()
 
-  STATIC_ASSERT(Style::LONG <= StyleBits::kMax);
-  STATIC_ASSERT(Style::SHORT <= StyleBits::kMax);
-  STATIC_ASSERT(Style::NARROW <= StyleBits::kMax);
-  STATIC_ASSERT(Type::CONJUNCTION <= TypeBits::kMax);
-  STATIC_ASSERT(Type::DISJUNCTION <= TypeBits::kMax);
-  STATIC_ASSERT(Type::UNIT <= TypeBits::kMax);
+  STATIC_ASSERT(StyleBits::is_valid(Style::LONG));
+  STATIC_ASSERT(StyleBits::is_valid(Style::SHORT));
+  STATIC_ASSERT(StyleBits::is_valid(Style::NARROW));
+  STATIC_ASSERT(TypeBits::is_valid(Type::CONJUNCTION));
+  STATIC_ASSERT(TypeBits::is_valid(Type::DISJUNCTION));
+  STATIC_ASSERT(TypeBits::is_valid(Type::UNIT));
 
   DECL_PRINTER(JSListFormat)
 

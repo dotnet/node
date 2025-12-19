@@ -23,7 +23,7 @@ ACCESSORS(JSDisplayNames, internal, Managed<DisplayNamesInternal>,
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSDisplayNames)
 
 inline void JSDisplayNames::set_style(Style style) {
-  DCHECK_GE(StyleBits::kMax, style);
+  DCHECK(StyleBits::is_valid(style));
   set_flags(StyleBits::update(flags(), style));
 }
 
@@ -32,7 +32,7 @@ inline JSDisplayNames::Style JSDisplayNames::style() const {
 }
 
 inline void JSDisplayNames::set_fallback(Fallback fallback) {
-  DCHECK_GE(FallbackBit::kMax, fallback);
+  DCHECK(FallbackBit::is_valid(fallback));
   int hints = flags();
   hints = FallbackBit::update(hints, fallback);
   set_flags(hints);
