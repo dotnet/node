@@ -434,8 +434,8 @@ TieringState FeedbackVector::osr_tiering_state() {
 
 void FeedbackVector::set_osr_tiering_state(TieringState marker) {
   DCHECK(marker == TieringState::kNone || marker == TieringState::kInProgress);
-  STATIC_ASSERT(TieringState::kNone <= OsrTieringStateBit::kMax);
-  STATIC_ASSERT(TieringState::kInProgress <= OsrTieringStateBit::kMax);
+  STATIC_ASSERT(OsrTieringStateBit::is_valid(TieringState::kNone));
+  STATIC_ASSERT(OsrTieringStateBit::is_valid(TieringState::kInProgress));
   int32_t state = flags();
   state = OsrTieringStateBit::update(state, marker);
   set_flags(state);

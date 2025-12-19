@@ -1336,7 +1336,7 @@ uint32_t BigInt::GetBitfieldForSerialization() const {
   // In order to make the serialization format the same on 32/64 bit builds,
   // we convert the length-in-digits to length-in-bytes for serialization.
   // Being able to do this depends on having enough LengthBits:
-  STATIC_ASSERT(kMaxLength * kDigitSize <= LengthBits::kMax);
+  STATIC_ASSERT(LengthBits::is_valid(kMaxLength * kDigitSize));
   int bytelength = length() * kDigitSize;
   return SignBits::encode(sign()) | LengthBits::encode(bytelength);
 }
