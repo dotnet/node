@@ -66,8 +66,8 @@ class JSPluralRules
   // Bit positions in |flags|.
   DEFINE_TORQUE_GENERATED_JS_PLURAL_RULES_FLAGS()
 
-  STATIC_ASSERT(Type::CARDINAL <= TypeBit::kMax);
-  STATIC_ASSERT(Type::ORDINAL <= TypeBit::kMax);
+  STATIC_ASSERT(TypeBit::is_valid(Type::CARDINAL));
+  STATIC_ASSERT(TypeBit::is_valid(Type::ORDINAL));
 
   DECL_ACCESSORS(icu_plural_rules, Managed<icu::PluralRules>)
   DECL_ACCESSORS(icu_number_formatter,

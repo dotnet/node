@@ -606,7 +606,7 @@ uintptr_t Code::GetBaselinePCForNextExecutedBytecode(int bytecode_offset,
 
 void Code::initialize_flags(CodeKind kind, bool is_turbofanned, int stack_slots,
                             bool is_off_heap_trampoline) {
-  CHECK(0 <= stack_slots && stack_slots < StackSlotsField::kMax);
+  CHECK(StackSlotsField::is_valid(stack_slots));
   DCHECK(!CodeKindIsInterpretedJSFunction(kind));
   uint32_t flags = KindField::encode(kind) |
                    IsTurbofannedField::encode(is_turbofanned) |
@@ -1193,7 +1193,7 @@ int BytecodeArray::osr_urgency() const {
 
 void BytecodeArray::set_osr_urgency(int urgency) {
   DCHECK(0 <= urgency && urgency <= BytecodeArray::kMaxOsrUrgency);
-  STATIC_ASSERT(BytecodeArray::kMaxOsrUrgency <= OsrUrgencyBits::kMax);
+  STATIC_ASSERT(OsrUrgencyBits::is_valid(BytecodeArray::kMaxOsrUrgency));
   uint32_t value = osr_urgency_and_install_target();
   set_osr_urgency_and_install_target(OsrUrgencyBits::update(value, urgency));
 }

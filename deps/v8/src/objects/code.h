@@ -996,7 +996,7 @@ class BytecodeArray
   // the function becomes hotter. When the current loop depth is less than the
   // osr_urgency, JumpLoop calls into runtime to attempt OSR optimization.
   static constexpr int kMaxOsrUrgency = 6;
-  STATIC_ASSERT(kMaxOsrUrgency <= OsrUrgencyBits::kMax);
+  STATIC_ASSERT(OsrUrgencyBits::is_valid(kMaxOsrUrgency));
   inline int osr_urgency() const;
   inline void set_osr_urgency(int urgency);
   inline void reset_osr_urgency();

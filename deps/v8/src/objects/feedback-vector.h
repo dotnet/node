@@ -194,7 +194,7 @@ class FeedbackVector
  public:
   NEVER_READ_ONLY_SPACE
   DEFINE_TORQUE_GENERATED_FEEDBACK_VECTOR_FLAGS()
-  STATIC_ASSERT(TieringState::kLastTieringState <= TieringStateBits::kMax);
+  static_assert(TieringStateBits::is_valid(TieringState::kLastTieringState));
 
   static const bool kFeedbackVectorMaybeOptimizedCodeIsStoreRelease = true;
   using TorqueGeneratedFeedbackVector<FeedbackVector,
