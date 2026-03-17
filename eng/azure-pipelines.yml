@@ -89,7 +89,7 @@ extends:
               timeoutInMinutes: 480
               pool:
                 name: $(DncEngInternalBuildPool)
-                image: 1es-ubuntu-2204
+                image: build.azurelinux.3.amd64
                 os: linux
               container: ${{ buildjob.imagename }}
               steps:
