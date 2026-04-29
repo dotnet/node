@@ -5,8 +5,10 @@ const common = require('../common');
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
+const { hasOpenSSL } = require('../common/crypto');
+
 const assert = require('assert');
-const { subtle } = require('crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 
 // This is only a partial test. The WebCrypto Web Platform Tests
 // will provide much greater coverage.
@@ -121,12 +123,11 @@ const { subtle } = require('crypto').webcrypto;
       name: 'Ed25519',
     }, publicKey, signature, ec.encode(data)));
   }
-
   test('hello world').then(common.mustCall());
 }
 
 // Test Sign/Verify Ed448
-{
+if (!process.features.openssl_is_boringssl) {
   async function test(data) {
     const ec = new TextEncoder();
     const { publicKey, privateKey } = await subtle.generateKey({
@@ -143,4 +144,28 @@ const { subtle } = require('crypto').webcrypto;
   }
 
   test('hello world').then(common.mustCall());
+} else {
+  common.printSkipMessage('Skipping unsupported Ed448 test case');
+}
+
+// Test Sign/Verify ML-DSA
+if (hasOpenSSL(3, 5)) {
+  async function test(name, data) {
+    const ec = new TextEncoder();
+    const { publicKey, privateKey } = await subtle.generateKey({
+      name,
+    }, true, ['sign', 'verify']);
+
+    const signature = await subtle.sign({
+      name,
+    }, privateKey, ec.encode(data));
+
+    assert(await subtle.verify({
+      name,
+    }, publicKey, signature, ec.encode(data)));
+  }
+
+  test('ML-DSA-44', 'hello world').then(common.mustCall());
+  test('ML-DSA-65', 'hello world').then(common.mustCall());
+  test('ML-DSA-87', 'hello world').then(common.mustCall());
 }

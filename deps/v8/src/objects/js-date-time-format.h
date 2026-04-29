@@ -36,69 +36,81 @@ namespace internal {
 class JSDateTimeFormat
     : public TorqueGeneratedJSDateTimeFormat<JSDateTimeFormat, JSObject> {
  public:
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSDateTimeFormat> New(
-      Isolate* isolate, Handle<Map> map, Handle<Object> locales,
-      Handle<Object> options, const char* service);
-
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSObject> ResolvedOptions(
-      Isolate* isolate, Handle<JSDateTimeFormat> date_time_format);
-
-  V8_WARN_UNUSED_RESULT static Handle<String> Calendar(
-      Isolate* isolate, Handle<JSDateTimeFormat> date_time_format);
-
-  V8_WARN_UNUSED_RESULT static Handle<Object> TimeZone(
-      Isolate* isolate, Handle<JSDateTimeFormat> date_time_format);
-
-  // ecma402/#sec-unwrapdatetimeformat
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSDateTimeFormat>
-  UnwrapDateTimeFormat(Isolate* isolate, Handle<JSReceiver> format_holder);
-
-  // Convert the options to ICU DateTimePatternGenerator skeleton.
-  static Maybe<std::string> OptionsToSkeleton(Isolate* isolate,
-                                              Handle<JSReceiver> options);
-
-  // ecma402/#sec-datetime-format-functions
-  // DateTime Format Functions
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> DateTimeFormat(
-      Isolate* isolate, Handle<JSDateTimeFormat> date_time_format,
-      Handle<Object> date);
-
-  // ecma402/#sec-Intl.DateTimeFormat.prototype.formatToParts
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSArray> FormatToParts(
-      Isolate* isolate, Handle<JSDateTimeFormat> date_time_format,
-      double date_value, bool output_source);
-
-  // ecma402/#sec-intl.datetimeformat.prototype.formatRange
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> FormatRange(
-      Isolate* isolate, Handle<JSDateTimeFormat> date_time_format,
-      double x_date_value, double y_date_value);
-
-  // ecma402/sec-Intl.DateTimeFormat.prototype.formatRangeToParts
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSArray> FormatRangeToParts(
-      Isolate* isolate, Handle<JSDateTimeFormat> date_time_format,
-      double x_date_value, double y_date_value);
-
   // ecma-402/#sec-todatetimeoptions
   enum class RequiredOption { kDate, kTime, kAny };
   enum class DefaultsOption { kDate, kTime, kAll };
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSObject> ToDateTimeOptions(
-      Isolate* isolate, Handle<Object> input_options, RequiredOption required,
-      DefaultsOption defaults);
 
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToLocaleDateTime(
-      Isolate* isolate, Handle<Object> date, Handle<Object> locales,
-      Handle<Object> options, RequiredOption required, DefaultsOption defaults,
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<JSDateTimeFormat> New(
+      Isolate* isolate, DirectHandle<Map> map, DirectHandle<Object> locales,
+      DirectHandle<Object> options, const char* service);
+
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<JSDateTimeFormat>
+  CreateDateTimeFormat(Isolate* isolate, DirectHandle<Map> map,
+                       DirectHandle<Object> locales,
+                       DirectHandle<Object> options, RequiredOption required,
+                       DefaultsOption defaults, const char* service);
+
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<JSObject> ResolvedOptions(
+      Isolate* isolate, DirectHandle<JSDateTimeFormat> date_time_format);
+
+  V8_WARN_UNUSED_RESULT static DirectHandle<String> Calendar(
+      Isolate* isolate, DirectHandle<JSDateTimeFormat> date_time_format);
+
+  V8_WARN_UNUSED_RESULT static DirectHandle<Object> TimeZone(
+      Isolate* isolate, DirectHandle<JSDateTimeFormat> date_time_format);
+
+  // ecma402/#sec-unwrapdatetimeformat
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<JSDateTimeFormat>
+  UnwrapDateTimeFormat(Isolate* isolate, Handle<JSReceiver> format_holder);
+
+  // ecma402/#sec-datetime-format-functions
+  // DateTime Format Functions
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<String> DateTimeFormat(
+      Isolate* isolate, DirectHandle<JSDateTimeFormat> date_time_format,
+      DirectHandle<Object> date, const char* method_name);
+
+  // ecma402/#sec-Intl.DateTimeFormat.prototype.formatToParts
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<JSArray> FormatToParts(
+      Isolate* isolate, DirectHandle<JSDateTimeFormat> date_time_format,
+      DirectHandle<Object> x, bool output_source, const char* method_name);
+
+  // ecma402/#sec-intl.datetimeformat.prototype.formatRange
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<String> FormatRange(
+      Isolate* isolate, DirectHandle<JSDateTimeFormat> date_time_format,
+      DirectHandle<Object> x_date_value, DirectHandle<Object> y_date_value,
+      const char* method_name);
+
+  // ecma402/sec-Intl.DateTimeFormat.prototype.formatRangeToParts
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<JSArray> FormatRangeToParts(
+      Isolate* isolate, DirectHandle<JSDateTimeFormat> date_time_format,
+      DirectHandle<Object> x_date_value, DirectHandle<Object> y_date_value,
+      const char* method_name);
+
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<String> ToLocaleDateTime(
+      Isolate* isolate, DirectHandle<Object> date, DirectHandle<Object> locales,
+      DirectHandle<Object> options, RequiredOption required,
+      DefaultsOption defaults, const char* method_name);
+
+  // Function to support Temporal
+  V8_WARN_UNUSED_RESULT static MaybeDirectHandle<String> TemporalToLocaleString(
+      Isolate* isolate, DirectHandle<JSReceiver> temporal,
+      DirectHandle<Object> locales, DirectHandle<Object> options,
       const char* method_name);
 
   V8_EXPORT_PRIVATE static const std::set<std::string>& GetAvailableLocales();
 
-  Handle<Object> static TimeZoneId(Isolate* isolate, const icu::TimeZone& tz);
-  std::unique_ptr<icu::TimeZone> static CreateTimeZone(const char* timezone);
+  DirectHandle<Object> static TimeZoneId(Isolate* isolate,
+                                         const icu::TimeZone& tz);
+  V8_WARN_UNUSED_RESULT static MaybeHandle<String> TimeZoneIdToString(
+      Isolate* isolate, const icu::UnicodeString& id);
+
+  std::unique_ptr<icu::TimeZone> static CreateTimeZone(
+      Isolate* isolate, DirectHandle<String> time_zone);
 
   V8_EXPORT_PRIVATE static std::string CanonicalizeTimeZoneID(
       const std::string& input);
 
-  Handle<String> HourCycleAsString() const;
+  Handle<String> HourCycleAsString(Isolate* isolate) const;
 
   // ecma-402/#sec-properties-of-intl-datetimeformat-instances
   enum class DateTimeStyle { kUndefined, kFull, kLong, kMedium, kShort };
@@ -136,11 +148,10 @@ class JSDateTimeFormat
   static_assert(TimeStyleBits::is_valid(DateTimeStyle::kMedium));
   static_assert(TimeStyleBits::is_valid(DateTimeStyle::kShort));
 
-  DECL_ACCESSORS(icu_locale, Managed<icu::Locale>)
-  DECL_ACCESSORS(icu_simple_date_format, Managed<icu::SimpleDateFormat>)
-  DECL_ACCESSORS(icu_date_interval_format, Managed<icu::DateIntervalFormat>)
-
-  DECL_BOOLEAN_ACCESSORS(alt_calendar)
+  DECL_ACCESSORS(icu_locale, Tagged<Managed<icu::Locale>>)
+  DECL_ACCESSORS(icu_simple_date_format, Tagged<Managed<icu::SimpleDateFormat>>)
+  DECL_ACCESSORS(icu_date_interval_format,
+                 Tagged<Managed<icu::DateIntervalFormat>>)
 
   DECL_PRINTER(JSDateTimeFormat)
 

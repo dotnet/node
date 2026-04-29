@@ -20,6 +20,8 @@ Create a new user in the specified registry, and save the credentials to
 the `.npmrc` file. If no registry is specified, the default registry
 will be used (see [`registry`](/using-npm/registry)).
 
+When you run `npm adduser`, the CLI automatically generates a legacy token of `publish` type. For more information, see [About legacy tokens](/about-access-tokens#about-legacy-tokens).
+
 When using `legacy` for your `auth-type`, the username, password, and
 email are read in from prompts.
 
@@ -31,6 +33,8 @@ email are read in from prompts.
 * Type: URL
 
 The base URL of the npm registry.
+
+
 
 #### `scope`
 
@@ -62,6 +66,7 @@ npm init --scope=@foo --yes
 ```
 
 
+
 #### `auth-type`
 
 * Default: "web"
@@ -69,6 +74,8 @@ npm init --scope=@foo --yes
 
 What authentication strategy to use with `login`. Note that if an `otp`
 config is given, this value will always be set to `legacy`.
+
+
 
 ### See Also
 

@@ -1,15 +1,13 @@
 'use strict'
 
-const { finished, PassThrough } = require('stream')
-const {
-  InvalidArgumentError,
-  InvalidReturnValueError,
-  RequestAbortedError
-} = require('../core/errors')
+const assert = require('node:assert')
+const { finished } = require('node:stream')
+const { AsyncResource } = require('node:async_hooks')
+const { InvalidArgumentError, InvalidReturnValueError } = require('../core/errors')
 const util = require('../core/util')
-const { getResolveErrorBodyCallback } = require('./util')
-const { AsyncResource } = require('async_hooks')
 const { addSignal, removeSignal } = require('./abort-signal')
+
+function noop () {}
 
 class StreamHandler extends AsyncResource {
   constructor (opts, factory, callback) {
@@ -43,7 +41,7 @@ class StreamHandler extends AsyncResource {
       super('UNDICI_STREAM')
     } catch (err) {
       if (util.isStream(body)) {
-        util.destroy(body.on('error', util.nop), err)
+        util.destroy(body.on('error', noop), err)
       }
       throw err
     }
@@ -70,16 +68,19 @@ class StreamHandler extends AsyncResource {
   }
 
   onConnect (abort, context) {
-    if (!this.callback) {
-      throw new RequestAbortedError()
+    if (this.reason) {
+      abort(this.reason)
+      return
     }
+
+    assert(this.callback)
 
     this.abort = abort
     this.context = context
   }
 
   onHeaders (statusCode, rawHeaders, resume, statusMessage) {
-    const { factory, opaque, context, callback, responseHeaders } = this
+    const { factory, opaque, context, responseHeaders } = this
 
     const headers = responseHeaders === 'raw' ? util.parseRawHeaders(rawHeaders) : util.parseHeaders(rawHeaders)
 
@@ -91,6 +92,17 @@ class StreamHandler extends AsyncResource {
     }
 
     this.factory = null
+
+    if (factory === null) {
+      return
+    }
+
+    const res = this.runInAsyncScope(factory, null, {
+      statusCode,
+      headers,
+      opaque,
+      context
+    })
 
     let res
 
@@ -138,13 +150,30 @@ class StreamHandler extends AsyncResource {
       })
     }
 
+    // TODO: Avoid finished. It registers an unnecessary amount of listeners.
+    finished(res, { readable: false }, (err) => {
+      const { callback, res, opaque, trailers, abort } = this
+
+      this.res = null
+      if (err || !res?.readable) {
+        util.destroy(res, err)
+      }
+
+      this.callback = null
+      this.runInAsyncScope(callback, null, err || null, { opaque, trailers })
+
+      if (err) {
+        abort()
+      }
+    })
+
     res.on('drain', resume)
 
     this.res = res
 
     const needDrain = res.writableNeedDrain !== undefined
       ? res.writableNeedDrain
-      : res._writableState && res._writableState.needDrain
+      : res._writableState?.needDrain
 
     return needDrain !== true
   }
@@ -152,13 +181,17 @@ class StreamHandler extends AsyncResource {
   onData (chunk) {
     const { res } = this
 
-    return res.write(chunk)
+    return res ? res.write(chunk) : true
   }
 
   onComplete (trailers) {
     const { res } = this
 
     removeSignal(this)
+
+    if (!res) {
+      return
+    }
 
     this.trailers = util.parseHeaders(trailers)
 
@@ -199,12 +232,14 @@ function stream (opts, factory, callback) {
   }
 
   try {
-    this.dispatch(opts, new StreamHandler(opts, factory, callback))
+    const handler = new StreamHandler(opts, factory, callback)
+
+    this.dispatch(opts, handler)
   } catch (err) {
     if (typeof callback !== 'function') {
       throw err
     }
-    const opaque = opts && opts.opaque
+    const opaque = opts?.opaque
     queueMicrotask(() => callback(err, { opaque }))
   }
 }

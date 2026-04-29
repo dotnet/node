@@ -18,16 +18,6 @@ const flatten = (obj, flat = {}) => {
       flat[key] = val
     }
   }
-
-  // XXX make this the bin/npm-cli.js file explicitly instead
-  // otherwise using npm programmatically is a bit of a pain.
-  flat.npmBin = require.main ? require.main.filename
-    : /* istanbul ignore next - not configurable property */ undefined
-  flat.nodeBin = process.env.NODE || process.execPath
-
-  // XXX should this be sha512?  is it even relevant?
-  flat.hashAlgorithm = 'sha1'
-
   return flat
 }
 
@@ -65,12 +55,26 @@ const shorthands = {
   readonly: ['--read-only'],
   reg: ['--registry'],
   iwr: ['--include-workspace-root'],
+  ws: ['--workspaces'],
   ...definitionProps.shorthands,
 }
+
+// These are the configs that we can nerf-dart. Only _auth even has a config definition so we have to explicitly validate them here.
+// This is used to validate during "npm config set" and to not warn on loading unknown configs when we see these.
+const nerfDarts = [
+  '_auth', // Has a config
+  '_authToken', // Does not have a config
+  '_password', // Does not have a config
+  'certfile', // Does not have a config
+  'email', // Does not have a config
+  'keyfile', // Does not have a config
+  'username', // Does not have a config
+]
 
 module.exports = {
   defaults: definitionProps.defaults,
   definitions,
   flatten,
+  nerfDarts,
   shorthands,
 }

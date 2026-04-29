@@ -6,15 +6,15 @@ if (!common.hasCrypto)
   common.skip('missing crypto');
 
 const assert = require('assert');
-const { webcrypto } = require('crypto');
-const { subtle } = webcrypto;
+const { hasOpenSSL } = require('../common/crypto');
+const { subtle } = globalThis.crypto;
 
 // This is only a partial test. The WebCrypto Web Platform Tests
 // will provide much greater coverage.
 
-// Test Encrypt/Decrypt RSA-OAEP
+// Test Encrypt/Decrypt RSA-OAEP w/ SHA-2
 {
-  const buf = webcrypto.getRandomValues(new Uint8Array(50));
+  const buf = globalThis.crypto.getRandomValues(new Uint8Array(50));
 
   async function test() {
     const ec = new TextEncoder();
@@ -38,6 +38,65 @@ const { subtle } = webcrypto;
     assert.strictEqual(
       Buffer.from(plaintext).toString('hex'),
       Buffer.from(buf).toString('hex'));
+
+    await assert.rejects(() => subtle.encrypt({
+      name: 'RSA-OAEP',
+    }, privateKey, buf), {
+      name: 'InvalidAccessError',
+      message: 'The requested operation is not valid for the provided key'
+    });
+
+    await assert.rejects(() => subtle.decrypt({
+      name: 'RSA-OAEP',
+    }, publicKey, ciphertext), {
+      name: 'InvalidAccessError',
+      message: 'The requested operation is not valid for the provided key'
+    });
+  }
+
+  test().then(common.mustCall());
+}
+
+// Test Encrypt/Decrypt RSA-OAEP w/ SHA-3
+if (!process.features.openssl_is_boringssl) {
+  const buf = globalThis.crypto.getRandomValues(new Uint8Array(50));
+
+  async function test() {
+    const ec = new TextEncoder();
+    const { publicKey, privateKey } = await subtle.generateKey({
+      name: 'RSA-OAEP',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA3-384',
+    }, true, ['encrypt', 'decrypt']);
+
+    const ciphertext = await subtle.encrypt({
+      name: 'RSA-OAEP',
+      label: ec.encode('a label')
+    }, publicKey, buf);
+
+    const plaintext = await subtle.decrypt({
+      name: 'RSA-OAEP',
+      label: ec.encode('a label')
+    }, privateKey, ciphertext);
+
+    assert.strictEqual(
+      Buffer.from(plaintext).toString('hex'),
+      Buffer.from(buf).toString('hex'));
+
+    await assert.rejects(() => subtle.encrypt({
+      name: 'RSA-OAEP',
+    }, privateKey, buf), {
+      name: 'InvalidAccessError',
+      message: 'The requested operation is not valid for the provided key'
+    });
+
+    await assert.rejects(() => subtle.decrypt({
+      name: 'RSA-OAEP',
+    }, publicKey, ciphertext), {
+      name: 'InvalidAccessError',
+      message: 'The requested operation is not valid for the provided key'
+    });
   }
 
   test().then(common.mustCall());
@@ -45,8 +104,8 @@ const { subtle } = webcrypto;
 
 // Test Encrypt/Decrypt AES-CTR
 {
-  const buf = webcrypto.getRandomValues(new Uint8Array(50));
-  const counter = webcrypto.getRandomValues(new Uint8Array(16));
+  const buf = globalThis.crypto.getRandomValues(new Uint8Array(50));
+  const counter = globalThis.crypto.getRandomValues(new Uint8Array(16));
 
   async function test() {
     const key = await subtle.generateKey({
@@ -72,8 +131,8 @@ const { subtle } = webcrypto;
 
 // Test Encrypt/Decrypt AES-CBC
 {
-  const buf = webcrypto.getRandomValues(new Uint8Array(50));
-  const iv = webcrypto.getRandomValues(new Uint8Array(16));
+  const buf = globalThis.crypto.getRandomValues(new Uint8Array(50));
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(16));
 
   async function test() {
     const key = await subtle.generateKey({
@@ -99,8 +158,8 @@ const { subtle } = webcrypto;
 
 // Test Encrypt/Decrypt AES-GCM
 {
-  const buf = webcrypto.getRandomValues(new Uint8Array(50));
-  const iv = webcrypto.getRandomValues(new Uint8Array(12));
+  const buf = globalThis.crypto.getRandomValues(new Uint8Array(50));
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
 
   async function test() {
     const key = await subtle.generateKey({
@@ -122,4 +181,33 @@ const { subtle } = webcrypto;
   }
 
   test().then(common.mustCall());
+}
+
+// Test Encrypt/Decrypt AES-OCB
+if (hasOpenSSL(3)) {
+  const buf = globalThis.crypto.getRandomValues(new Uint8Array(50));
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+
+  async function test() {
+    const key = await subtle.generateKey({
+      name: 'AES-OCB',
+      length: 256
+    }, true, ['encrypt', 'decrypt']);
+
+    const ciphertext = await subtle.encrypt(
+      { name: 'AES-OCB', iv }, key, buf,
+    );
+
+    const plaintext = await subtle.decrypt(
+      { name: 'AES-OCB', iv }, key, ciphertext,
+    );
+
+    assert.strictEqual(
+      Buffer.from(plaintext).toString('hex'),
+      Buffer.from(buf).toString('hex'));
+  }
+
+  test().then(common.mustCall());
+} else {
+  common.printSkipMessage('Skipping unsupported AES-OCB test cases');
 }

@@ -7,7 +7,7 @@ if (!common.hasCrypto)
   common.skip('missing crypto');
 
 const assert = require('assert');
-const { subtle } = require('crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 
 // This is only a partial test. The WebCrypto Web Platform Tests
 // will provide much greater coverage.
@@ -124,5 +124,9 @@ const { subtle } = require('crypto').webcrypto;
   }
 
   test('X25519').then(common.mustCall());
-  test('X448').then(common.mustCall());
+  if (!process.features.openssl_is_boringssl) {
+    test('X448').then(common.mustCall());
+  } else {
+    common.printSkipMessage('Skipping unsupported X448 test case');
+  }
 }

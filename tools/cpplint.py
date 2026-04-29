@@ -54,7 +54,6 @@ import itertools
 import math  # for log
 import os
 import re
-import sre_compile
 import string
 import sys
 import sysconfig
@@ -65,6 +64,16 @@ import xml.etree.ElementTree
 _valid_extensions = set([])
 
 __VERSION__ = '1.6.1'
+
+# sre_compile will be/has been removed in Python 3.13
+# use re._compiler instead
+# Refs: https://github.com/python/cpython/issues/105456
+# Refs: https://github.com/python/cpython/issues/91308
+try:
+    srecompile = re._compiler.compile
+except AttributeError:
+    import sre_compile
+    srecompile = sre_compile.compile
 
 try:
   #  -- pylint: disable=used-before-assignment
@@ -316,7 +325,6 @@ _ERROR_CATEGORIES = [
     'readability/casting',
     'readability/check',
     'readability/constructors',
-    'readability/fn_size',
     'readability/inheritance',
     'readability/pointer_notation',
     'readability/multiline_comment',
@@ -389,7 +397,10 @@ _OTHER_NOLINT_CATEGORY_PREFIXES = [
 # flag. By default all errors are on, so only add here categories that should be
 # off by default (i.e., categories that must be enabled by the --filter= flags).
 # All entries here should start with a '-' or '+', as in the --filter= flag.
-_DEFAULT_FILTERS = ['-build/include_alpha']
+_DEFAULT_FILTERS = [
+    '-build/include_alpha',
+    '-readability/fn_size',
+    ]
 
 # The default list of categories suppressed for C (not C++) files.
 _DEFAULT_C_SUPPRESSED_CATEGORIES = [
@@ -1077,7 +1088,7 @@ def Match(pattern, s):
   # performance reasons; factoring it out into a separate function turns out
   # to be noticeably expensive.
   if pattern not in _regexp_compile_cache:
-    _regexp_compile_cache[pattern] = sre_compile.compile(pattern)
+    _regexp_compile_cache[pattern] = srecompile(pattern)
   return _regexp_compile_cache[pattern].match(s)
 
 
@@ -1095,14 +1106,14 @@ def ReplaceAll(pattern, rep, s):
     string with replacements made (or original string if no replacements)
   """
   if pattern not in _regexp_compile_cache:
-    _regexp_compile_cache[pattern] = sre_compile.compile(pattern)
+    _regexp_compile_cache[pattern] = srecompile(pattern)
   return _regexp_compile_cache[pattern].sub(rep, s)
 
 
 def Search(pattern, s):
   """Searches the string for the pattern, caching the compiled regexp."""
   if pattern not in _regexp_compile_cache:
-    _regexp_compile_cache[pattern] = sre_compile.compile(pattern)
+    _regexp_compile_cache[pattern] = srecompile(pattern)
   return _regexp_compile_cache[pattern].search(s)
 
 
@@ -6464,6 +6475,19 @@ def CheckItemIndentationInNamespace(filename, raw_lines_no_comments, linenum,
     error(filename, linenum, 'runtime/indentation_namespace', 4,
           'Do not indent within a namespace')
 
+def CheckLocalVectorUsage(filename, lines, error):
+  """Logs an error if std::vector<v8::Local<T>> is used.
+  Args:
+    filename: The name of the current file.
+    lines: An array of strings, each representing a line of the file.
+    error: The function to call with any errors found.
+  """
+  for linenum, line in enumerate(lines):
+    if (Search(r'\bstd::vector<v8::Local<[^>]+>>', line) or
+        Search(r'\bstd::vector<Local<[^>]+>>', line)):
+      error(filename, linenum, 'runtime/local_vector', 5,
+            'Do not use std::vector<v8::Local<T>>. '
+            'Use v8::LocalVector<T> instead.')
 
 def ProcessLine(filename, file_extension, clean_lines, line,
                 include_state, function_state, nesting_state, error,
@@ -6633,6 +6657,8 @@ def ProcessFileData(filename, file_extension, lines, error,
   CheckForNewlineAtEOF(filename, lines, error)
 
   CheckInlineHeader(filename, include_state, error)
+
+  CheckLocalVectorUsage(filename, lines, error)
 
 def ProcessConfigOverrides(filename):
   """ Loads the configuration files and processes the config overrides.

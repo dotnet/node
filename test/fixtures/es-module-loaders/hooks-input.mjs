@@ -2,6 +2,7 @@
 // node --loader ./test/fixtures/es-module-loaders/hooks-input.mjs ./test/fixtures/es-modules/json-modules.mjs
 
 import assert from 'assert';
+import { writeSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 
@@ -16,25 +17,29 @@ export async function resolve(specifier, context, next) {
   if (resolveCalls === 1) {
     url = new URL(specifier).href;
     assert.match(specifier, /json-modules\.mjs$/);
-    assert.strictEqual(context.parentURL, undefined);
-    assert.deepStrictEqual(context.importAssertions, {
-      __proto__: null,
-    });
+
+    if (!(/\[eval\d*\]$/).test(context.parentURL)) {
+      assert.strictEqual(context.parentURL, undefined);
+    }
+
+    assert.deepStrictEqual(context.importAttributes, {});
   } else if (resolveCalls === 2) {
     url = new URL(specifier, context.parentURL).href;
     assert.match(specifier, /experimental\.json$/);
     assert.match(context.parentURL, /json-modules\.mjs$/);
-    assert.deepStrictEqual(context.importAssertions, {
-      __proto__: null,
+    assert.deepStrictEqual(context.importAttributes, {
       type: 'json',
     });
+  } else {
+    throw new Error(`Unexpected resolve call: ${specifier}`);
   }
 
   // Ensure `context` has all and only the properties it's supposed to
   assert.deepStrictEqual(Reflect.ownKeys(context), [
     'conditions',
-    'importAssertions',
+    'importAttributes',
     'parentURL',
+    'importAssertions',
   ]);
   assert.ok(Array.isArray(context.conditions));
   assert.strictEqual(typeof next, 'function');
@@ -45,7 +50,7 @@ export async function resolve(specifier, context, next) {
     shortCircuit: true,
   }
 
-  console.log(JSON.stringify(returnValue)); // For the test to validate when it parses stdout
+  writeSync(1, JSON.stringify(returnValue) + '\n'); // For the test to validate when it parses stdout
 
   return returnValue;
 }
@@ -57,14 +62,11 @@ export async function load(url, context, next) {
 
   if (loadCalls === 1) {
     assert.match(url, /json-modules\.mjs$/);
-    assert.deepStrictEqual(context.importAssertions, {
-      __proto__: null,
-    });
+    assert.deepStrictEqual(context.importAttributes, {});
     format = 'module';
   } else if (loadCalls === 2) {
     assert.match(url, /experimental\.json$/);
-    assert.deepStrictEqual(context.importAssertions, {
-      __proto__: null,
+    assert.deepStrictEqual(context.importAttributes, {
       type: 'json',
     });
     format = 'json';
@@ -72,8 +74,9 @@ export async function load(url, context, next) {
 
   assert.ok(new URL(url));
   // Ensure `context` has all and only the properties it's supposed to
-  assert.deepStrictEqual(Object.keys(context), [
+  assert.deepStrictEqual(Reflect.ownKeys(context), [
     'format',
+    'importAttributes',
     'importAssertions',
   ]);
   assert.strictEqual(context.format, 'test');
@@ -85,7 +88,7 @@ export async function load(url, context, next) {
     shortCircuit: true,
   };
 
-  console.log(JSON.stringify(returnValue)); // For the test to validate when it parses stdout
+  writeSync(1, JSON.stringify(returnValue) + '\n'); // For the test to validate when it parses stdout
 
   return returnValue;
 }

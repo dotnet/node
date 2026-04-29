@@ -7,7 +7,7 @@ declare namespace InternalUtilBinding {
   }
 }
 
-declare function InternalBinding(binding: 'util'): {
+export interface UtilBinding {
   // PER_ISOLATE_PRIVATE_SYMBOL_PROPERTIES, defined in src/env_properties.h
   arrow_message_private_symbol: 1;
   contextify_context_private_symbol: 2;
@@ -43,5 +43,25 @@ declare function InternalBinding(binding: 'util'): {
   shouldAbortOnUncaughtToggle: [shouldAbort: 0 | 1];
   WeakReference: typeof InternalUtilBinding.WeakReference;
   guessHandleType(fd: number): 'TCP' | 'TTY' | 'UDP' | 'FILE' | 'PIPE' | 'UNKNOWN';
-  toUSVString(str: string, start: number): string;
-};
+  parseEnv(content: string): Record<string, string>;
+  styleText(format: Array<string> | string, text: string): string;
+  isInsideNodeModules(frameLimit: number, defaultValue: unknown): boolean;
+
+  constants: {
+    kPending: 0;
+    kFulfilled: 1;
+    kRejected: 2;
+    kExiting: 0;
+    kExitCode: 1;
+    kHasExitCode: 2;
+    ALL_PROPERTIES: 0;
+    ONLY_WRITABLE: 1;
+    ONLY_ENUMERABLE: 2;
+    ONLY_CONFIGURABLE: 4;
+    SKIP_STRINGS: 8;
+    SKIP_SYMBOLS: 16;
+    kDisallowCloneAndTransfer: 0;
+    kTransferable: 1;
+    kCloneable: 2;
+  };
+}

@@ -13,7 +13,7 @@ const { REPL_MODE_SLOPPY, REPL_MODE_STRICT } = require('repl');
 const tests = [
   {
     env: {},
-    expected: { terminal: true, useColors: true }
+    expected: { terminal: true, useColors: false }
   },
   {
     env: { NODE_DISABLE_COLORS: '1' },
@@ -36,20 +36,24 @@ const tests = [
     expected: { terminal: true, useColors: true }
   },
   {
+    env: { TERM: 'dumb', FORCE_COLOR: '1' },
+    expected: { terminal: true, useColors: true }
+  },
+  {
     env: { NODE_NO_READLINE: '1', NODE_DISABLE_COLORS: '1' },
     expected: { terminal: false, useColors: false }
   },
   {
     env: { NODE_NO_READLINE: '0' },
-    expected: { terminal: true, useColors: true }
+    expected: { terminal: true, useColors: false }
   },
   {
     env: { NODE_REPL_MODE: 'sloppy' },
-    expected: { terminal: true, useColors: true, replMode: REPL_MODE_SLOPPY }
+    expected: { terminal: true, useColors: false, replMode: REPL_MODE_SLOPPY }
   },
   {
     env: { NODE_REPL_MODE: 'strict' },
-    expected: { terminal: true, useColors: true, replMode: REPL_MODE_STRICT }
+    expected: { terminal: true, useColors: false, replMode: REPL_MODE_STRICT }
   },
 ];
 
