@@ -193,13 +193,6 @@ parser.add_argument("--enable-vtune-profiling",
          "JavaScript code executed in Node.js. This feature is only available "
          "for x32, x86, and x64 architectures.")
 
-parser.add_argument("--enable-vtune-profiling",
-    action="store_true",
-    dest="enable_vtune_profiling",
-    help="Enable profiling support for Intel VTune profiler to profile "
-         "JavaScript code executed in Node.js. This feature is only available "
-         "for x32, x86, and x64 architectures.")
-
 parser.add_argument("--enable-pgo-generate",
     action="store_true",
     dest="enable_pgo_generate",
