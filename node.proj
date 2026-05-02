@@ -178,9 +178,9 @@
       <LDFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(LDFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</LDFlagsHost>
       <LDFlagsHost>$(LDFlagsHost) -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</LDFlagsHost>
       <CXXFlags>$(CFlags)</CXXFlags>
-      <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
+      <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -nostdinc++ -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
       <CXXFlagsHost>$(CFlagsHost)</CXXFlagsHost>
-      <CXXFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib')) -lc++ -stdlib=libc++ -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</CXXFlagsHost>
+      <CXXFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -nostdinc++ -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib')) -lc++ -stdlib=libc++ -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</CXXFlagsHost>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) GYP_DEFINES="$(GypEnvironment)"</ConfigureEnvironment>
       <ConfigureCommand>PATH=$(PythonPrefixedPath) $(ConfigureEnvironment) ./configure $(ConfigureFlags)</ConfigureCommand>
       <MakeCommand>PATH=$(PythonPrefixedPath) PREFIX=/ CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)</MakeCommand>
