@@ -166,16 +166,17 @@
       <ConfigureEnvironment>$(ConfigureEnvironment) AR_host=$(ClangBinDir)llvm-ar</ConfigureEnvironment>
       <ConfigureEnvironment>$(ConfigureEnvironment) CXX="$(ClangBinDir)clang++ $(TargetTriple)"</ConfigureEnvironment>
       <ConfigureEnvironment>$(ConfigureEnvironment) CXX_host="$(ClangBinDir)clang++ $(HostTriple)"</ConfigureEnvironment>
-      <CFlags Condition="'$(BuildOS)' == 'Linux'">$(CFlags) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</CFlags>
+      <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirTarget)' != ''">$(CFlags) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</CFlags>
-      <CFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</CFlagsHost>
-      <LDFlags Condition="'$(BuildOS)' == 'Linux'">$(TargetTriple) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</LDFlags>
+      <CFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirHost)' != ''">$(CFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</CFlagsHost>
+      <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirTarget)' != ''">$(TargetTriple) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</LDFlags>
+      <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirTarget)' == ''">$(TargetTriple)</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</LDFlags>
       <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</LDFlagsHost>
       <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</LDFlagsHost>
-      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(LDFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</LDFlagsHost>
+      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirHost)' != ''">$(LDFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</LDFlagsHost>
       <LDFlagsHost>$(LDFlagsHost) -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</LDFlagsHost>
       <CXXFlags>$(CFlags)</CXXFlags>
       <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -nostdinc++ -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
