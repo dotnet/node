@@ -79,19 +79,6 @@ int uv__tcsetattr(int fd, int how, const struct termios *term) {
   return 0;
 }
 
-int uv__tcsetattr(int fd, int how, const struct termios *term) {
-  int rc;
-
-  do
-    rc = tcsetattr(fd, how, term);
-  while (rc == -1 && errno == EINTR);
-
-  if (rc == -1)
-    return UV__ERR(errno);
-
-  return 0;
-}
-
 static int uv__tty_is_slave(const int fd) {
   int result;
 #if defined(__linux__) || defined(__FreeBSD__)
