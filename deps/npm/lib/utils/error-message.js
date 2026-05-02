@@ -449,5 +449,3 @@ module.exports = {
   errorMessage,
   getError,
 }
-
-module.exports = errorMessage

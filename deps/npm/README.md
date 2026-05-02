@@ -1,10 +1,5 @@
 # npm - a JavaScript package manager
 
-[![npm version](https://img.shields.io/npm/v/npm.svg)](https://npm.im/npm)
-[![license](https://img.shields.io/npm/l/npm.svg)](https://npm.im/npm)
-[![CI - cli](https://github.com/npm/cli/actions/workflows/ci.yml/badge.svg)](https://github.com/npm/cli/actions/workflows/ci.yml)
-[![Benchmark Suite](https://github.com/npm/cli/actions/workflows/benchmark.yml/badge.svg)](https://github.com/npm/cli/actions/workflows/benchmark.yml)
-
 ### Requirements
 
 You should be running a currently supported version of [Node.js](https://nodejs.org/en/download/) to run **`npm`**.  For a list of which versions of Node.js are currently supported, please see the [Node.js releases](https://nodejs.org/en/about/previous-releases) page.

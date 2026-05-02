@@ -48,7 +48,6 @@ class RefTracker {
   RefList* prev_ = nullptr;
 };
 
-class Finalizer;
 }  // end of namespace v8impl
 
 struct napi_env__ {

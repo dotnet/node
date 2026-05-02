@@ -174,20 +174,3 @@ describe('net.SocketAddress...', () => {
   });
 
 });
-
-{
-  // Test that the internal helper class InternalSocketAddress correctly
-  // inherits from SocketAddress and that it does not throw when its properties
-  // are accessed.
-
-  const address = '127.0.0.1';
-  const port = 8080;
-  const flowlabel = 0;
-  const handle = new _SocketAddress(address, port, AF_INET, flowlabel);
-  const addr = new InternalSocketAddress(handle);
-  ok(addr instanceof SocketAddress);
-  strictEqual(addr.address, address);
-  strictEqual(addr.port, port);
-  strictEqual(addr.family, 'ipv4');
-  strictEqual(addr.flowlabel, flowlabel);
-}

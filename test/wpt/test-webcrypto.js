@@ -10,8 +10,4 @@ const runner = new WPTRunner('WebCryptoAPI');
 
 runner.pretendGlobalThisAs('Window');
 
-runner.setInitScript(`
-  global.location = {};
-`);
-
 runner.runJsTests();

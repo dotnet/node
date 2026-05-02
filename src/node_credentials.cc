@@ -71,10 +71,7 @@ static bool HasOnly(int capability) {
 // process only has the capability CAP_NET_BIND_SERVICE set. If the current
 // process does not have any capabilities set and the process is running as
 // setuid root then lookup will not be allowed.
-bool SafeGetenv(const char* key,
-                std::string* text,
-                std::shared_ptr<KVStore> env_vars,
-                v8::Isolate* isolate) {
+bool SafeGetenv(const char* key, std::string* text, Environment* env) {
 #if !defined(__CloudABI__) && !defined(_WIN32)
 #if defined(__linux__)
   if ((!HasOnly(CAP_NET_BIND_SERVICE) && linux_at_secure()) ||

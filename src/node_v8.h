@@ -68,32 +68,6 @@ class GCProfiler : public BaseObject {
   JSONWriter writer_;
 };
 
-class GCProfiler : public BaseObject {
- public:
-  enum class GCProfilerState { kInitialized, kStarted, kStopped };
-  GCProfiler(Environment* env, v8::Local<v8::Object> object);
-  inline ~GCProfiler() override;
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Start(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Stop(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  JSONWriter* writer();
-
-  std::ostringstream* out_stream();
-
-  SET_NO_MEMORY_INFO()
-  SET_MEMORY_INFO_NAME(GCProfiler)
-  SET_SELF_SIZE(GCProfiler)
-
-  uint64_t start_time;
-  uint8_t current_gc_type;
-  GCProfilerState state;
-
- private:
-  std::ostringstream out_stream_;
-  JSONWriter writer_;
-};
-
 }  // namespace v8_utils
 
 }  // namespace node

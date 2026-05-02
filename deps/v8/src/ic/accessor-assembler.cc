@@ -1426,19 +1426,6 @@ void AccessorAssembler::HandleStoreICHandlerCase(
         StoreValueByKeyIndex<PropertyDictionary>(
             properties, var_name_index.value(), p->value());
         Return(p->value());
-
-        if (V8_DICT_PROPERTY_CONST_TRACKING_BOOL) {
-          BIND(&if_constant);
-          {
-            TNode<Object> prev_value =
-                LoadValueByKeyIndex(properties, var_name_index.value());
-            BranchIfSameValue(prev_value, p->value(), &done, miss,
-                              SameValueMode::kNumbersOnly);
-          }
-
-          BIND(&done);
-          Return(p->value());
-        }
       }
     }
     BIND(&if_fast_smi);

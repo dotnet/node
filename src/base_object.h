@@ -42,8 +42,6 @@ namespace worker {
 class TransferData;
 }
 
-extern uint16_t kNodeEmbedderId;
-
 class BaseObject : public MemoryRetainer {
  public:
   enum InternalFields { kEmbedderType, kSlot, kInternalFieldCount };
@@ -106,8 +104,6 @@ class BaseObject : public MemoryRetainer {
   // i.e. whether is can be deleted by GC once no strong BaseObjectPtrs refer
   // to it anymore.
   inline bool IsWeakOrDetached() const;
-
-  inline v8::EmbedderGraph::Node::Detachedness GetDetachedness() const override;
 
   // Utility to create a FunctionTemplate with one internal field (used for
   // the `BaseObject*` pointer) and a constructor that initializes that field

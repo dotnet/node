@@ -5538,7 +5538,6 @@ introducing security vulnerabilities into an application.
 [`Buffer.poolSize`]: #class-property-bufferpoolsize
 [`ERR_INVALID_BUFFER_SIZE`]: errors.md#err_invalid_buffer_size
 [`ERR_OUT_OF_RANGE`]: errors.md#err_out_of_range
-[`File`]: https://developer.mozilla.org/en-US/docs/Web/API/File
 [`JSON.stringify()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
 [`String.prototype.indexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/indexOf
 [`String.prototype.lastIndexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/lastIndexOf

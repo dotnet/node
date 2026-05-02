@@ -1,6 +1,5 @@
 const { resolve } = require('node:path')
 const t = require('tap')
-const Chalk = require('chalk')
 const { explainNode, printNode } = require('../../../lib/utils/explain-dep.js')
 const { cleanCwd } = require('../../fixtures/clean-snapshot')
 

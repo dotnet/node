@@ -1052,12 +1052,6 @@ Node* JSGraphAssembler::Chained(const Operator* op, Node* input) {
       graph()->NewNode(common()->Chained(op), input, effect(), control()));
 }
 
-Node* JSGraphAssembler::StringCharCodeAt(TNode<String> string,
-                                         TNode<Number> position) {
-  return AddNode(graph()->NewNode(simplified()->StringCharCodeAt(), string,
-                                  position, effect(), control()));
-}
-
 Node* GraphAssembler::TypeGuard(Type type, Node* value) {
   return AddNode(
       graph()->NewNode(common()->TypeGuard(type), value, effect(), control()));

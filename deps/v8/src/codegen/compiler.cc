@@ -1327,29 +1327,6 @@ MaybeHandle<Code> CompileMaglev(Isolate* isolate, Handle<JSFunction> function,
 
   DCHECK(IsConcurrent(mode));
 
-  if (IsSynchronous(mode)) {
-    function->reset_tiering_state();
-    {
-      // Park the main thread Isolate here, to be in the same state as
-      // background threads.
-      ParkedScope parked_scope(isolate->main_thread_local_isolate());
-      if (job->ExecuteJob(isolate->counters()->runtime_call_stats(),
-                          isolate->main_thread_local_isolate()) !=
-          CompilationJob::SUCCEEDED) {
-        return {};
-      }
-    }
-
-    if (job->FinalizeJob(isolate) != CompilationJob::SUCCEEDED) {
-      return {};
-    }
-
-    RecordMaglevFunctionCompilation(isolate, function);
-    return handle(function->code(), isolate);
-  }
-
-  DCHECK(IsConcurrent(mode));
-
   // Enqueue it.
   isolate->maglev_concurrent_dispatcher()->EnqueueJob(std::move(job));
 

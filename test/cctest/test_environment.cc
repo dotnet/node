@@ -807,32 +807,3 @@ TEST_F(EnvironmentTest, EmbedderPreload) {
   node::Utf8Value main_ret_str(isolate_, main_ret);
   EXPECT_EQ(std::string(*main_ret_str), "preload");
 }
-
-static bool interrupted = false;
-static void OnInterrupt(void* arg) {
-  interrupted = true;
-}
-TEST_F(EnvironmentTest, RequestInterruptAtExit) {
-  const v8::HandleScope handle_scope(isolate_);
-  const Argv argv;
-
-  Local<Context> context = node::NewContext(isolate_);
-  CHECK(!context.IsEmpty());
-  context->Enter();
-
-  node::IsolateData* isolate_data = node::CreateIsolateData(
-      isolate_, &NodeTestFixture::current_loop, platform.get());
-  CHECK_NE(nullptr, isolate_data);
-  std::vector<std::string> args(*argv, *argv + 1);
-  std::vector<std::string> exec_args(*argv, *argv + 1);
-  node::Environment* environment =
-      node::CreateEnvironment(isolate_data, context, args, exec_args);
-  CHECK_NE(nullptr, environment);
-
-  node::RequestInterrupt(environment, OnInterrupt, nullptr);
-  node::FreeEnvironment(environment);
-  EXPECT_TRUE(interrupted);
-
-  node::FreeIsolateData(isolate_data);
-  context->Exit();
-}

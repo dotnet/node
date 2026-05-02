@@ -1686,15 +1686,6 @@ class MaglevFrameTranslationBuilder {
   std::vector<intptr_t> object_ids_;
 };
 
-constexpr int DeoptStackSlotIndexFromFPOffset(int offset) {
-  return 1 - offset / kSystemPointerSize;
-}
-
-int DeoptStackSlotFromStackSlot(const compiler::AllocatedOperand& operand) {
-  return DeoptStackSlotIndexFromFPOffset(
-      GetFramePointerOffsetForStackSlot(operand));
-}
-
 }  // namespace
 
 MaglevCodeGenerator::MaglevCodeGenerator(
@@ -1893,9 +1884,6 @@ bool MaglevCodeGenerator::EmitDeopts() {
         deopt_info->deopt_entry_label()->pos(), last_updated_safepoint,
         deopt_index);
     deopt_index++;
-  }
-  TranslationArrayBuilder* translation_array_builder() {
-    return &translation_array_builder_;
   }
 
   return true;

@@ -392,12 +392,6 @@ void GlobalSafepoint::EnterGlobalSafepointScope(Isolate* initiator) {
         initiator, &clients.back());
   });
 
-  // Make it possible to use AssertActive() on shared isolates.
-  CHECK(shared_isolate_->heap()->safepoint()->local_heaps_mutex_.TryLock());
-
-  // Shared isolates should never have multiple threads.
-  shared_isolate_->heap()->safepoint()->AssertMainThreadIsOnlyThread();
-
   // Iterate all clients again to initiate the safepoint for all of them - even
   // if that means blocking.
   for (PerClientSafepointData& client : clients) {

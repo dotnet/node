@@ -1322,7 +1322,6 @@ BIO *OSSL_HTTP_get(const char *url, const char *proxy, const char *no_proxy,
                 OPENSSL_free(host);
                 OPENSSL_free(port);
                 (void)OSSL_HTTP_close(rctx, 1);
-                rctx = NULL;
                 continue;
             }
             /* if redirection not allowed, ignore it */
@@ -1332,7 +1331,6 @@ BIO *OSSL_HTTP_get(const char *url, const char *proxy, const char *no_proxy,
         OPENSSL_free(port);
         if (!OSSL_HTTP_close(rctx, resp != NULL)) {
             BIO_free(resp);
-            rctx = NULL;
             resp = NULL;
         }
         break;

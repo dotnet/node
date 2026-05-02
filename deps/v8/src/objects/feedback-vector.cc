@@ -438,19 +438,6 @@ void FeedbackVector::ClearOptimizedCode() {
   set_maybe_has_turbofan_code(false);
 }
 
-TieringState FeedbackVector::osr_tiering_state() {
-  return OsrTieringStateBit::decode(flags());
-}
-
-void FeedbackVector::set_osr_tiering_state(TieringState marker) {
-  DCHECK(marker == TieringState::kNone || marker == TieringState::kInProgress);
-  STATIC_ASSERT(OsrTieringStateBit::is_valid(TieringState::kNone));
-  STATIC_ASSERT(OsrTieringStateBit::is_valid(TieringState::kInProgress));
-  int32_t state = flags();
-  state = OsrTieringStateBit::update(state, marker);
-  set_flags(state);
-}
-
 void FeedbackVector::EvictOptimizedCodeMarkedForDeoptimization(
     Isolate* isolate, Tagged<SharedFunctionInfo> shared, const char* reason) {
   Tagged<MaybeObject> slot = maybe_optimized_code();

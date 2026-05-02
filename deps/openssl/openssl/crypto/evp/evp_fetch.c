@@ -91,28 +91,6 @@ static int unreserve_evp_method_store(void *store, void *data)
     return ossl_method_unlock_store(store);
 }
 
-static int reserve_evp_method_store(void *store, void *data)
-{
-    struct evp_method_data_st *methdata = data;
-
-    if (store == NULL
-        && (store = get_evp_method_store(methdata->libctx)) == NULL)
-        return 0;
-
-    return ossl_method_lock_store(store);
-}
-
-static int unreserve_evp_method_store(void *store, void *data)
-{
-    struct evp_method_data_st *methdata = data;
-
-    if (store == NULL
-        && (store = get_evp_method_store(methdata->libctx)) == NULL)
-        return 0;
-
-    return ossl_method_unlock_store(store);
-}
-
 /*
  * To identify the method in the EVP method store, we mix the name identity
  * with the operation identity, under the assumption that we don't have more

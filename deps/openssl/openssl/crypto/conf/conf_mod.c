@@ -197,8 +197,6 @@ int CONF_modules_load_file_ex(OSSL_LIB_CTX *libctx, const char *filename,
 
     ERR_set_mark();
 
-    ERR_set_mark();
-
     if (filename == NULL) {
         file = CONF_get1_default_config_file();
         if (file == NULL)

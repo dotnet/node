@@ -218,6 +218,7 @@ class SecureProxyConnectionError extends UndiciError {
 }
 
 module.exports = {
+  AbortError,
   HTTPParserError,
   UndiciError,
   HeadersTimeoutError,

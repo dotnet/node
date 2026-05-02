@@ -56,10 +56,6 @@ module.exports.cacheStores = {
 const SqliteCacheStore = require('./lib/cache/sqlite-cache-store')
 module.exports.cacheStores.SqliteCacheStore = SqliteCacheStore
 
-module.exports.DecoratorHandler = DecoratorHandler
-module.exports.RedirectHandler = RedirectHandler
-module.exports.createRedirectInterceptor = createRedirectInterceptor
-
 module.exports.buildConnector = buildConnector
 module.exports.errors = errors
 module.exports.util = {

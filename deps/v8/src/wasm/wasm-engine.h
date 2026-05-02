@@ -407,8 +407,6 @@ class V8_EXPORT_PRIVATE WasmEngine {
   int GetDeoptsExecutedCount() const;
   int IncrementDeoptsExecutedCount();
 
-  TypeCanonicalizer* type_canonicalizer() { return &type_canonicalizer_; }
-
   // Call on process start and exit.
   static void InitializeOncePerProcess();
   static void GlobalTearDown();

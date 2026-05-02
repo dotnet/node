@@ -15,16 +15,6 @@ if (build_with_chromium) {
   import("//testing/test.gni")
 }
 
-declare_args() {
-  # Expose zlib's symbols, used by Node.js to provide zlib APIs for its native
-  # modules.
-  zlib_symbols_visible = false
-}
-
-if (build_with_chromium) {
-  import("//testing/test.gni")
-}
-
 if (current_cpu == "arm" || current_cpu == "arm64") {
   import("//build/config/arm.gni")
 }

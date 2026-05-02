@@ -63,7 +63,6 @@ void ngtcp2_rs_init(ngtcp2_rs *rs);
  */
 typedef struct ngtcp2_rst {
   ngtcp2_rs rs;
-  ngtcp2_window_filter wf;
   uint64_t delivered;
   ngtcp2_tstamp delivered_ts;
   ngtcp2_tstamp first_sent_ts;

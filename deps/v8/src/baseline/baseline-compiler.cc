@@ -2023,9 +2023,6 @@ void BaselineCompiler::VisitJumpLoop() {
   Register osr_state = Register::no_reg();
   const int loop_depth = iterator().GetImmediateOperand(1);
   {
-    BaselineAssembler::ScratchRegisterScope scope(&basm_);
-    Register osr_urgency_and_install_target = scope.AcquireScratch();
-
     ASM_CODE_COMMENT_STRING(&masm_, "OSR Check Armed");
     BaselineAssembler::ScratchRegisterScope temps(&basm_);
     feedback_vector = temps.AcquireScratch();
@@ -2040,9 +2037,6 @@ void BaselineCompiler::VisitJumpLoop() {
     __ JumpIfByte(kUnsignedGreaterThan, osr_state, loop_depth, &osr_armed,
                   Label::kNear);
   }
-
-  __ Bind(&osr);
-  CallBuiltin<Builtin::kBaselineOnStackReplacement>();
 
   __ Bind(&osr_not_armed);
 #endif  // !V8_JITLESS

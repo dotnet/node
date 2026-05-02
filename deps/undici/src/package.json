@@ -145,8 +145,5 @@
     "testMatch": [
       "<rootDir>/test/jest/**"
     ]
-  },
-  "dependencies": {
-    "busboy": "^1.6.0"
   }
 }

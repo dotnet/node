@@ -52,23 +52,6 @@ void SimplifiedLoweringVerifier::CheckType(Node* node, const Type& type) {
   }
 }
 
-void SimplifiedLoweringVerifier::CheckType(Node* node, const Type& type) {
-  CHECK(NodeProperties::IsTyped(node));
-  Type node_type = NodeProperties::GetType(node);
-  if (!type.Is(node_type)) {
-    std::ostringstream type_str;
-    type.PrintTo(type_str);
-    std::ostringstream node_type_str;
-    node_type.PrintTo(node_type_str);
-
-    FATAL(
-        "SimplifiedLoweringVerifierError: verified type %s of node #%d:%s "
-        "does not match with type %s assigned during lowering",
-        type_str.str().c_str(), node->id(), node->op()->mnemonic(),
-        node_type_str.str().c_str());
-  }
-}
-
 void SimplifiedLoweringVerifier::CheckAndSet(Node* node, const Type& type,
                                              const Truncation& trunc) {
   DCHECK(!type.IsInvalid());

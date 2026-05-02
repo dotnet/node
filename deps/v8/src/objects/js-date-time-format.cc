@@ -1454,11 +1454,6 @@ MaybeDirectHandle<String> FormatDateTime(
   result = result.findAndReplace(icu::UnicodeString(0x202f),
                                  icu::UnicodeString(0x20));
 
-  // Revert ICU 72 change that introduced U+202F instead of U+0020
-  // to separate time from AM/PM. See https://crbug.com/1414292.
-  result = result.findAndReplace(icu::UnicodeString(0x202f),
-                                 icu::UnicodeString(0x20));
-
   return Intl::ToString(isolate, result);
 }
 

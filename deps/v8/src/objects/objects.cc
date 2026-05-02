@@ -2755,8 +2755,9 @@ Maybe<bool> Object::TransitionAndWriteDataProperty(
   }
 #endif
 
-    return Just(true);
+  return Just(true);
 }
+
 // static
 template <template <typename> typename HandleType>
   requires(std::is_convertible_v<HandleType<Object>, DirectHandle<Object>>)

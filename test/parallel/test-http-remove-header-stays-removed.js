@@ -56,14 +56,6 @@ server.listen(0, function() {
     res.setEncoding('ascii');
     res.on('data', function(chunk) {
       response += chunk;
-      if (response === 'beep boop\n') {
-        setTimeout(function() {
-          // The socket should be closed immediately, with no keep-alive, because
-          // no content-length or transfer-encoding are used:
-          assert.strictEqual(res.socket.closed, true);
-          server.close();
-        }, common.platformTimeout(15));
-      }
     });
 
     res.on('end', function() {

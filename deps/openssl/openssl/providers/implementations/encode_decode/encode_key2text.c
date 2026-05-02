@@ -104,11 +104,6 @@ static int dh_to_text(BIO *out, const void *key, int selection)
         && BIO_printf(out, "recommended-private-length: %ld bits\n",
                       length) <= 0)
         return 0;
-    length = DH_get_length(dh);
-    if (length > 0
-        && BIO_printf(out, "recommended-private-length: %ld bits\n",
-                      length) <= 0)
-        return 0;
 
     return 1;
 }

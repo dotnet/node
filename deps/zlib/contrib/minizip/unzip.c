@@ -970,14 +970,14 @@ local int unz64local_GetCurrentFileInfoInternal(unzFile file,
         while(acc < file_info.size_file_extra)
         {
             uLong headerId;
-            uLong dataSize;
+                                                uLong dataSize;
 
             if (unz64local_getShort(&s->z_filefunc, s->filestream,&headerId) != UNZ_OK)
                 err=UNZ_ERRNO;
 
             if (unz64local_getShort(&s->z_filefunc, s->filestream,&dataSize) != UNZ_OK)
                 err=UNZ_ERRNO;
-            
+
             /* ZIP64 extra fields */
             if (headerId == 0x0001)
             {
@@ -1046,62 +1046,6 @@ local int unz64local_GetCurrentFileInfoInternal(unzFile file,
                         uLong uSizeRead;
 
                         file_info.size_filename = fileNameSize;
-
-                        if (fileNameSize < fileNameBufferSize)
-                        {
-                             *(szFileName + fileNameSize) = '\0';
-                            uSizeRead = fileNameSize;
-                        }
-                        else
-                        {
-                            uSizeRead = fileNameBufferSize;
-                        }
-                        if ((fileNameSize > 0) && (fileNameBufferSize > 0))
-                        {
-                            if (ZREAD64(s->z_filefunc, s->filestream, szFileName, uSizeRead) != uSizeRead)
-                            {
-                                err = UNZ_ERRNO;
-                            }
-                        }
-                    }
-                }
-            }
-            else if (headerId == 0x7075) /* Info-ZIP Unicode Path Extra Field */
-            {
-                int version = 0;
-
-                if (unz64local_getByte(&s->z_filefunc, s->filestream, &version) != UNZ_OK)
-                {
-                    err = UNZ_ERRNO;
-                }
-                if (version != 1)
-                {
-                    if (ZSEEK64(s->z_filefunc, s->filestream,dataSize - 1, ZLIB_FILEFUNC_SEEK_CUR) != 0)
-                    {
-                        err = UNZ_ERRNO;
-                    }
-                }
-                else
-                {
-                    uLong uCrc, uHeaderCrc, fileNameSize;
-
-                    if (unz64local_getLong(&s->z_filefunc, s->filestream, &uCrc) != UNZ_OK)
-                    {
-                        err = UNZ_ERRNO;
-                    }
-                    uHeaderCrc = crc32(0, (const unsigned char *)szFileName, file_info.size_filename);
-                    fileNameSize = dataSize - (2 * sizeof (short) + 1);
-                    /* Check CRC against file name in the header. */
-                    if (uHeaderCrc != uCrc)
-                    {
-                        if (ZSEEK64(s->z_filefunc, s->filestream, fileNameSize, ZLIB_FILEFUNC_SEEK_CUR) != 0)
-                        {
-                            err = UNZ_ERRNO;
-                        }
-                    }
-                    else
-                    {
-                        uLong uSizeRead;
 
                         if (fileNameSize < fileNameBufferSize)
                         {

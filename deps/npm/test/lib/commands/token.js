@@ -35,7 +35,7 @@ t.test('completion', async t => {
   const { token } = await loadMockNpm(t, { command: 'token' })
 
   const testComp = (argv, expect) => {
-    t.resolveMatch(completion({ conf: { argv: { remain: argv } } }), expect, argv.join(' '))
+    t.resolveMatch(token.completion({ conf: { argv: { remain: argv } } }), expect, argv.join(' '))
   }
 
   testComp(['npm', 'token'], ['list', 'revoke', 'create'])
@@ -43,7 +43,7 @@ t.test('completion', async t => {
   testComp(['npm', 'token', 'revoke'], [])
   testComp(['npm', 'token', 'create'], [])
 
-  t.rejects(completion({ conf: { argv: { remain: ['npm', 'token', 'foobar'] } } }), {
+  t.rejects(token.completion({ conf: { argv: { remain: ['npm', 'token', 'foobar'] } } }), {
     message: 'foobar not recognize',
   })
 })

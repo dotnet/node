@@ -73,9 +73,6 @@ class V8_EXPORT_PRIVATE LargeObjectSpace : public Space {
     return reinterpret_cast<const LargePageMetadata*>(
         memory_chunk_list_.front());
   }
-  const LargePage* first_page() const override {
-    return reinterpret_cast<const LargePage*>(memory_chunk_list_.front());
-  }
 
   iterator begin() { return iterator(first_page()); }
   iterator end() { return iterator(nullptr); }

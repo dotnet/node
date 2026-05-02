@@ -318,10 +318,6 @@ class UnifiedHeapMarker final : public cppgc::internal::MarkerBase {
     MarkerBase::AdvanceMarkingOnAllocationImpl();
   }
 
-  UnifiedHeapMarkingState& GetMutatorUnifiedHeapMarkingState() {
-    return mutator_unified_heap_marking_state_;
-  }
-
  protected:
   cppgc::Visitor& visitor() final { return marking_visitor_; }
 
@@ -1381,13 +1377,6 @@ bool CppHeap::CurrentThreadIsHeapThread() const {
     return isolate_->thread_manager()->IsLockedByCurrentThread();
   }
   return HeapBase::CurrentThreadIsHeapThread();
-}
-
-CppHeap::PauseConcurrentMarkingScope::PauseConcurrentMarkingScope(
-    CppHeap* cpp_heap) {
-  if (cpp_heap && cpp_heap->marker()) {
-    pause_scope_.emplace(*cpp_heap->marker());
-  }
 }
 
 }  // namespace internal

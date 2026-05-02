@@ -902,18 +902,6 @@ Change History:
   instead. This feature can be turned off by defining
   `NODE_API_EXPERIMENTAL_BASIC_ENV_OPT_OUT`.
 
-Since these functions may be called while the JavaScript engine is in a state
-where it cannot execute JavaScript code, some Node-API calls may return
-`napi_pending_exception` even when there is no exception pending.
-
-Change History:
-
-* experimental (`NAPI_EXPERIMENTAL` is defined):
-
-  Node-API calls made from a finalizer will return `napi_cannot_run_js` when
-  the JavaScript engine is unable to execute JavaScript, and will return
-  `napi_exception_pending` if there is a pending exception.
-
 #### `napi_async_execute_callback`
 
 <!-- YAML

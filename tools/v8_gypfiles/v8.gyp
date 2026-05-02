@@ -1494,12 +1494,6 @@
             '<(V8_ROOT)/src/base/platform/platform-darwin.cc',
           ]
         }],
-        ['OS == "ios"', {
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-darwin.cc',
-          ]
-        }],
         ['is_win', {
           'sources': [
             '<(V8_ROOT)/src/base/debug/stack_trace_win.cc',

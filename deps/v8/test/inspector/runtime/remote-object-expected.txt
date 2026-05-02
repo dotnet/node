@@ -1314,7 +1314,7 @@ Running test: testWeakMap
                             [0] : {
                                 name : setTimeout
                                 type : function
-                                value : 
+                                value :
                             }
                             [1] : {
                                 name : inspector
@@ -1398,7 +1398,7 @@ Running test: testWeakSet
                             [0] : {
                                 name : setTimeout
                                 type : function
-                                value : 
+                                value :
                             }
                             [1] : {
                                 name : inspector
@@ -2847,7 +2847,7 @@ Running test: testOtherObjects
                     [0] : {
                         name : a
                         type : function
-                        value : 
+                        value :
                     }
                 ]
                 type : object
@@ -3037,12 +3037,12 @@ Running test: testOtherObjects
                     [0] : {
                         name : a1
                         type : function
-                        value : 
+                        value :
                     }
                     [1] : {
                         name : a2
                         type : function
-                        value : 
+                        value :
                     }
                 ]
                 type : object

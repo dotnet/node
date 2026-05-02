@@ -148,11 +148,6 @@ static int session_detect_idle_stream(nghttp2_session *session,
   return 0;
 }
 
-static int session_no_rfc7540_pri_no_fallback(nghttp2_session *session) {
-  return session->pending_no_rfc7540_priorities == 1 &&
-         !session->fallback_rfc7540_priorities;
-}
-
 static int check_ext_type_set(const uint8_t *ext_types, uint8_t type) {
   return (ext_types[type / 8] & (1 << (type & 0x7))) > 0;
 }
@@ -1000,214 +995,6 @@ static int session_update_stream_priority(nghttp2_session *session,
   return 0;
 }
 
-static uint64_t pq_get_first_cycle(nghttp2_pq *pq) {
-  nghttp2_stream *stream;
-
-  if (nghttp2_pq_empty(pq)) {
-    return 0;
-  }
-
-  stream = nghttp2_struct_of(nghttp2_pq_top(pq), nghttp2_stream, pq_entry);
-  return stream->cycle;
-}
-
-static int session_ob_data_push(nghttp2_session *session,
-                                nghttp2_stream *stream) {
-  int rv;
-  uint32_t urgency;
-  int inc;
-  nghttp2_pq *pq;
-
-  assert(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES);
-  assert(stream->queued == 0);
-
-  urgency = nghttp2_extpri_uint8_urgency(stream->extpri);
-  inc = nghttp2_extpri_uint8_inc(stream->extpri);
-
-  assert(urgency < NGHTTP2_EXTPRI_URGENCY_LEVELS);
-
-  pq = &session->sched[urgency].ob_data;
-
-  stream->cycle = pq_get_first_cycle(pq);
-  if (inc) {
-    stream->cycle += stream->last_writelen;
-  }
-
-  rv = nghttp2_pq_push(pq, &stream->pq_entry);
-  if (rv != 0) {
-    return rv;
-  }
-
-  stream->queued = 1;
-
-  return 0;
-}
-
-static int session_ob_data_remove(nghttp2_session *session,
-                                  nghttp2_stream *stream) {
-  uint32_t urgency;
-
-  assert(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES);
-  assert(stream->queued == 1);
-
-  urgency = nghttp2_extpri_uint8_urgency(stream->extpri);
-
-  assert(urgency < NGHTTP2_EXTPRI_URGENCY_LEVELS);
-
-  nghttp2_pq_remove(&session->sched[urgency].ob_data, &stream->pq_entry);
-
-  stream->queued = 0;
-
-  return 0;
-}
-
-static int session_attach_stream_item(nghttp2_session *session,
-                                      nghttp2_stream *stream,
-                                      nghttp2_outbound_item *item) {
-  int rv;
-
-  rv = nghttp2_stream_attach_item(stream, item);
-  if (rv != 0) {
-    return rv;
-  }
-
-  if (!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES)) {
-    return 0;
-  }
-
-  return session_ob_data_push(session, stream);
-}
-
-static int session_detach_stream_item(nghttp2_session *session,
-                                      nghttp2_stream *stream) {
-  int rv;
-
-  rv = nghttp2_stream_detach_item(stream);
-  if (rv != 0) {
-    return rv;
-  }
-
-  if (!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) ||
-      !stream->queued) {
-    return 0;
-  }
-
-  return session_ob_data_remove(session, stream);
-}
-
-static int session_defer_stream_item(nghttp2_session *session,
-                                     nghttp2_stream *stream, uint8_t flags) {
-  int rv;
-
-  rv = nghttp2_stream_defer_item(stream, flags);
-  if (rv != 0) {
-    return rv;
-  }
-
-  if (!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) ||
-      !stream->queued) {
-    return 0;
-  }
-
-  return session_ob_data_remove(session, stream);
-}
-
-static int session_resume_deferred_stream_item(nghttp2_session *session,
-                                               nghttp2_stream *stream,
-                                               uint8_t flags) {
-  int rv;
-
-  rv = nghttp2_stream_resume_deferred_item(stream, flags);
-  if (rv != 0) {
-    return rv;
-  }
-
-  if (!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) ||
-      (stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL)) {
-    return 0;
-  }
-
-  return session_ob_data_push(session, stream);
-}
-
-static nghttp2_outbound_item *
-session_sched_get_next_outbound_item(nghttp2_session *session) {
-  size_t i;
-  nghttp2_pq_entry *ent;
-  nghttp2_stream *stream;
-
-  for (i = 0; i < NGHTTP2_EXTPRI_URGENCY_LEVELS; ++i) {
-    ent = nghttp2_pq_top(&session->sched[i].ob_data);
-    if (!ent) {
-      continue;
-    }
-
-    stream = nghttp2_struct_of(ent, nghttp2_stream, pq_entry);
-    return stream->item;
-  }
-
-  return NULL;
-}
-
-static int session_sched_empty(nghttp2_session *session) {
-  size_t i;
-
-  for (i = 0; i < NGHTTP2_EXTPRI_URGENCY_LEVELS; ++i) {
-    if (!nghttp2_pq_empty(&session->sched[i].ob_data)) {
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-static void session_sched_reschedule_stream(nghttp2_session *session,
-                                            nghttp2_stream *stream) {
-  nghttp2_pq *pq;
-  uint32_t urgency = nghttp2_extpri_uint8_urgency(stream->extpri);
-  int inc = nghttp2_extpri_uint8_inc(stream->extpri);
-  uint64_t penalty = (uint64_t)stream->last_writelen;
-  int rv;
-
-  (void)rv;
-
-  assert(urgency < NGHTTP2_EXTPRI_URGENCY_LEVELS);
-
-  pq = &session->sched[urgency].ob_data;
-
-  if (!inc || nghttp2_pq_size(pq) == 1) {
-    return;
-  }
-
-  nghttp2_pq_remove(pq, &stream->pq_entry);
-
-  stream->cycle += penalty;
-
-  rv = nghttp2_pq_push(pq, &stream->pq_entry);
-
-  assert(0 == rv);
-}
-
-static int session_update_stream_priority(nghttp2_session *session,
-                                          nghttp2_stream *stream,
-                                          uint8_t u8extpri) {
-  if (stream->extpri == u8extpri) {
-    return 0;
-  }
-
-  if (stream->queued) {
-    session_ob_data_remove(session, stream);
-
-    stream->extpri = u8extpri;
-
-    return session_ob_data_push(session, stream);
-  }
-
-  stream->extpri = u8extpri;
-
-  return 0;
-}
-
 int nghttp2_session_add_item(nghttp2_session *session,
                              nghttp2_outbound_item *item) {
   /* TODO Return error if stream is not found for the frame requiring
@@ -1436,10 +1223,6 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
                         (int32_t)session->local_settings.initial_window_size,
                         stream_user_data);
     stream->seq = session->stream_seq++;
-
-    if (session_no_rfc7540_pri_no_fallback(session)) {
-      stream->seq = session->stream_seq++;
-    }
 
     rv = nghttp2_map_insert(&session->streams, stream_id, stream);
     if (rv != 0) {
@@ -2494,8 +2277,6 @@ static int session_prep_frame(nghttp2_session *session,
 
 nghttp2_outbound_item *
 nghttp2_session_get_next_ob_item(nghttp2_session *session) {
-  nghttp2_outbound_item *item;
-
   if (nghttp2_outbound_queue_top(&session->ob_urgent)) {
     return nghttp2_outbound_queue_top(&session->ob_urgent);
   }

@@ -83,7 +83,6 @@ class BindingData : public SnapshotableObject {
   std::vector<BaseObjectPtr<FileHandleReadWrap>>
       file_handle_read_wrap_freelist;
 
-  using InternalFieldInfo = InternalFieldInfoBase;
   SERIALIZABLE_OBJECT_METHODS()
   SET_BINDING_ID(fs_binding_data)
 

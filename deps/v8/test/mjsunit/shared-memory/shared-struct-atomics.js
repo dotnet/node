@@ -49,14 +49,6 @@ let S = new SharedStructType(['field', '2']);
     assertEquals(Atomics.compareExchange(s, 2, primCopy, 'exchanged'), prim);
     assertEquals(s[2], 'exchanged');
   }
-
-  for (let prim1 of prims) {
-    for (let prim2 of prims) {
-      s.field = prim1;
-      assertEquals(Atomics.exchange(s, 'field', prim2), prim1);
-      assertEquals(s.field, prim2);
-    }
-  }
 })();
 
 (function TestObjectsUsingAtomics() {

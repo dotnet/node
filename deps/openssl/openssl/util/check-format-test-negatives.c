@@ -264,9 +264,6 @@ int g(void)
             && expr_line3)
         hanging_stmt;
 }
-#define m \
-    do { /* should not be confused with function header followed by '{' */ \
-    } while (0)
 
 #define m1                           \
     if (ctx == NULL)                 \

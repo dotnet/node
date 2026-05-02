@@ -637,7 +637,6 @@ class FastCApiObject {
 
     HandleScope handle_scope(isolate);
 
-    Local<Context> context = isolate->GetCurrentContext();
     double sum = 0;
     if (info.Length() > 1 && info[1]->IsNumber()) {
       sum += info[1]->Int32Value(isolate->GetCurrentContext()).FromJust();

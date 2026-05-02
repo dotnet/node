@@ -474,11 +474,6 @@ void BaselineAssembler::Word32And(Register output, Register lhs, int rhs) {
   __ and_(output, Immediate(rhs));
 }
 
-void BaselineAssembler::Word32And(Register output, Register lhs, int rhs) {
-  Move(output, lhs);
-  __ and_(output, Immediate(rhs));
-}
-
 void BaselineAssembler::Switch(Register reg, int case_value_base,
                                Label** labels, int num_labels) {
   ASM_CODE_COMMENT(masm_);

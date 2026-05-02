@@ -194,7 +194,7 @@ Object {
       "r",
       "g",
       "s",
-      "https://evil:***@npmjs.org/",
+      "https://evil:***@npmjs.org",
     ],
     Array [
       "",

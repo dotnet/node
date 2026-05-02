@@ -151,8 +151,6 @@ void TieringManager::MarkForTurboFanOptimization(Tagged<JSFunction> function) {
   Optimize(function, OptimizationDecision::TurbofanHotAndStable());
 }
 
-}  // namespace
-
 namespace {
 
 // Returns true when |function| should be enqueued for sparkplug compilation for

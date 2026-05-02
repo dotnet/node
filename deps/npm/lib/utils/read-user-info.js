@@ -55,7 +55,7 @@ function readEmail (msg = emailPrompt, email, isRetry) {
     }
   }
 
-  return readWithProgress({ prompt: msg, default: email || '' })
+  return read({ prompt: msg, default: email || '' })
     .then((username) => readEmail(msg, username, true))
 }
 

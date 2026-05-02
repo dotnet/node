@@ -80,16 +80,6 @@ struct TimeRecordWithCalendar {
   DirectHandle<Object> calendar;  // String or Undefined
 };
 
-struct TimeRecord {
-  int32_t hour;
-  int32_t minute;
-  int32_t second;
-  int32_t millisecond;
-  int32_t microsecond;
-  int32_t nanosecond;
-  Handle<String> calendar;
-};
-
 struct TimeZoneRecord {
   bool z;
   DirectHandle<Object> offset_string;  // String or Undefined
@@ -2312,7 +2302,6 @@ MaybeDirectHandle<JSTemporalInstant> ToTemporalInstant(
 }  // namespace
 
 namespace temporal {
-
 // #sec-temporal-totemporalcalendar
 MaybeDirectHandle<JSReceiver> ToTemporalCalendar(
     Isolate* isolate, DirectHandle<Object> temporal_calendar_like,
@@ -9517,66 +9506,6 @@ MaybeDirectHandle<String> JSTemporalDuration::ToString(
   return TemporalDurationToString(isolate, result.record, precision.precision);
 }
 
-namespace {
-// #sec-temporal-createnegatedtemporalduration
-MaybeHandle<JSTemporalDuration> CreateNegatedTemporalDuration(
-    Isolate* isolate, Handle<JSTemporalDuration> duration) {
-  TEMPORAL_ENTER_FUNC();
-  // 1. Assert: Type(duration) is Object.
-  // 2. Assert: duration has an [[InitializedTemporalDuration]] internal slot.
-  // 3. Return ! CreateTemporalDuration(−duration.[[Years]],
-  // −duration.[[Months]], −duration.[[Weeks]], −duration.[[Days]],
-  // −duration.[[Hours]], −duration.[[Minutes]], −duration.[[Seconds]],
-  // −duration.[[Milliseconds]], −duration.[[Microseconds]],
-  // −duration.[[Nanoseconds]]).
-
-  return CreateTemporalDuration(
-      isolate, -NumberToInt64(duration->years()),
-      -NumberToInt64(duration->months()), -NumberToInt64(duration->weeks()),
-      -NumberToInt64(duration->days()), -NumberToInt64(duration->hours()),
-      -NumberToInt64(duration->minutes()), -NumberToInt64(duration->seconds()),
-      -NumberToInt64(duration->milliseconds()),
-      -NumberToInt64(duration->microseconds()),
-      -NumberToInt64(duration->nanoseconds()));
-}
-
-}  // namespace
-
-// #sec-temporal.duration.prototype.negated
-MaybeHandle<JSTemporalDuration> JSTemporalDuration::Negated(
-    Isolate* isolate, Handle<JSTemporalDuration> duration) {
-  // Let duration be the this value.
-  // 2. Perform ? RequireInternalSlot(duration,
-  // [[InitializedTemporalDuration]]).
-
-  // 3. Return ! CreateNegatedTemporalDuration(duration).
-  return CreateNegatedTemporalDuration(isolate, duration);
-}
-
-// #sec-temporal.duration.prototype.abs
-MaybeHandle<JSTemporalDuration> JSTemporalDuration::Abs(
-    Isolate* isolate, Handle<JSTemporalDuration> duration) {
-  // 1. Let duration be the this value.
-  // 2. Perform ? RequireInternalSlot(duration,
-  // [[InitializedTemporalDuration]]).
-  // 3. Return ? CreateTemporalDuration(abs(duration.[[Years]]),
-  // abs(duration.[[Months]]), abs(duration.[[Weeks]]), abs(duration.[[Days]]),
-  // abs(duration.[[Hours]]), abs(duration.[[Minutes]]),
-  // abs(duration.[[Seconds]]), abs(duration.[[Milliseconds]]),
-  // abs(duration.[[Microseconds]]), abs(duration.[[Nanoseconds]])).
-  return CreateTemporalDuration(
-      isolate, std::abs(NumberToInt64(duration->years())),
-      std::abs(NumberToInt64(duration->months())),
-      std::abs(NumberToInt64(duration->weeks())),
-      std::abs(NumberToInt64(duration->days())),
-      std::abs(NumberToInt64(duration->hours())),
-      std::abs(NumberToInt64(duration->minutes())),
-      std::abs(NumberToInt64(duration->seconds())),
-      std::abs(NumberToInt64(duration->milliseconds())),
-      std::abs(NumberToInt64(duration->microseconds())),
-      std::abs(NumberToInt64(duration->nanoseconds())));
-}
-
 // #sec-temporal.calendar
 MaybeDirectHandle<JSTemporalCalendar> JSTemporalCalendar::Constructor(
     Isolate* isolate, DirectHandle<JSFunction> target,
@@ -15143,36 +15072,6 @@ MaybeDirectHandle<JSTemporalDuration> JSTemporalPlainTime::Since(
   return DifferenceTemporalPlainTime(isolate, TimePreposition::kSince, handle,
                                      other, options,
                                      "Temporal.PlainTime.prototype.since");
-}
-
-// #sec-temporal.plaintime.from
-MaybeHandle<JSTemporalPlainTime> JSTemporalPlainTime::From(
-    Isolate* isolate, Handle<Object> item_obj, Handle<Object> options_obj) {
-  const char* method_name = "Temporal.PlainTime.from";
-  // 1. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalPlainTime);
-  // 2. Let overflow be ? ToTemporalOverflow(options).
-  Maybe<ShowOverflow> maybe_overflow =
-      ToTemporalOverflow(isolate, options, method_name);
-  MAYBE_RETURN(maybe_overflow, Handle<JSTemporalPlainTime>());
-  ShowOverflow overflow = maybe_overflow.FromJust();
-  // 3. If Type(item) is Object and item has an [[InitializedTemporalTime]]
-  // internal slot, then
-  if (item_obj->IsJSTemporalPlainTime()) {
-    // a. Return ? CreateTemporalTime(item.[[ISOHour]], item.[[ISOMinute]],
-    // item.[[ISOSecond]], item.[[ISOMillisecond]], item.[[ISOMicrosecond]],
-    // item.[[ISONanosecond]]).
-    Handle<JSTemporalPlainTime> item =
-        Handle<JSTemporalPlainTime>::cast(item_obj);
-    return CreateTemporalTime(isolate, item->iso_hour(), item->iso_minute(),
-                              item->iso_second(), item->iso_millisecond(),
-                              item->iso_microsecond(), item->iso_nanosecond());
-  }
-  // 4. Return ? ToTemporalTime(item, overflow).
-  return temporal::ToTemporalTime(isolate, item_obj, overflow, method_name);
 }
 
 // #sec-temporal.plaintime.prototype.getisofields

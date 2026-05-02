@@ -44,13 +44,6 @@ extern "C" {
  * ngtcp2 crypto library error codes
  */
 
-#ifdef WIN32
-#  ifndef WIN32_LEAN_AND_MEAN
-#    define WIN32_LEAN_AND_MEAN
-#  endif
-#  include <ws2tcpip.h>
-#endif /* WIN32 */
-
 /**
  * @macro
  *
@@ -943,66 +936,6 @@ typedef ngtcp2_conn *(*ngtcp2_crypto_get_conn)(
  * :type:`ngtcp2_crypto_conn_ref` is a structure to get a pointer to
  * :type:`ngtcp2_conn`.  It is meant to be set to TLS native handle as
  * an application specific data (e.g. SSL_set_app_data in quictls).
- */
-typedef struct ngtcp2_crypto_conn_ref {
-  /**
-   * :member:`get_conn` is a callback function to get a pointer to
-   * :type:`ngtcp2_conn` object.
-   */
-  ngtcp2_crypto_get_conn get_conn;
-  /**
-   * :member:`user_data` is a pointer to arbitrary user data.
-   */
-  void *user_data;
-} ngtcp2_crypto_conn_ref;
-
-/**
- * @function
- *
- * `ngtcp2_crypto_get_path_challenge_data_cb` writes unpredictable
- * sequence of :macro:`NGTCP2_PATH_CHALLENGE_DATALEN` bytes to |data|
- * which is sent with PATH_CHALLENGE frame.
- *
- * This function can be directly passed to
- * :member:`ngtcp2_callbacks.get_path_challenge_data` field.
- */
-NGTCP2_EXTERN int ngtcp2_crypto_get_path_challenge_data_cb(ngtcp2_conn *conn,
-                                                           uint8_t *data,
-                                                           void *user_data);
-
-/**
- * @function
- *
- * `ngtcp2_crypto_version_negotiation_cb` installs Initial keys for
- * |version| which is negotiated or being negotiated.  |client_dcid|
- * is the destination connection ID in first Initial packet of client.
- *
- * This function can be directly passed to
- * :member:`ngtcp2_callbacks.version_negotiation` field.
- */
-NGTCP2_EXTERN int
-ngtcp2_crypto_version_negotiation_cb(ngtcp2_conn *conn, uint32_t version,
-                                     const ngtcp2_cid *client_dcid,
-                                     void *user_data);
-
-typedef struct ngtcp2_crypto_conn_ref ngtcp2_crypto_conn_ref;
-
-/**
- * @functypedef
- *
- * :type:`ngtcp2_crypto_get_conn` is a callback function to get a
- * pointer to :type:`ngtcp2_conn` from |conn_ref|.  The implementation
- * must return non-NULL :type:`ngtcp2_conn` object.
- */
-typedef ngtcp2_conn *(*ngtcp2_crypto_get_conn)(
-    ngtcp2_crypto_conn_ref *conn_ref);
-
-/**
- * @struct
- *
- * :type:`ngtcp2_crypto_conn_ref` is a structure to get a pointer to
- * :type:`ngtcp2_conn`.  It is meant to be set to TLS native handle as
- * an application specific data (e.g. SSL_set_app_data in OpenSSL).
  */
 typedef struct ngtcp2_crypto_conn_ref {
   /**

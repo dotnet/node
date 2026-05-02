@@ -29,11 +29,7 @@ const tests = [
   },
   {
     env: { TERM: 'dumb' },
-    expected: { terminal: true, useColors: true }
-  },
-  {
-    env: { TERM: 'dumb', FORCE_COLOR: '1' },
-    expected: { terminal: true, useColors: true }
+    expected: { terminal: true, useColors: false }
   },
   {
     env: { TERM: 'dumb', FORCE_COLOR: '1' },

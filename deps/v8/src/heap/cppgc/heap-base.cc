@@ -241,7 +241,6 @@ void HeapBase::Terminate() {
   constexpr size_t kMaxTerminationGCs = 20;
   size_t gc_count = 0;
   bool more_termination_gcs_needed = false;
-
   do {
     // Clear root sets.
     strong_persistent_region_.ClearAllUsedNodes();

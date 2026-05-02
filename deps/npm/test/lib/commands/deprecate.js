@@ -19,7 +19,6 @@ t.test('completion', async t => {
     },
   })
 
-  const deprecate = await npm.cmd('deprecate')
   const testComp = async (argv, expect) => {
     const res =
       await deprecate.completion({ conf: { argv: { remain: argv } } })

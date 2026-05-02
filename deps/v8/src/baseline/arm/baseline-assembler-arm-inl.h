@@ -505,10 +505,6 @@ void BaselineAssembler::Word32And(Register output, Register lhs, int rhs) {
   __ and_(output, lhs, Operand(rhs));
 }
 
-void BaselineAssembler::Word32And(Register output, Register lhs, int rhs) {
-  __ and_(output, lhs, Operand(rhs));
-}
-
 void BaselineAssembler::Switch(Register reg, int case_value_base,
                                Label** labels, int num_labels) {
   __ MacroAssembler::Switch(Register::no_reg(), reg, case_value_base, labels,

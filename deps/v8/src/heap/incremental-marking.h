@@ -144,8 +144,6 @@ class V8_EXPORT_PRIVATE IncrementalMarking final {
     return schedule_;
   }
 
-  void MarkRootsForTesting();
-
  private:
   class Observer final : public AllocationObserver {
    public:

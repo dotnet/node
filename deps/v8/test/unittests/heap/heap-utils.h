@@ -90,14 +90,6 @@ class WithHeapInternals : public TMixin, HeapInternalsBase {
                                      GarbageCollectionReason::kTesting);
   }
 
-  void FullGC() {
-    heap()->CollectGarbage(OLD_SPACE, i::GarbageCollectionReason::kTesting);
-  }
-
-  void YoungGC() {
-    heap()->CollectGarbage(NEW_SPACE, i::GarbageCollectionReason::kTesting);
-  }
-
   Heap* heap() const { return this->i_isolate()->heap(); }
 
   void SimulateIncrementalMarking(bool force_completion = true) {

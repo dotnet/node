@@ -25,9 +25,6 @@
 #define MIN_DSA_SIGN_QBITS   128
 #define MAX_DSA_SIGN_RETRIES 8
 
-#define MIN_DSA_SIGN_QBITS   128
-#define MAX_DSA_SIGN_RETRIES 8
-
 static DSA_SIG *dsa_do_sign(const unsigned char *dgst, int dlen, DSA *dsa);
 static int dsa_sign_setup_no_digest(DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
                                     BIGNUM **rp);

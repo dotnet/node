@@ -1662,9 +1662,6 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(IsUtf8);
   registry->Register(IsAscii);
 
-  registry->Register(IsUtf8);
-  registry->Register(IsAscii);
-
   registry->Register(StringSlice<ASCII>);
   registry->Register(StringSlice<BASE64>);
   registry->Register(StringSlice<BASE64URL>);

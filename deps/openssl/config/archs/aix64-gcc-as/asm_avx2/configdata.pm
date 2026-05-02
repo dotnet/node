@@ -9938,6 +9938,7 @@ our %unified_info = (
                 "crypto/bn/libcrypto-lib-bn_word.o",
                 "crypto/bn/libcrypto-lib-bn_x931p.o",
                 "crypto/bn/libcrypto-lib-ppc-mont.o",
+                "crypto/bn/libcrypto-lib-ppc64-mont-fixed.o",
                 "crypto/bn/libfips-lib-bn-ppc.o",
                 "crypto/bn/libfips-lib-bn_add.o",
                 "crypto/bn/libfips-lib-bn_blind.o",
@@ -12394,6 +12395,9 @@ our %unified_info = (
         ],
         "crypto/bn/ppc-mont.s" => [
             "crypto/bn/asm/ppc-mont.pl"
+        ],
+        "crypto/bn/ppc64-mont-fixed.s" => [
+            "crypto/bn/asm/ppc64-mont-fixed.pl"
         ],
         "crypto/bn/ppc64-mont.s" => [
             "crypto/bn/asm/ppc64-mont.pl"
@@ -24672,6 +24676,9 @@ our %unified_info = (
         "crypto/bn/libcrypto-lib-ppc-mont.o" => [
             "crypto/bn/ppc-mont.s"
         ],
+        "crypto/bn/libcrypto-lib-ppc64-mont-fixed.o" => [
+            "crypto/bn/ppc64-mont-fixed.s"
+        ],
         "crypto/bn/libfips-lib-bn-ppc.o" => [
             "crypto/bn/bn-ppc.s"
         ],
@@ -27879,6 +27886,7 @@ our %unified_info = (
             "crypto/bn/libcrypto-lib-bn_word.o",
             "crypto/bn/libcrypto-lib-bn_x931p.o",
             "crypto/bn/libcrypto-lib-ppc-mont.o",
+            "crypto/bn/libcrypto-lib-ppc64-mont-fixed.o",
             "crypto/buffer/libcrypto-lib-buf_err.o",
             "crypto/buffer/libcrypto-lib-buffer.o",
             "crypto/camellia/libcrypto-lib-camellia.o",
@@ -29754,6 +29762,7 @@ our %unified_info = (
             "crypto/bn/libfips-lib-bn_sqrt.o",
             "crypto/bn/libfips-lib-bn_word.o",
             "crypto/bn/libfips-lib-ppc-mont.o",
+            "crypto/bn/libfips-lib-ppc64-mont-fixed.o",
             "crypto/buffer/libfips-lib-buffer.o",
             "crypto/cmac/libfips-lib-cmac.o",
             "crypto/des/libfips-lib-des_enc.o",

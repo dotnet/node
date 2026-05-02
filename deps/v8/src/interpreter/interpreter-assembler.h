@@ -315,12 +315,6 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   static constexpr int kFirstBytecodeOffset =
       BytecodeArray::kHeaderSize - kHeapObjectTag;
 
-  // The BytecodeOffset() is the offset from the ByteCodeArray pointer; to
-  // translate into runtime `BytecodeOffset` (defined in utils.h as the offset
-  // from the start of the bytecode section), this constant has to be applied.
-  static constexpr int kFirstBytecodeOffset =
-      BytecodeArray::kHeaderSize - kHeapObjectTag;
-
   // Returns the offset from the BytecodeArrayPointer of the current bytecode.
   TNode<IntPtrT> BytecodeOffset();
 

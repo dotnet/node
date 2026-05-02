@@ -236,7 +236,6 @@ export class Processor extends LogReader {
     let current = 0;
     let next = 0;
     let line;
-    let lineNumber = 1;
     try {
       while (current < end) {
         next = chunk.indexOf('\n', current);

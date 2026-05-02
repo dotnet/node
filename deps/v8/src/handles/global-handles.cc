@@ -11,7 +11,6 @@
 #include <map>
 
 #include "src/api/api-inl.h"
-#include "src/base/bits.h"
 #include "src/base/compiler-specific.h"
 #include "src/base/logging.h"
 #include "src/base/sanitizer/asan.h"
@@ -94,21 +93,6 @@ class GlobalHandles::NodeBlock final {
   const void* end_address() const { return &nodes_[kBlockSize]; }
 
  private:
-  using CellType = uint32_t;
-
-  std::tuple<CellType, CellType> CellAndBit(size_t index) const {
-    static constexpr CellType kMarkBitCellSizeLog2 = 5;
-    static_assert(base::bits::IsPowerOfTwo(kBlockSize),
-                  "Block size must be power of two.");
-    static_assert(
-        sizeof(CellType) * CHAR_BIT == (CellType{1} << kMarkBitCellSizeLog2),
-        "Markbit CellType not matching defined log2 size.");
-    static constexpr CellType kCellMask =
-        (CellType{1} << kMarkBitCellSizeLog2) - 1;
-    return {static_cast<CellType>(index >> kMarkBitCellSizeLog2),
-            index & kCellMask};
-  }
-
   NodeType nodes_[kBlockSize];
   NodeBlock* const next_;
   GlobalHandles* const global_handles_;
@@ -116,7 +100,6 @@ class GlobalHandles::NodeBlock final {
   NodeBlock* next_used_ = nullptr;
   NodeBlock* prev_used_ = nullptr;
   uint32_t used_nodes_ = 0;
-  CellType mark_bits_[kBlockSize / (sizeof(CellType) * CHAR_BIT)] = {0};
 };
 
 template <class NodeType>

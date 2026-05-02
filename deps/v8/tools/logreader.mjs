@@ -107,41 +107,6 @@ export class LogReader {
     }
   }
 
-/**
- * @param {Object} table A table used for parsing and processing
- *     log records.
- *     exampleDispatchTable = {
- *       "log-entry-XXX": {
- *          parser: [parseString, parseInt, ..., parseVarArgs],
- *          processor: this.processXXX.bind(this)
- *        },
- *        ...
- *      }
- */
-  setDispatchTable(table) {
-    if (Object.getPrototypeOf(table) !== null) {
-      throw new Error("Dispatch expected table.__proto__=null for speedup");
-    }
-    for (let name in table) {
-      const parser = table[name];
-      if (parser === undefined) continue;
-      if (!parser.isAsync) parser.isAsync = false;
-      if (!Array.isArray(parser.parsers)) {
-        throw new Error(`Invalid parsers: dispatchTable['${
-            name}'].parsers should be an Array.`);
-      }
-      let type = typeof parser.processor;
-      if (type !== 'function') {
-       throw new Error(`Invalid processor: typeof dispatchTable['${
-          name}'].processor is '${type}' instead of 'function'`);
-      }
-      if (!parser.processor.name.startsWith('bound ')) {
-        parser.processor = parser.processor.bind(this);
-      }
-      this.dispatchTable_.set(name, parser);
-    }
-  }
-
 
   /**
    * A thin wrapper around shell's 'read' function showing a file name on error.

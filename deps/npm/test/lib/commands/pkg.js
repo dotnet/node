@@ -750,7 +750,6 @@ t.test('fix', async t => {
         version: 'v1.1.1',
       }),
     },
-    config: { workspaces: true },
   })
 
   await pkg('fix')

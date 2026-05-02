@@ -2464,9 +2464,6 @@ future release.
 
 <!-- YAML
 changes:
-  - version: v18.13.0
-    pr-url: https://github.com/nodejs/node/pull/44919
-    description: \`url.parse()` is deprecated again in DEP0169.
   - version:
       - v19.0.0
       - v18.13.0
@@ -4039,7 +4036,6 @@ an internal nodejs implementation rather than a public facing API, use `node:htt
 [`--force-node-api-uncaught-exceptions-policy`]: cli.md#--force-node-api-uncaught-exceptions-policy
 [`--pending-deprecation`]: cli.md#--pending-deprecation
 [`--throw-deprecation`]: cli.md#--throw-deprecation
-[`--trace-atomics-wait`]: cli.md#--trace-atomics-wait
 [`--unhandled-rejections`]: cli.md#--unhandled-rejectionsmode
 [`Buffer.allocUnsafeSlow(size)`]: buffer.md#static-method-bufferallocunsafeslowsize
 [`Buffer.from(array)`]: buffer.md#static-method-bufferfromarray

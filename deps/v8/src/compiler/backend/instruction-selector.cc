@@ -1051,7 +1051,7 @@ void InstructionSelectorT::AppendDeoptimizeArguments(
   OperandGenerator g(this);
   FrameStateDescriptor* const descriptor = GetFrameStateDescriptor(frame_state);
   int const state_id = sequence()->AddDeoptimizationEntry(
-      descriptor, DeoptimizeKind::kEager, reason, node_id, feedback);
+      descriptor, kind, reason, node_id, feedback);
   args->push_back(g.TempImmediate(state_id));
   StateObjectDeduplicator deduplicator(instruction_zone());
   AddInputsToFrameStateDescriptor(descriptor, frame_state, &g, &deduplicator,

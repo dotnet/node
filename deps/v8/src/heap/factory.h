@@ -472,9 +472,6 @@ class V8_EXPORT_PRIVATE Factory : public FactoryBase<Factory> {
       DirectHandle<String> function_name, bool is_constructor);
   Handle<StackTraceInfo> NewStackTraceInfo(DirectHandle<FixedArray> frames);
 
-  Handle<PromiseOnStack> NewPromiseOnStack(Handle<Object> prev,
-                                           Handle<JSObject> promise);
-
   // Allocate various microtasks.
   DirectHandle<CallableTask> NewCallableTask(DirectHandle<JSReceiver> callable,
                                              DirectHandle<Context> context);

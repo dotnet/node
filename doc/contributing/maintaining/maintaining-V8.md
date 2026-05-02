@@ -389,4 +389,3 @@ This would require some tooling to:
 [`git-node-v8-minor`]: https://github.com/nodejs/node-core-utils/blob/main/docs/git-node.md#git-node-v8-minor
 [`git-node-v8`]: https://github.com/nodejs/node-core-utils/blob/HEAD/docs/git-node.md#git-node-v8
 [`git-node`]: https://github.com/nodejs/node-core-utils/blob/HEAD/docs/git-node.md#git-node-v8
-[`node-core-utils`]: https://github.com/nodejs/node-core-utils#Install

@@ -274,6 +274,7 @@ var require_errors = __commonJS({
       }
     };
     module2.exports = {
+      AbortError,
       HTTPParserError,
       UndiciError,
       HeadersTimeoutError,
@@ -2767,7 +2768,7 @@ var require_connect = __commonJS({
 });
 
 // lib/llhttp/utils.js
-var require_utils2 = __commonJS({
+var require_utils = __commonJS({
   "lib/llhttp/utils.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8587,7 +8588,6 @@ var require_pool = __commonJS({
             ...connect
           });
         }
-        this[kInterceptors] = options.interceptors && options.interceptors.Pool && Array.isArray(options.interceptors.Pool) ? options.interceptors.Pool : [];
         this[kConnections] = connections || null;
         this[kUrl] = util.parseOrigin(origin);
         this[kOptions] = { ...util.deepClone(options), connect, allowH2, clientTtl };
@@ -14212,9 +14212,9 @@ var require_eventsource = __commonJS({
   }
 });
 
-// lib/global.js
-var require_global2 = __commonJS({
-  "lib/global.js"(exports2, module2) {
+// lib/api/readable.js
+var require_readable = __commonJS({
+  "lib/api/readable.js"(exports2, module2) {
     "use strict";
     var assert = require("node:assert");
     var { Readable } = require("node:stream");

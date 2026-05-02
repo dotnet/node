@@ -1291,20 +1291,6 @@ added: v16.0.0
 
 Get supported types.
 
-<!-- YAML
-added: v8.5.0
--->
-
-### `PerformanceObserver.supportedEntryTypes`
-
-<!-- YAML
-added: v16.0.0
--->
-
-* {string\[]}
-
-Get supported types.
-
 ### `new PerformanceObserver(callback)`
 
 <!-- YAML

@@ -105,31 +105,6 @@ function parseTestMetadata(filename = process.argv[1]) {
   return { flags, envs };
 }
 
-function parseTestFlags(filename = process.argv[1]) {
-  // The copyright notice is relatively big and the flags could come afterwards.
-  const bytesToRead = 1500;
-  const buffer = Buffer.allocUnsafe(bytesToRead);
-  const fd = fs.openSync(filename, 'r');
-  const bytesRead = fs.readSync(fd, buffer, 0, bytesToRead);
-  fs.closeSync(fd);
-  const source = buffer.toString('utf8', 0, bytesRead);
-
-  const flagStart = source.search(/\/\/ Flags:\s+--/) + 10;
-
-  if (flagStart === 9) {
-    return [];
-  }
-  let flagEnd = source.indexOf('\n', flagStart);
-  // Normalize different EOL.
-  if (source[flagEnd - 1] === '\r') {
-    flagEnd--;
-  }
-  return source
-    .substring(flagStart, flagEnd)
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
 // Check for flags. Skip this for workers (both, the `cluster` module and
 // `worker_threads`) and child processes.
 // If the binary was built without-ssl then the crypto flags are

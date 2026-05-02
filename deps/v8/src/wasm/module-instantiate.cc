@@ -790,8 +790,6 @@ ImportCallKind ResolvedWasmImport::ComputeKind(
   return ImportCallKind::kUseCallBuiltin;
 }
 
-}  // namespace
-
 // A helper class to simplify instantiating a module from a module object.
 // It closes over the {Isolate}, the {ErrorThrower}, etc.
 class InstanceBuilder {

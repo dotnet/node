@@ -179,9 +179,6 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
     /* Limit the growth of the tree to mitigate CVE-2023-0464 */
     tree->node_maximum = OPENSSL_POLICY_TREE_NODES_MAX;
 
-    /* Limit the growth of the tree to mitigate CVE-2023-0464 */
-    tree->node_maximum = OPENSSL_POLICY_TREE_NODES_MAX;
-
     /*
      * http://tools.ietf.org/html/rfc5280#section-6.1.2, figure 3.
      *

@@ -95,8 +95,6 @@ class Request {
 
     this.bodyTimeout = bodyTimeout
 
-    this.throwOnError = throwOnError === true
-
     this.method = method
 
     this.abort = null
@@ -150,8 +148,6 @@ class Request {
       : idempotent
 
     this.blocking = blocking ?? this.method !== 'HEAD'
-
-    this.reset = reset == null ? null : reset
 
     this.reset = reset == null ? null : reset
 
@@ -337,20 +333,6 @@ class Request {
 function processHeader (request, key, val) {
   if (val && (typeof val === 'object' && !Array.isArray(val))) {
     throw new InvalidArgumentError(`invalid ${key} header`)
-  }
-
-  val = val != null ? `${val}` : ''
-
-  if (headerCharRegex.exec(val) !== null) {
-    throw new InvalidArgumentError(`invalid ${key} header`)
-  }
-
-  return `${key}: ${val}\r\n`
-}
-
-function processHeader (request, key, val) {
-  if (val && (typeof val === 'object' && !Array.isArray(val))) {
-    throw new InvalidArgumentError(`invalid ${key} header`)
   } else if (val === undefined) {
     return
   }
@@ -418,8 +400,6 @@ function processHeader (request, key, val) {
     }
   } else if (headerName === 'expect') {
     throw new NotSupportedError('expect header not supported')
-  } else if (tokenRegExp.exec(key) === null) {
-    throw new InvalidArgumentError('invalid header key')
   } else {
     request.headers.push(key, val)
   }

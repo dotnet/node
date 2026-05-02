@@ -900,8 +900,6 @@ containing the generated data.
 The algorithms currently supported include:
 
 * `'ECDH'`
-* `'X25519'` <span class="experimental-inline"></span>[^1]
-* `'X448'` <span class="experimental-inline"></span>[^1]
 * `'HKDF'`
 * `'PBKDF2'`
 * `'X25519'`
@@ -942,8 +940,6 @@ generate raw keying material, then passing the result into the
 The algorithms currently supported include:
 
 * `'ECDH'`
-* `'X25519'` <span class="experimental-inline"></span>[^1]
-* `'X448'` <span class="experimental-inline"></span>[^1]
 * `'HKDF'`
 * `'PBKDF2'`
 * `'X25519'`
@@ -1446,8 +1442,6 @@ changes:
 * `wrappingKey` {CryptoKey}
 * `wrapAlgo` {string|Algorithm|RsaOaepParams|AesCtrParams|AesCbcParams|AeadParams}
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
-
-<!--lint enable maximum-line-length remark-lint-->
 
 <!--lint enable maximum-line-length remark-lint-->
 

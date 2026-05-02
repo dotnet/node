@@ -248,15 +248,6 @@ struct V8_EXPORT DeepSerializationResult {
   bool isSuccess;
 };
 
-class V8_EXPORT WebDriverValue {
- public:
-  explicit WebDriverValue(StringView type, v8::MaybeLocal<v8::Value> value = {})
-      : type(type), value(value) {}
-
-  StringView type;
-  v8::MaybeLocal<v8::Value> value;
-};
-
 class V8_EXPORT V8InspectorClient {
  public:
   virtual ~V8InspectorClient() = default;

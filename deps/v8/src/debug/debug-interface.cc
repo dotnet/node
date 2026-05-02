@@ -132,51 +132,6 @@ Local<String> GetDateDescription(Local<Date> date) {
                             .ToHandleChecked());
 }
 
-Local<String> GetBigIntDescription(Isolate* isolate, Local<BigInt> bigint) {
-  i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
-  i::Handle<i::BigInt> i_bigint = Utils::OpenHandle(*bigint);
-  // For large BigInts computing the decimal string representation
-  // can take a long time, so we go with hexadecimal in that case.
-  int radix = (i_bigint->Words64Count() > 100 * 1000) ? 16 : 10;
-  i::Handle<i::String> string =
-      i::BigInt::ToString(i_isolate, i_bigint, radix, i::kDontThrow)
-          .ToHandleChecked();
-  if (radix == 16) {
-    if (i_bigint->IsNegative()) {
-      string = i_isolate->factory()
-                   ->NewConsString(
-                       i_isolate->factory()->NewStringFromAsciiChecked("-0x"),
-                       i_isolate->factory()->NewProperSubString(
-                           string, 1, string->length() - 1))
-                   .ToHandleChecked();
-    } else {
-      string =
-          i_isolate->factory()
-              ->NewConsString(
-                  i_isolate->factory()->NewStringFromAsciiChecked("0x"), string)
-              .ToHandleChecked();
-    }
-  }
-  i::Handle<i::String> description =
-      i_isolate->factory()
-          ->NewConsString(
-              string,
-              i_isolate->factory()->LookupSingleCharacterStringFromCode('n'))
-          .ToHandleChecked();
-  return Utils::ToLocal(description);
-}
-
-Local<String> GetDateDescription(Local<Date> date) {
-  auto receiver = Utils::OpenHandle(*date);
-  i::Handle<i::JSDate> jsdate = i::Handle<i::JSDate>::cast(receiver);
-  i::Isolate* isolate = jsdate->GetIsolate();
-  auto buffer = i::ToDateString(jsdate->value().Number(), isolate->date_cache(),
-                                i::ToDateStringMode::kLocalDateAndTime);
-  return Utils::ToLocal(isolate->factory()
-                            ->NewStringFromUtf8(base::VectorOf(buffer))
-                            .ToHandleChecked());
-}
-
 Local<String> GetFunctionDescription(Local<Function> function) {
   auto receiver = Utils::OpenHandle(*function);
   auto i_isolate = receiver->GetIsolate();

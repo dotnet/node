@@ -587,10 +587,6 @@ class SweepFinalizer final {
     // that the bitmap is consistent.
     ObjectStartBitmapVerifier().Verify(static_cast<NormalPage&>(*page));
 
-    // After the page was fully finalized and freelists have been merged, verify
-    // that the bitmap is consistent.
-    ObjectStartBitmapVerifier().Verify(static_cast<NormalPage&>(*page));
-
     // Add the page to the space.
     page->space().AddPage(page);
   }

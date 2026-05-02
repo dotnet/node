@@ -1275,26 +1275,6 @@ MaybeLocal<Value> Environment::RunSnapshotDeserializeMain() const {
   return handle_scope.Escape(Undefined(isolate()));
 }
 
-MaybeLocal<Value> Environment::RunSnapshotSerializeCallback() const {
-  EscapableHandleScope handle_scope(isolate());
-  if (!snapshot_serialize_callback().IsEmpty()) {
-    Context::Scope context_scope(context());
-    return handle_scope.EscapeMaybe(snapshot_serialize_callback()->Call(
-        context(), v8::Undefined(isolate()), 0, nullptr));
-  }
-  return handle_scope.Escape(Undefined(isolate()));
-}
-
-MaybeLocal<Value> Environment::RunSnapshotDeserializeMain() const {
-  EscapableHandleScope handle_scope(isolate());
-  if (!snapshot_deserialize_main().IsEmpty()) {
-    Context::Scope context_scope(context());
-    return handle_scope.EscapeMaybe(snapshot_deserialize_main()->Call(
-        context(), v8::Undefined(isolate()), 0, nullptr));
-  }
-  return handle_scope.Escape(Undefined(isolate()));
-}
-
 void Environment::RunCleanup() {
   started_cleanup_ = true;
   TRACE_EVENT0(TRACING_CATEGORY_NODE1(environment), "RunCleanup");

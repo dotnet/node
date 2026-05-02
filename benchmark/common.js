@@ -55,9 +55,6 @@ class Benchmark {
     if (this.queue.length === 0)
       return;
 
-    if (this.queue.length === 0)
-      return;
-
     // The configuration of the current job, head of the queue
     this.config = this.queue[0];
 

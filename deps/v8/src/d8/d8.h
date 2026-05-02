@@ -610,9 +610,6 @@ class Shell : public i::AllStatic {
   static void SetFlushDenormals(
       const v8::FunctionCallbackInfo<v8::Value>& info);
 
-  static void InstallConditionalFeatures(
-      const v8::FunctionCallbackInfo<v8::Value>& args);
-
   static void AsyncHooksCreateHook(
       const v8::FunctionCallbackInfo<v8::Value>& info);
   static void AsyncHooksExecutionAsyncId(

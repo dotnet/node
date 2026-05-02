@@ -818,16 +818,6 @@ class LocationMirror final : public ValueMirrorBase {
     return Response::Success();
   }
 
-  protocol::Response buildWebDriverValue(
-      v8::Local<v8::Context> context, int max_depth,
-      std::unique_ptr<protocol::Runtime::WebDriverValue>* result)
-      const override {
-    *result = protocol::Runtime::WebDriverValue::create()
-                  .setType(protocol::Runtime::WebDriverValue::TypeEnum::Object)
-                  .build();
-    return Response::Success();
-  }
-
  private:
   static std::unique_ptr<LocationMirror> create(v8::Local<v8::Object> value,
                                                 int scriptId, int lineNumber,

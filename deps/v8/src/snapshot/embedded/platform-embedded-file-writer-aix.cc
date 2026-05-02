@@ -62,11 +62,6 @@ void PlatformEmbeddedFileWriterAIX::AlignToCodeAlignment() {
   // don't cross 64-byte boundaries.
   static_assert((1 << 6) >= kCodeAlignment);
   fprintf(fp_, ".align 6\n");
-#elif V8_TARGET_ARCH_PPC64
-  // 64 byte alignment is needed on ppc64 to make sure p10 prefixed instructions
-  // don't cross 64-byte boundaries.
-  STATIC_ASSERT((1 << 6) >= kCodeAlignment);
-  fprintf(fp_, ".align 6\n");
 #else
   static_assert((1 << 5) >= kCodeAlignment);
   fprintf(fp_, ".align 5\n");

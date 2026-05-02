@@ -41,10 +41,6 @@
 
 nghttp3_objalloc_def(chunk, nghttp3_chunk, oplent);
 
-/* NGHTTP3_QPACK_ENCODER_MAX_DTABLE_CAPACITY is the upper bound of the
-   dynamic table capacity that QPACK encoder is willing to use. */
-#define NGHTTP3_QPACK_ENCODER_MAX_DTABLE_CAPACITY 4096
-
 /*
  * conn_remote_stream_uni returns nonzero if |stream_id| is remote
  * unidirectional stream ID.
@@ -2604,6 +2600,7 @@ int nghttp3_conn_set_server_stream_priority_versioned(nghttp3_conn *conn,
   nghttp3_stream *stream;
   (void)pri_version;
 
+  assert(conn->server);
   assert(pri->urgency < NGHTTP3_URGENCY_LEVELS);
   assert(pri->inc == 0 || pri->inc == 1);
 

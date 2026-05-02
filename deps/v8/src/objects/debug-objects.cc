@@ -425,16 +425,5 @@ Tagged<StackFrameInfo> StackTraceInfo::get(int index) const {
   return Cast<StackFrameInfo>(frames()->get(index));
 }
 
-// static
-MaybeHandle<JSObject> PromiseOnStack::GetPromise(
-    Handle<PromiseOnStack> promise_on_stack) {
-  HeapObject promise;
-  Isolate* isolate = promise_on_stack->GetIsolate();
-  if (promise_on_stack->promise()->GetHeapObjectIfWeak(isolate, &promise)) {
-    return handle(JSObject::cast(promise), isolate);
-  }
-  return {};
-}
-
 }  // namespace internal
 }  // namespace v8

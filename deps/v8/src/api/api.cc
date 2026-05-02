@@ -8977,10 +8977,6 @@ bool v8::ArrayBuffer::WasDetached() const {
   return Utils::OpenDirectHandle(this)->was_detached();
 }
 
-bool v8::ArrayBuffer::WasDetached() const {
-  return Utils::OpenHandle(this)->was_detached();
-}
-
 namespace {
 std::shared_ptr<i::BackingStore> ToInternal(
     std::shared_ptr<i::BackingStoreBase> backing_store) {

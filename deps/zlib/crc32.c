@@ -549,55 +549,6 @@ local void braid(z_crc_t ltl[][256], z_word_t big[][256], int n, int w) {
 
 #endif /* DYNAMIC_CRC_TABLE */
 
-/* ========================================================================
- * Routines used for CRC calculation. Some are also required for the table
- * generation above.
- */
-
-/*
-  Return a(x) multiplied by b(x) modulo p(x), where p(x) is the CRC polynomial,
-  reflected. For speed, this requires that a not be zero.
- */
-local z_crc_t multmodp(a, b)
-    z_crc_t a;
-    z_crc_t b;
-{
-    z_crc_t m, p;
-
-    m = (z_crc_t)1 << 31;
-    p = 0;
-    for (;;) {
-        if (a & m) {
-            p ^= b;
-            if ((a & (m - 1)) == 0)
-                break;
-        }
-        m >>= 1;
-        b = b & 1 ? (b >> 1) ^ POLY : b >> 1;
-    }
-    return p;
-}
-
-/*
-  Return x^(n * 2^k) modulo p(x). Requires that x2n_table[] has been
-  initialized.
- */
-local z_crc_t x2nmodp(n, k)
-    z_off64_t n;
-    unsigned k;
-{
-    z_crc_t p;
-
-    p = (z_crc_t)1 << 31;           /* x^0 == 1 */
-    while (n) {
-        if (n & 1)
-            p = multmodp(x2n_table[k & 31], p);
-        n >>= 1;
-        k++;
-    }
-    return p;
-}
-
 /* =========================================================================
  * This function can be used by asm versions of crc32(), and to force the
  * generation of the CRC tables in a threaded application.

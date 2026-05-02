@@ -113,9 +113,6 @@ int ossl_namemap_doall_names(const OSSL_NAMEMAP *namemap, int number,
     if (namemap == NULL || number <= 0)
         return 0;
 
-    if (namemap == NULL)
-        return 0;
-
     /*
      * We duplicate the NAMES stack under a read lock. Subsequently we call
      * the user function, so that we're not holding the read lock when in user

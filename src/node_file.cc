@@ -920,8 +920,6 @@ void AfterScanDir(uv_fs_t* req) {
 
   const bool with_file_types = req_wrap->with_file_types();
 
-  const bool with_file_types = req_wrap->with_file_types();
-
   for (;;) {
     uv_dirent_t ent;
 

@@ -9,8 +9,6 @@ import { FormData } from './formdata'
 import { HeaderRecord } from './header'
 import Dispatcher from './dispatcher'
 
-import Dispatcher from './dispatcher'
-
 export type RequestInfo = string | URL | Request
 
 export declare function fetch (

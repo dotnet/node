@@ -4428,11 +4428,6 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  *
  * The |pri_spec| is ignored.
  *
- * If
- * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
- * of value of 1 is received by a remote endpoint, |pri_spec| is
- * ignored, and treated as if ``NULL`` is specified.
- *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
  * |nvlen| elements.  The application is responsible to include
  * required pseudo-header fields (header field whose name starts with
@@ -4787,11 +4782,6 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  *
  * The |pri_spec| is ignored.
  *
- * If
- * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
- * of value of 1 is received by a remote endpoint, |pri_spec| is
- * ignored, and treated as if ``NULL`` is specified.
- *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
  * |nvlen| elements.  The application is responsible to include
  * required pseudo-header fields (header field whose name starts with
@@ -4914,11 +4904,6 @@ NGHTTP2_EXTERN int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  *
  * This function does not take ownership of the |data_prd|.  The
  * function copies the members of the |data_prd|.
- *
- * If
- * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
- * of value of 1 is received by a remote endpoint, this function does
- * nothing and returns 0.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:

@@ -151,50 +151,6 @@ T* MallocOpenSSL(size_t count) {
 // contents are zeroed.
 class ByteSource final {
  public:
-  class Builder {
-   public:
-    // Allocates memory using OpenSSL's memory allocator.
-    explicit Builder(size_t size)
-        : data_(MallocOpenSSL<char>(size)), size_(size) {}
-
-    Builder(Builder&& other) = delete;
-    Builder& operator=(Builder&& other) = delete;
-    Builder(const Builder&) = delete;
-    Builder& operator=(const Builder&) = delete;
-
-    ~Builder() { OPENSSL_clear_free(data_, size_); }
-
-    // Returns the underlying non-const pointer.
-    template <typename T>
-    T* data() {
-      return reinterpret_cast<T*>(data_);
-    }
-
-    // Returns the (allocated) size in bytes.
-    size_t size() const { return size_; }
-
-    // Finalizes the Builder and returns a read-only view that is optionally
-    // truncated.
-    ByteSource release(std::optional<size_t> resize = std::nullopt) && {
-      if (resize) {
-        CHECK_LE(*resize, size_);
-        if (*resize == 0) {
-          OPENSSL_clear_free(data_, size_);
-          data_ = nullptr;
-        }
-        size_ = *resize;
-      }
-      ByteSource out = ByteSource::Allocated(data_, size_);
-      data_ = nullptr;
-      size_ = 0;
-      return out;
-    }
-
-   private:
-    void* data_;
-    size_t size_;
-  };
-
   ByteSource() = default;
   ByteSource(ByteSource&& other) noexcept;
   ~ByteSource();
@@ -631,8 +587,6 @@ v8::Maybe<void> SetEncodedValue(Environment* env,
                                 v8::Local<v8::String> name,
                                 const BIGNUM* bn,
                                 int size = 0);
-
-bool SetRsaOaepLabel(const EVPKeyCtxPointer& rsa, const ByteSource& label);
 
 namespace Util {
 void Initialize(Environment* env, v8::Local<v8::Object> target);

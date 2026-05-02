@@ -71,16 +71,6 @@ class Decoder {
   void ResetPrefix();
   bool IsPrefixed();
 
-  // Prefixed instructions.
-  enum PrefixType { not_prefixed, is_prefixed };
-  // static is used to retain values even with new instances.
-  static PrefixType PrefixStatus;
-  static uint64_t PrefixValue;
-  uint64_t GetPrefixValue();
-  void SetAsPrefixed(uint64_t v);
-  void ResetPrefix();
-  bool IsPrefixed();
-
  private:
   // Bottleneck functions to print into the out_buffer.
   void PrintChar(const char ch);

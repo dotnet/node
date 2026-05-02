@@ -77,9 +77,6 @@ class MemoryRetainerNode : public v8::EmbedderGraph::Node {
     }
     return is_root_node_;
   }
-  v8::EmbedderGraph::Node::Detachedness GetDetachedness() override {
-    return detachedness_;
-  }
 
   bool IsCppgcWrapper() const {
     return retainer_ != nullptr && retainer_->IsCppgcWrapper();

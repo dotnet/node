@@ -801,14 +801,6 @@ static void PrintComponentVersions(JSONWriter* writer) {
     writer->json_keyvalue(version.first, version.second);
   }
 
-  std::sort(&versions_array[0],
-            &versions_array[arraysize(versions_array)],
-            [](auto& a, auto& b) { return a.first < b.first; });
-
-  for (const auto& version : versions_array) {
-    writer->json_keyvalue(version.first, version.second);
-  }
-
   writer->json_objectend();
 }
 

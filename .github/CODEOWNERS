@@ -36,7 +36,6 @@
 
 # net
 
-/deps/ada @nodejs/url
 /deps/cares @nodejs/net
 /doc/api/dgram.md @nodejs/net
 /doc/api/dns.md @nodejs/net
@@ -53,7 +52,6 @@
 /src/connect_wrap.* @nodejs/net
 /src/connection_wrap.* @nodejs/net
 /src/node_sockaddr* @nodejs/net
-/src/node_url.* @nodejs/url
 /src/tcp_wrap.* @nodejs/net
 /src/udp_wrap.* @nodejs/net
 

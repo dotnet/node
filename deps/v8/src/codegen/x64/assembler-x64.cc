@@ -3568,13 +3568,6 @@ void Assembler::roundss(XMMRegister dst, Operand src, RoundingMode mode) {
   emit(static_cast<uint8_t>(mode) | 0x8);
 }
 
-void Assembler::roundss(XMMRegister dst, Operand src, RoundingMode mode) {
-  DCHECK(!IsEnabled(AVX));
-  sse4_instr(dst, src, 0x66, 0x0F, 0x3A, 0x0A);
-  // Mask precision exception.
-  emit(static_cast<byte>(mode) | 0x8);
-}
-
 void Assembler::roundsd(XMMRegister dst, XMMRegister src, RoundingMode mode) {
   DCHECK(!IsEnabled(AVX));
   sse4_instr(dst, src, 0x66, 0x0F, 0x3A, 0x0B);
@@ -3587,13 +3580,6 @@ void Assembler::roundsd(XMMRegister dst, Operand src, RoundingMode mode) {
   sse4_instr(dst, src, 0x66, 0x0F, 0x3A, 0x0B);
   // Mask precision exception.
   emit(static_cast<uint8_t>(mode) | 0x8);
-}
-
-void Assembler::roundsd(XMMRegister dst, Operand src, RoundingMode mode) {
-  DCHECK(!IsEnabled(AVX));
-  sse4_instr(dst, src, 0x66, 0x0F, 0x3A, 0x0B);
-  // Mask precision exception.
-  emit(static_cast<byte>(mode) | 0x8);
 }
 
 void Assembler::roundps(XMMRegister dst, XMMRegister src, RoundingMode mode) {

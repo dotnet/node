@@ -60,8 +60,6 @@ class BindingData : public SnapshotableObject {
                          v8::Local<v8::ObjectTemplate> target);
   static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
 
-  using InternalFieldInfo = InternalFieldInfoBase;
-
   SERIALIZABLE_OBJECT_METHODS()
   SET_BINDING_ID(process_binding_data)
 

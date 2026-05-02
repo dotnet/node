@@ -156,7 +156,6 @@ NAPI_EXTERN napi_status NAPI_CDECL napi_get_buffer_info(napi_env env,
                                                         void** data,
                                                         size_t* length);
 
-#ifndef __wasm32__
 // Methods to manage simple async operations
 NAPI_EXTERN napi_status NAPI_CDECL
 napi_create_async_work(napi_env env,

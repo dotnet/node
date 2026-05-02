@@ -109,10 +109,6 @@ const invalidArgValueError = {
 
 {
   // validateObject tests.
-  Object.prototype.nullable = true;
-  Object.prototype.allowArray = true;
-  Object.prototype.allowFunction = true;
-
   validateObject({}, 'foo');
   validateObject({ a: 42, b: 'foo' }, 'foo');
 

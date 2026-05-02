@@ -450,15 +450,6 @@ t.test('workspaces', async t => {
     console.log('init-create ran')`,
         },
       },
-      initPackageJson: async (...args) => {
-        const [dir] = args
-        if (dir.endsWith('c')) {
-          await fs.writeFile(resolve(dir, 'package.json'), JSON.stringify({
-            name: basename(dir),
-          }), 'utf-8')
-        }
-      },
-      config: { yes: true, workspace: ['a', 'c'] },
     })
     await npm.exec('install', []) // reify
     npm.config.set('workspace', ['test/workspace-init-b'])

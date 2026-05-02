@@ -186,7 +186,6 @@ class V8_EXPORT_PRIVATE HeapAllocator final {
   LocalHeap* local_heap_;
   Heap* const heap_;
   Space* spaces_[LAST_SPACE + 1];
-  PagedSpace* space_for_maps_;
   ReadOnlySpace* read_only_space_;
 
   std::optional<MainAllocator> new_space_allocator_;

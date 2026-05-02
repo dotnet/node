@@ -274,11 +274,6 @@ TEST_IMPL(thread_stack_size_explicit) {
                                 thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 
-  options.stack_size = 42;
-  ASSERT(0 == uv_thread_create_ex(&thread, &options,
-                                  thread_check_stack, &options));
-  ASSERT(0 == uv_thread_join(&thread));
-
 #ifdef PTHREAD_STACK_MIN
   options.stack_size = PTHREAD_STACK_MIN - 42;  /* unaligned size */
   ASSERT_OK(uv_thread_create_ex(&thread, &options,

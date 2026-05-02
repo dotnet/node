@@ -27,18 +27,6 @@
 # define NO_INTERLOCKEDOR64
 #endif
 
-/*
- * VC++ 2008 or earlier x86 compilers do not have an inline implementation
- * of InterlockedOr64 for 32bit and will fail to run on Windows XP 32bit.
- * https://docs.microsoft.com/en-us/cpp/intrinsics/interlockedor-intrinsic-functions#requirements
- * To work around this problem, we implement a manual locking mechanism for
- * only VC++ 2008 or earlier x86 compilers.
- */
-
-#if (defined(_MSC_VER) && defined(_M_IX86) && _MSC_VER <= 1600)
-# define NO_INTERLOCKEDOR64
-#endif
-
 #include <openssl/crypto.h>
 #include <crypto/cryptlib.h>
 #include "internal/common.h"

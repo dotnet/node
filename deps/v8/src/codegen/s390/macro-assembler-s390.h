@@ -1130,12 +1130,6 @@ class V8_EXPORT_PRIVATE MacroAssembler : public MacroAssemblerBase {
     ShiftLeftU64(dst, src, Operand(kSmiShift));
   }
 
-  // Shift left by kSmiShift
-  void SmiTag(Register reg) { SmiTag(reg, reg); }
-  void SmiTag(Register dst, Register src) {
-    ShiftLeftU64(dst, src, Operand(kSmiShift));
-  }
-
   // Abort execution if argument is a smi, enabled via --debug-code.
   void AssertNotSmi(Register object) NOOP_UNLESS_DEBUG_CODE;
   void AssertSmi(Register object) NOOP_UNLESS_DEBUG_CODE;

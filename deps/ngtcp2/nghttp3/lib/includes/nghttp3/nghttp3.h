@@ -183,13 +183,6 @@ typedef ptrdiff_t nghttp3_ssize;
 /**
  * @macro
  *
- * :macro:`NGHTTP3_ERR_STREAM_DATA_OVERFLOW` indicates that the length
- * of stream data is too long and causes overflow.
- */
-#define NGHTTP3_ERR_STREAM_DATA_OVERFLOW -117
-/**
- * @macro
- *
  * :macro:`NGHTTP3_ERR_QPACK_DECOMPRESSION_FAILED` indicates that a
  * QPACK decompression failed.
  */
@@ -1603,30 +1596,6 @@ NGHTTP3_EXTERN void nghttp3_set_debug_vprintf_callback(
 #define NGHTTP3_SHUTDOWN_NOTICE_PUSH_ID ((1ull << 62) - 1)
 
 /**
- * @macrosection
- *
- * Shutdown related constants
- */
-
-/**
- * @macro
- *
- * :macro:`NGHTTP3_SHUTDOWN_NOTICE_STREAM_ID` specifies stream id sent
- * by a server when it initiates graceful shutdown of the connection
- * via `nghttp3_conn_submit_shutdown_notice`.
- */
-#define NGHTTP3_SHUTDOWN_NOTICE_STREAM_ID ((1ull << 62) - 4)
-
-/**
- * @macro
- *
- * :macro:`NGHTTP3_SHUTDOWN_NOTICE_PUSH_ID` specifies push id sent
- * by a client when it initiates graceful shutdown of the connection
- * via `nghttp3_conn_submit_shutdown_notice`.
- */
-#define NGHTTP3_SHUTDOWN_NOTICE_PUSH_ID ((1ull << 62) - 1)
-
-/**
  * @struct
  *
  * :type:`nghttp3_conn` represents a single HTTP/3 connection.  The
@@ -1812,8 +1781,6 @@ typedef int (*nghttp3_recv_header)(nghttp3_conn *conn, int64_t stream_id,
  *
  * If the stream ends with this HTTP field section, |fin| is set to
  * nonzero.
- *
- * If the stream ends with this header block, |fin| is set to nonzero.
  *
  * The implementation of this callback must return 0 if it succeeds.
  * Returning :macro:`NGHTTP3_ERR_CALLBACK_FAILURE` will return to the
@@ -2020,9 +1987,6 @@ typedef struct nghttp3_callbacks {
    */
   nghttp3_recv_settings recv_settings;
 } nghttp3_callbacks;
-
-#define NGHTTP3_SETTINGS_VERSION_V1 1
-#define NGHTTP3_SETTINGS_VERSION NGHTTP3_SETTINGS_VERSION_V1
 
 /**
  * @function
@@ -2849,12 +2813,6 @@ NGHTTP3_EXTERN int nghttp3_pri_parse_priority_versioned(int pri_version,
                                                         nghttp3_pri *dest,
                                                         const uint8_t *value,
                                                         size_t len);
-
-/**
- * @macrosection
- *
- * nghttp3_info flags
- */
 
 /**
  * @macrosection

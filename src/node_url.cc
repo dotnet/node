@@ -190,8 +190,6 @@ void BindingData::DomainToASCII(const FunctionCallbackInfo<Value>& args) {
   if (input.ToStringView().empty()) {
     return args.GetReturnValue().SetEmptyString();
   }
-  auto out =
-      ada::parse<ada::url_aggregator>(input.ToStringView(), base_pointer);
 
   // It is important to have an initial value that contains a special scheme.
   // Since it will change the implementation of `set_hostname` according to URL

@@ -510,12 +510,6 @@ GarbageCollector Heap::SelectGarbageCollector(AllocationSpace space,
     return GarbageCollector::MARK_COMPACTOR;
   }
 
-  if (FLAG_separate_gc_phases && incremental_marking()->IsMarking()) {
-    // TODO(v8:12503): Remove previous condition when flag gets removed.
-    *reason = "Incremental marking forced finalization";
-    return GarbageCollector::MARK_COMPACTOR;
-  }
-
   if (!CanPromoteYoungAndExpandOldGeneration(0)) {
     isolate_->counters()
         ->gc_compactor_caused_by_oldspace_exhaustion()
@@ -2130,17 +2124,6 @@ void Heap::CheckCollectionRequested() {
                     GarbageCollectionReason::kBackgroundAllocationFailure,
                     current_gc_callback_flags_);
 }
-
-#if V8_ENABLE_WEBASSEMBLY
-void Heap::EnsureWasmCanonicalRttsSize(int length) {
-  Handle<WeakArrayList> current_rtts = handle(wasm_canonical_rtts(), isolate_);
-  if (length <= current_rtts->length()) return;
-  Handle<WeakArrayList> result = WeakArrayList::EnsureSpace(
-      isolate(), current_rtts, length, AllocationType::kOld);
-  result->set_length(length);
-  set_wasm_canonical_rtts(*result);
-}
-#endif
 
 void Heap::UpdateSurvivalStatistics(int start_new_space_size) {
   if (start_new_space_size == 0) return;

@@ -269,6 +269,7 @@ message = "%s"
 node-gyp = "{CWD}/node_modules/node-gyp/bin/node-gyp.js"
 node-options = null
 noproxy = [""]
+npm-version = "{NPM-VERSION}"
 offline = false
 omit = []
 omit-lockfile-registry-resolved = false

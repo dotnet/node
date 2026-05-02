@@ -837,11 +837,6 @@ int ossl_cmp_msg_check_update(OSSL_CMP_CTX *ctx, const OSSL_CMP_MSG *msg,
         && !OSSL_CMP_CTX_set1_transactionID(ctx, hdr->transactionID))
         return 0;
 
-    /* if not yet present, learn transactionID */
-    if (ctx->transactionID == NULL
-        && !OSSL_CMP_CTX_set1_transactionID(ctx, hdr->transactionID))
-        return 0;
-
     /*
      * RFC 4210 section 5.1.1 states: the recipNonce is copied from
      * the senderNonce of the previous message in the transaction.

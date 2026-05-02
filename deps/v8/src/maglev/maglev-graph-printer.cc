@@ -895,8 +895,6 @@ ProcessResult MaglevPrintingVisitor::Process(ControlNode* control_node,
   MaybePrintEagerDeopt(os_, targets_, control_node, graph_labeller_,
                        max_node_id_);
 
-  MaybePrintEagerDeopt(os_, targets_, control_node, state);
-
   bool has_fallthrough = false;
 
   if (control_node->Is<JumpLoop>()) {

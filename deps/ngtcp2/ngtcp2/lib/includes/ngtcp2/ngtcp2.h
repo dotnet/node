@@ -90,16 +90,6 @@
 extern "C" {
 #endif /* defined(__cplusplus) */
 
-#ifdef _MSC_VER
-#  define NGTCP2_ALIGN(N) __declspec(align(N))
-#else /* !_MSC_VER */
-#  define NGTCP2_ALIGN(N) __attribute__((aligned(N)))
-#endif /* !_MSC_VER */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @typedef
  *
@@ -299,14 +289,6 @@ typedef struct ngtcp2_mem {
 #define NGTCP2_RESERVED_VERSION_MASK 0x0a0a0a0au
 
 /**
- * @macro
- *
- * :macro:`NGTCP2_RESERVED_VERSION_MASK` is the bit mask of reserved
- * version.
- */
-#define NGTCP2_RESERVED_VERSION_MASK 0x0a0a0a0au
-
-/**
  * @macrosection
  *
  * UDP datagram related macros
@@ -446,14 +428,6 @@ typedef struct ngtcp2_mem {
  * bear token from Retry packet.
  */
 #define NGTCP2_MIN_INITIAL_DCIDLEN 8
-
-/**
- * @macro
- *
- * :macro:`NGTCP2_DEFAULT_HANDSHAKE_TIMEOUT` is the default handshake
- * timeout.
- */
-#define NGTCP2_DEFAULT_HANDSHAKE_TIMEOUT (10 * NGTCP2_SECONDS)
 
 /**
  * @macrosection
@@ -783,34 +757,6 @@ typedef struct NGTCP2_ALIGN(8) ngtcp2_pkt_info {
  * closed silently because of idle timeout.
  */
 #define NGTCP2_ERR_IDLE_CLOSE -238
-/**
- * @macro
- *
- * :macro:`NGTCP2_ERR_VERSION_NEGOTIATION` indicates that server
- * should send Version Negotiation packet.
- */
-#define NGTCP2_ERR_VERSION_NEGOTIATION -245
-/**
- * @macro
- *
- * :macro:`NGTCP2_ERR_HANDSHAKE_TIMEOUT` indicates that QUIC
- * connection is not established before the specified deadline.
- */
-#define NGTCP2_ERR_HANDSHAKE_TIMEOUT -246
-/**
- * @macro
- *
- * :macro:`NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE` indicates the
- * version negotiation failed.
- */
-#define NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE -247
-/**
- * @macro
- *
- * :macro:`NGTCP2_ERR_IDLE_CLOSE` indicates the connection should be
- * closed silently because of idle timeout.
- */
-#define NGTCP2_ERR_IDLE_CLOSE -248
 /**
  * @macro
  *
@@ -1405,16 +1351,6 @@ typedef struct ngtcp2_preferred_addr {
    */
   uint8_t ipv6_present;
   /**
-   * :member:`ipv4_present` indicates that :member:`ipv4_addr` and
-   * :member:`ipv4_port` contain IPv4 address and port respectively.
-   */
-  uint8_t ipv4_present;
-  /**
-   * :member:`ipv6_present` indicates that :member:`ipv6_addr` and
-   * :member:`ipv6_port` contain IPv6 address and port respectively.
-   */
-  uint8_t ipv6_present;
-  /**
    * :member:`stateless_reset_token` contains stateless reset token.
    */
   uint8_t stateless_reset_token[NGTCP2_STATELESS_RESET_TOKENLEN];
@@ -1619,9 +1555,6 @@ typedef struct ngtcp2_transport_params {
 #define NGTCP2_CONN_INFO_V1 1
 #define NGTCP2_CONN_INFO_VERSION NGTCP2_CONN_INFO_V1
 
-#define NGTCP2_CONN_STAT_VERSION_V1 1
-#define NGTCP2_CONN_STAT_VERSION NGTCP2_CONN_STAT_VERSION_V1
-
 /**
  * @struct
  *
@@ -1764,9 +1697,6 @@ typedef enum ngtcp2_token_type {
 #define NGTCP2_SETTINGS_V1 1
 #define NGTCP2_SETTINGS_V2 2
 #define NGTCP2_SETTINGS_VERSION NGTCP2_SETTINGS_V2
-
-#define NGTCP2_SETTINGS_VERSION_V1 1
-#define NGTCP2_SETTINGS_VERSION NGTCP2_SETTINGS_VERSION_V1
 
 /**
  * @struct
@@ -1980,89 +1910,6 @@ typedef struct ngtcp2_settings {
    */
   size_t pmtud_probeslen;
 } ngtcp2_settings;
-
-#ifdef NGTCP2_USE_GENERIC_SOCKADDR
-typedef struct ngtcp2_sockaddr {
-  uint16_t sa_family;
-  uint8_t sa_data[14];
-} ngtcp2_sockaddr;
-
-typedef struct ngtcp2_in_addr {
-  uint32_t s_addr;
-} ngtcp2_in_addr;
-
-typedef struct ngtcp2_sockaddr_in {
-  uint16_t sin_family;
-  uint16_t sin_port;
-  ngtcp2_in_addr sin_addr;
-  uint8_t sin_zero[8];
-} ngtcp2_sockaddr_in;
-
-#  define NGTCP2_SS_MAXSIZE 128
-#  define NGTCP2_SS_ALIGNSIZE (sizeof(uint64_t))
-#  define NGTCP2_SS_PAD1SIZE (NGTCP2_SS_ALIGNSIZE - sizeof(uint16_t))
-#  define NGTCP2_SS_PAD2SIZE                                                   \
-    (NGTCP2_SS_MAXSIZE -                                                       \
-     (sizeof(uint16_t) + NGTCP2_SS_PAD1SIZE + NGTCP2_SS_ALIGNSIZE))
-
-typedef struct ngtcp2_sockaddr_storage {
-  uint16_t ss_family;
-  uint8_t _ss_pad1[NGTCP2_SS_PAD1SIZE];
-  uint64_t _ss_align;
-  uint8_t _ss_pad2[NGTCP2_SS_PAD2SIZE];
-} ngtcp2_sockaddr_storage;
-
-#  undef NGTCP2_SS_PAD2SIZE
-#  undef NGTCP2_SS_PAD1SIZE
-#  undef NGTCP2_SS_ALIGNSIZE
-#  undef NGTCP2_SS_MAXSIZE
-
-typedef uint32_t ngtcp2_socklen;
-#else
-/**
- * @typedef
- *
- * :type:`ngtcp2_sockaddr` is typedefed to struct sockaddr.  If
- * :macro:`NGTCP2_USE_GENERIC_SOCKADDR` is defined, it is typedefed to
- * the generic struct sockaddr defined in ngtcp2.h.
- */
-typedef struct sockaddr ngtcp2_sockaddr;
-/**
- * @typedef
- *
- * :type:`ngtcp2_sockaddr_storage` is typedefed to struct
- * sockaddr_storage.  If :macro:`NGTCP2_USE_GENERIC_SOCKADDR` is
- * defined, it is typedefed to the generic struct sockaddr_storage
- * defined in ngtcp2.h.
- */
-typedef struct sockaddr_storage ngtcp2_sockaddr_storage;
-typedef struct sockaddr_in ngtcp2_sockaddr_in;
-/**
- * @typedef
- *
- * :type:`ngtcp2_socklen` is typedefed to socklen_t.  If
- * :macro:`NGTCP2_USE_GENERIC_SOCKADDR` is defined, it is typedefed to
- * uint32_t.
- */
-typedef socklen_t ngtcp2_socklen;
-#endif
-
-#if defined(NGTCP2_USE_GENERIC_SOCKADDR) ||                                    \
-    defined(NGTCP2_USE_GENERIC_IPV6_SOCKADDR)
-typedef struct ngtcp2_in6_addr {
-  uint8_t in6_addr[16];
-} ngtcp2_in6_addr;
-
-typedef struct ngtcp2_sockaddr_in6 {
-  uint16_t sin6_family;
-  uint16_t sin6_port;
-  uint32_t sin6_flowinfo;
-  ngtcp2_in6_addr sin6_addr;
-  uint32_t sin6_scope_id;
-} ngtcp2_sockaddr_in6;
-#else
-typedef struct sockaddr_in6 ngtcp2_sockaddr_in6;
-#endif
 
 /**
  * @struct
@@ -2282,12 +2129,6 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_transport_params_encode_versioned(
  *
  * - :member:`ngtcp2_transport_params.version_info.available_versions
  *   <ngtcp2_version_info.available_versions>`
- *
- * The following fields may point to somewhere inside the buffer
- * pointed by |data| of length |datalen|:
- *
- * - :member:`ngtcp2_transport_params.version_info.other_versions
- *   <ngtcp2_version_info.other_versions>`
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -3120,28 +2961,6 @@ typedef int (*ngtcp2_update_key)(
  * This flag is only set for server.
  */
 #define NGTCP2_PATH_VALIDATION_FLAG_NEW_TOKEN 0x02u
-
-/**
- * @macrosection
- *
- * Path validation related macros
- */
-
-/**
- * @macro
- *
- * :macro:`NGTCP2_PATH_VALIDATION_FLAG_NONE` indicates no flag set.
- */
-#define NGTCP2_PATH_VALIDATION_FLAG_NONE 0x00u
-
-/**
- * @macro
- *
- * :macro:`NGTCP2_PATH_VALIDATION_FLAG_PREFERRED_ADDR` indicates the
- * validation involving server preferred address.  This flag is only
- * set for client.
- */
-#define NGTCP2_PATH_VALIDATION_FLAG_PREFERRED_ADDR 0x01u
 
 /**
  * @functypedef
@@ -4012,42 +3831,6 @@ NGTCP2_EXTERN int ngtcp2_conn_install_vneg_initial_key(
 /**
  * @function
  *
- * `ngtcp2_conn_install_vneg_initial_key` installs packet protection
- * keying materials for Initial packets on compatible version
- * negotiation for |version|.  |rx_aead_ctx| is AEAD cipher context
- * object and must be initialized with a decryption key.  |rx_iv| is
- * IV of length |rx_ivlen| for decryption.  |rx_hp_ctx| is a packet
- * header protection cipher context object for decryption.  Similarly,
- * |tx_aead_ctx|, |tx_iv| and |tx_hp_ctx| are for encrypting outgoing
- * packets and are the same length with the decryption counterpart .
- * If they have already been set, they are overwritten.
- *
- * |ivlen| must be the minimum length of AEAD nonce, or 8 bytes if
- * that is larger.
- *
- * If this function succeeds, |conn| takes ownership of |rx_aead_ctx|,
- * |rx_hp_ctx|, |tx_aead_ctx|, and |tx_hp_ctx|.
- * :type:`ngtcp2_delete_crypto_aead_ctx` and
- * :type:`ngtcp2_delete_crypto_cipher_ctx` will be called to delete
- * these objects when they are no longer used.  If this function
- * fails, the caller is responsible to delete them.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :macro:`NGTCP2_ERR_NOMEM`
- *     Out of memory.
- */
-NGTCP2_EXTERN int ngtcp2_conn_install_vneg_initial_key(
-    ngtcp2_conn *conn, uint32_t version,
-    const ngtcp2_crypto_aead_ctx *rx_aead_ctx, const uint8_t *rx_iv,
-    const ngtcp2_crypto_cipher_ctx *rx_hp_ctx,
-    const ngtcp2_crypto_aead_ctx *tx_aead_ctx, const uint8_t *tx_iv,
-    const ngtcp2_crypto_cipher_ctx *tx_hp_ctx, size_t ivlen);
-
-/**
- * @function
- *
  * `ngtcp2_conn_install_rx_handshake_key` installs packet protection
  * keying materials for decrypting incoming Handshake packets.
  * |aead_ctx| is AEAD cipher context object which must be initialized
@@ -4108,9 +3891,6 @@ NGTCP2_EXTERN int ngtcp2_conn_install_tx_handshake_key(
  * cipher context object |aead_ctx|, IV |iv| of length |ivlen|, and
  * packet header protection cipher context object |hp_ctx| to encrypt
  * (for client) or decrypt (for server) 0-RTT packets.
- *
- * |ivlen| must be the minimum length of AEAD nonce, or 8 bytes if
- * that is larger.
  *
  * |ivlen| must be the minimum length of AEAD nonce, or 8 bytes if
  * that is larger.
@@ -5293,16 +5073,6 @@ NGTCP2_EXTERN uint64_t ngtcp2_conn_get_max_data_left(ngtcp2_conn *conn);
  * that this local endpoint can send to a stream identified by
  * |stream_id| without violating stream-level flow control.  If no
  * such stream is found, this function returns 0.
- */
-NGTCP2_EXTERN uint64_t ngtcp2_conn_get_max_stream_data_left(ngtcp2_conn *conn,
-                                                            int64_t stream_id);
-
-/**
- * @function
- *
- * `ngtcp2_conn_get_max_stream_data_left` returns the number of bytes
- * that this local endpoint can send to a stream identified by
- * |stream_id|.  If no such stream is found, this function returns 0.
  */
 NGTCP2_EXTERN uint64_t ngtcp2_conn_get_max_stream_data_left(ngtcp2_conn *conn,
                                                             int64_t stream_id);

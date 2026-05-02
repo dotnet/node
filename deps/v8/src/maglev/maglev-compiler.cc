@@ -254,13 +254,6 @@ bool MaglevCompiler::Compile(LocalIsolate* local_isolate,
     }
   }
 
-#ifdef DEBUG
-  {
-    GraphProcessor<MaglevGraphVerifier> verifier(toplevel_compilation_unit_);
-    verifier.ProcessGraph(graph_builder.graph());
-  }
-#endif
-
   {
     TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.compile"),
                  "V8.Maglev.CodeAssembly");

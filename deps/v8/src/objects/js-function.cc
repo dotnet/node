@@ -1351,10 +1351,6 @@ std::unique_ptr<char[]> JSFunction::DebugNameCStr() {
   return shared()->DebugNameCStr();
 }
 
-std::unique_ptr<char[]> JSFunction::DebugNameCStr() {
-  return shared().DebugNameCStr();
-}
-
 void JSFunction::PrintName(FILE* out) {
   PrintF(out, "%s", DebugNameCStr().get());
 }

@@ -27,18 +27,6 @@ const protected = [
   'username',
 ]
 
-// These are the configs that we can nerf-dart. Not all of them currently even
-// *have* config definitions so we have to explicitly validate them here
-const nerfDarts = [
-  '_auth',
-  '_authToken',
-  'username',
-  '_password',
-  'email',
-  'certfile',
-  'keyfile',
-]
-
 // take an array of `[key, value, k2=v2, k3, v3, ...]` and turn into
 // { key: value, k2: v2, k3: v3 }
 const keyValues = args => {

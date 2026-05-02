@@ -102,9 +102,6 @@ DEF_GETTER(ErrorStackData, call_site_infos, Tagged<FixedArray>) {
   return Cast<FixedArray>(call_site_infos_or_formatted_stack());
 }
 
-NEVER_READ_ONLY_SPACE_IMPL(PromiseOnStack)
-TQ_OBJECT_CONSTRUCTORS_IMPL(PromiseOnStack)
-
 }  // namespace internal
 }  // namespace v8
 

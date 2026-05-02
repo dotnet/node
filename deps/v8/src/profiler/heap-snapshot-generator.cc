@@ -2089,15 +2089,6 @@ void V8HeapExplorer::ExtractScopeInfoReferences(HeapEntry* entry,
     TagObject(info->context_local_names_hashtable(), "(context local names)",
               HeapEntry::kCode);
   }
-  for (int i = 0; i < feedback_vector.length(); ++i) {
-    MaybeObject maybe_entry = *(feedback_vector.slots_start() + i);
-    HeapObject entry;
-    if (maybe_entry.GetHeapObjectIfStrong(&entry) &&
-        (entry.map(isolate()).instance_type() == WEAK_FIXED_ARRAY_TYPE ||
-         entry.IsFixedArrayExact())) {
-      TagObject(entry, "(feedback)", HeapEntry::kCode);
-    }
-  }
 }
 
 void V8HeapExplorer::ExtractFeedbackVectorReferences(

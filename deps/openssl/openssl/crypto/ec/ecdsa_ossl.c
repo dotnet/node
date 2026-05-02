@@ -36,15 +36,6 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx_in,
                             unsigned int nonce_type, const char *digestname,
                             OSSL_LIB_CTX *libctx, const char *propq);
 
-#define MIN_ECDSA_SIGN_ORDERBITS 64
-/*
- * It is highly unlikely that a retry will happen,
- * Multiple retries would indicate that something is wrong
- * with the group parameters (which would normally only happen
- * with a bad custom group).
- */
-#define MAX_ECDSA_SIGN_RETRIES 8
-
 int ossl_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
                           BIGNUM **rp)
 {

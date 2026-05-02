@@ -221,13 +221,6 @@ class JSReceiver : public TorqueGeneratedJSReceiver<JSReceiver, HeapObject> {
       LookupIterator* it, DirectHandle<Object> value,
       Maybe<ShouldThrow> should_throw);
 
-  // Add private fields to the receiver, ignoring extensibility and the
-  // traps. The caller should check that the private field does not already
-  // exist on the receiver before calling this method.
-  V8_WARN_UNUSED_RESULT static Maybe<bool> AddPrivateField(
-      LookupIterator* it, Handle<Object> value,
-      Maybe<ShouldThrow> should_throw);
-
   // ES6 9.1.6.1
   V8_WARN_UNUSED_RESULT static Maybe<bool> OrdinaryDefineOwnProperty(
       Isolate* isolate, DirectHandle<JSObject> object, DirectHandle<Object> key,
@@ -828,12 +821,6 @@ class JSObject : public TorqueGeneratedJSObject<JSObject, JSReceiver> {
   inline Tagged<Object> RawFastInobjectPropertyAtCompareAndSwap(
       FieldIndex index, Tagged<Object> expected, Tagged<Object> value,
       SeqCstAccessTag tag);
-
-  inline Object RawFastPropertyAtSwap(FieldIndex index, Object value,
-                                      SeqCstAccessTag tag);
-  inline Object RawFastPropertyAtSwap(PtrComprCageBase cage_base,
-                                      FieldIndex index, Object value,
-                                      SeqCstAccessTag tag);
 
   // Access to in object properties.
   inline int GetInObjectPropertyOffset(int index);

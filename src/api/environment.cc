@@ -237,7 +237,6 @@ void SetIsolateErrorHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
   auto* fatal_error_cb = s.fatal_error_callback ?
       s.fatal_error_callback : OnFatalError;
   isolate->SetFatalErrorHandler(fatal_error_cb);
-  isolate->SetOOMErrorHandler(OOMErrorHandler);
 
   auto* oom_error_cb =
       s.oom_error_callback ? s.oom_error_callback : OOMErrorHandler;
@@ -311,17 +310,6 @@ Isolate* NewIsolate(Isolate::CreateParams* params,
                     const IsolateSettings& settings) {
   Isolate* isolate = Isolate::Allocate();
   if (isolate == nullptr) return nullptr;
-#ifdef NODE_V8_SHARED_RO_HEAP
-  {
-    // In shared-readonly-heap mode, V8 requires all snapshots used for
-    // creating Isolates to be identical. This isn't really memory-safe
-    // but also otherwise just doesn't work, and the only real alternative
-    // is disabling shared-readonly-heap mode altogether.
-    static Isolate::CreateParams first_params = *params;
-    params->snapshot_blob = first_params.snapshot_blob;
-    params->external_references = first_params.external_references;
-  }
-#endif
 
   if (snapshot_data != nullptr) {
     SnapshotBuilder::InitializeIsolateParams(snapshot_data, params);
@@ -557,7 +545,6 @@ NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
     std::string_view url,
     std::string_view name) {
   CHECK_NOT_NULL(env);
-  if (name == nullptr) name = "";
   CHECK_NE(thread_id.id, static_cast<uint64_t>(-1));
   if (!env->should_create_inspector()) {
     return nullptr;

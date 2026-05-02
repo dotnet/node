@@ -1774,20 +1774,6 @@ ZEXTERN uLong ZEXPORT crc32_combine_op(uLong crc1, uLong crc2, uLong op);
    crc32_combine() if the generated op is used more than once.
 */
 
-/*
-ZEXTERN uLong ZEXPORT crc32_combine_gen OF((z_off_t len2));
-
-     Return the operator corresponding to length len2, to be used with
-   crc32_combine_op().
-*/
-
-ZEXTERN uLong ZEXPORT crc32_combine_op OF((uLong crc1, uLong crc2, uLong op));
-/*
-     Give the same result as crc32_combine(), using op in place of len2. op is
-   is generated from len2 by crc32_combine_gen(). This will be faster than
-   crc32_combine() if the generated op is used more than once.
-*/
-
 
                         /* various hacks, don't look :) */
 

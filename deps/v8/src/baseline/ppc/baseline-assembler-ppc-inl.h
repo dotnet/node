@@ -634,10 +634,6 @@ void BaselineAssembler::Word32And(Register output, Register lhs, int rhs) {
   __ AndU32(output, lhs, Operand(rhs));
 }
 
-void BaselineAssembler::Word32And(Register output, Register lhs, int rhs) {
-  __ AndU32(output, lhs, Operand(rhs));
-}
-
 #undef __
 
 #define __ basm.

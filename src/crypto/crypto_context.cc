@@ -109,12 +109,6 @@ X509_STORE* GetOrCreateRootCertStore() {
   return root_cert_store;
 }
 
-inline X509_STORE* GetOrCreateRootCertStore() {
-  // Guaranteed thread-safe by standard, just don't use -fno-threadsafe-statics.
-  static X509_STORE* store = NewRootCertStore();
-  return store;
-}
-
 // Takes a string or buffer and loads it into a BIO.
 // Caller responsible for BIO_free_all-ing the returned object.
 BIOPointer LoadBIO(Environment* env, Local<Value> v) {

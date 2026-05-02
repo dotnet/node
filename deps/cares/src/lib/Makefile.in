@@ -284,7 +284,6 @@ am__depfiles_remade =  \
 	./$(DEPDIR)/libcares_la-ares_process.Plo \
 	./$(DEPDIR)/libcares_la-ares_qcache.Plo \
 	./$(DEPDIR)/libcares_la-ares_query.Plo \
-	./$(DEPDIR)/libcares_la-ares_rand.Plo \
 	./$(DEPDIR)/libcares_la-ares_search.Plo \
 	./$(DEPDIR)/libcares_la-ares_send.Plo \
 	./$(DEPDIR)/libcares_la-ares_set_socket_functions.Plo \
@@ -671,7 +670,6 @@ CSOURCES = ares_addrinfo2hostent.c	\
   ares_process.c			\
   ares_qcache.c				\
   ares_query.c				\
-  ares_rand.c \
   ares_search.c				\
   ares_send.c				\
   ares_set_socket_functions.c		\
@@ -1043,7 +1041,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_process.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_qcache.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_query.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_rand.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_search.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_send.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcares_la-ares_set_socket_functions.Plo@am__quote@ # am--include-marker
@@ -1321,13 +1318,6 @@ libcares_la-ares_query.lo: ares_query.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ares_query.c' object='libcares_la-ares_query.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -c -o libcares_la-ares_query.lo `test -f 'ares_query.c' || echo '$(srcdir)/'`ares_query.c
-
-libcares_la-ares_rand.lo: ares_rand.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -MT libcares_la-ares_rand.lo -MD -MP -MF $(DEPDIR)/libcares_la-ares_rand.Tpo -c -o libcares_la-ares_rand.lo `test -f 'ares_rand.c' || echo '$(srcdir)/'`ares_rand.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcares_la-ares_rand.Tpo $(DEPDIR)/libcares_la-ares_rand.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ares_rand.c' object='libcares_la-ares_rand.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -c -o libcares_la-ares_rand.lo `test -f 'ares_rand.c' || echo '$(srcdir)/'`ares_rand.c
 
 libcares_la-ares_search.lo: ares_search.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcares_la_CPPFLAGS) $(CPPFLAGS) $(libcares_la_CFLAGS) $(CFLAGS) -MT libcares_la-ares_search.lo -MD -MP -MF $(DEPDIR)/libcares_la-ares_search.Tpo -c -o libcares_la-ares_search.lo `test -f 'ares_search.c' || echo '$(srcdir)/'`ares_search.c
@@ -2035,7 +2025,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libcares_la-ares_process.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_qcache.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_query.Plo
-	-rm -f ./$(DEPDIR)/libcares_la-ares_rand.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_search.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_send.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_set_socket_functions.Plo
@@ -2172,7 +2161,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libcares_la-ares_process.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_qcache.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_query.Plo
-	-rm -f ./$(DEPDIR)/libcares_la-ares_rand.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_search.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_send.Plo
 	-rm -f ./$(DEPDIR)/libcares_la-ares_set_socket_functions.Plo

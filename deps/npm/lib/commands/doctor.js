@@ -214,35 +214,6 @@ class Doctor extends BaseCommand {
     return this.checkFilesPermission(this.npm.globalBin, false, X_OK)
   }
 
-  async getBinPath (dir) {
-    const tracker = log.newItem('getBinPath', 1)
-    tracker.info('getBinPath', 'Finding npm global bin in your PATH')
-    if (!process.env.PATH.includes(this.npm.globalBin)) {
-      throw new Error(`Add ${this.npm.globalBin} to your $PATH`)
-    }
-    return this.npm.globalBin
-  }
-
-  async checkCachePermission () {
-    return this.checkFilesPermission(this.npm.cache, true, R_OK)
-  }
-
-  async checkLocalModulesPermission () {
-    return this.checkFilesPermission(this.npm.localDir, true, R_OK | W_OK, true)
-  }
-
-  async checkGlobalModulesPermission () {
-    return this.checkFilesPermission(this.npm.globalDir, false, R_OK)
-  }
-
-  async checkLocalBinPermission () {
-    return this.checkFilesPermission(this.npm.localBin, false, R_OK | W_OK | X_OK, true)
-  }
-
-  async checkGlobalBinPermission () {
-    return this.checkFilesPermission(this.npm.globalBin, false, X_OK)
-  }
-
   async checkFilesPermission (root, shouldOwn, mask, missingOk) {
     let ok = true
 

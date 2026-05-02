@@ -220,11 +220,6 @@ const char *X509_verify_cert_error_string(long n)
          * and with doc/man3/X509_STORE_CTX_get_error.pod
          */
 
-        /*
-         * Entries must be kept consistent with include/openssl/x509_vfy.h.in
-         * and with doc/man3/X509_STORE_CTX_get_error.pod
-         */
-
     default:
         /* Printing an error number into a static buffer is not thread-safe */
         return "unknown certificate verification error";

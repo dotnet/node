@@ -355,14 +355,6 @@ MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
     return env->RunSnapshotDeserializeMain();
   }
 
-  // TODO(joyeecheung): move these conditions into JS land and let the
-  // deserialize main function take precedence. For workers, we need to
-  // move the pre-execution part into a different file that can be
-  // reused when dealing with user-defined main functions.
-  if (!env->snapshot_deserialize_main().IsEmpty()) {
-    return env->RunSnapshotDeserializeMain();
-  }
-
   if (env->worker_context() != nullptr) {
     return StartExecution(env, "internal/main/worker_thread");
   }
@@ -371,18 +363,6 @@ MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
   if (env->argv().size() > 1) {
     first_argv = env->argv()[1];
   }
-
-#ifndef DISABLE_SINGLE_EXECUTABLE_APPLICATION
-  if (sea::IsSingleExecutable()) {
-    // TODO(addaleax): Find a way to reuse:
-    //
-    // LoadEnvironment(Environment*, const char*)
-    //
-    // instead and not add yet another main entry point here because this
-    // already duplicates existing code.
-    return StartExecution(env, "internal/main/single_executable_application");
-  }
-#endif
 
   if (first_argv == "inspect") {
     return StartExecution(env, "internal/main/inspect");

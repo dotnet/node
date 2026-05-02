@@ -1379,9 +1379,6 @@ a colon, Node.js will open a file system stream, as described by
 <!-- YAML
 added: v12.12.0
 changes:
-  - version: v18.17.0
-    pr-url: https://github.com/nodejs/node/pull/41439
-    description: Added `recursive` option.
   - version:
     - v20.1.0
     - v18.17.0
@@ -5981,9 +5978,6 @@ object with an `encoding` property specifying the character encoding to use.
 <!-- YAML
 added: v12.12.0
 changes:
-  - version: v18.17.0
-    pr-url: https://github.com/nodejs/node/pull/41439
-    description: Added `recursive` option.
   - version:
     - v20.1.0
     - v18.17.0

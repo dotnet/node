@@ -215,10 +215,8 @@ static int sk_reserve(OPENSSL_STACK *st, int n, int exact)
     }
 
     tmpdata = OPENSSL_realloc((void *)st->data, sizeof(void *) * num_alloc);
-    if (tmpdata == NULL) {
-        ERR_raise(ERR_LIB_CRYPTO, ERR_R_MALLOC_FAILURE);
+    if (tmpdata == NULL)
         return 0;
-    }
 
     st->data = tmpdata;
     st->num_alloc = num_alloc;
@@ -229,10 +227,8 @@ OPENSSL_STACK *OPENSSL_sk_new_reserve(OPENSSL_sk_compfunc c, int n)
 {
     OPENSSL_STACK *st = OPENSSL_zalloc(sizeof(OPENSSL_STACK));
 
-    if (st == NULL) {
-        ERR_raise(ERR_LIB_CRYPTO, ERR_R_MALLOC_FAILURE);
+    if (st == NULL)
         return NULL;
-    }
 
     st->comp = c;
 

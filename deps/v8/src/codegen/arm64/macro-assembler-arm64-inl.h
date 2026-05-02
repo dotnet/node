@@ -1143,13 +1143,13 @@ void MacroAssembler::InitializeRootRegister() {
 #endif
 }
 
-void TurboAssembler::SmiTag(Register dst, Register src) {
+void MacroAssembler::SmiTag(Register dst, Register src) {
   DCHECK(dst.Is64Bits() && src.Is64Bits());
   DCHECK(SmiValuesAre32Bits() || SmiValuesAre31Bits());
   Lsl(dst, src, kSmiShift);
 }
 
-void TurboAssembler::SmiTag(Register smi) { SmiTag(smi, smi); }
+void MacroAssembler::SmiTag(Register smi) { SmiTag(smi, smi); }
 
 void MacroAssembler::SmiUntag(Register dst, Register src) {
   DCHECK(dst.Is64Bits() && src.Is64Bits());

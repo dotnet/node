@@ -442,9 +442,6 @@ void ConverterObject::Decode(const FunctionCallbackInfo<Value>& args) {
   CHECK(args[3]->IsString());
   Local<String> from_encoding = args[3].As<String>();
 
-  CHECK(args[3]->IsString());
-  Local<String> from_encoding = args[3].As<String>();
-
   UErrorCode status = U_ZERO_ERROR;
   MaybeStackBuffer<UChar> result;
 

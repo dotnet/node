@@ -1105,6 +1105,7 @@
       './config/archs/aix64-gcc-as/asm/crypto/aes/vpaes-ppc.s',
       './config/archs/aix64-gcc-as/asm/crypto/bn/bn-ppc.s',
       './config/archs/aix64-gcc-as/asm/crypto/bn/ppc-mont.s',
+      './config/archs/aix64-gcc-as/asm/crypto/bn/ppc64-mont-fixed.s',
       './config/archs/aix64-gcc-as/asm/crypto/chacha/chacha-ppc.s',
       './config/archs/aix64-gcc-as/asm/crypto/ec/ecp_nistz256-ppc64.s',
       './config/archs/aix64-gcc-as/asm/crypto/ec/x25519-ppc64.s',

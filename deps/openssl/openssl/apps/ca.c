@@ -779,7 +779,6 @@ end_of_options:
                 app_conf_try_string(extfile_conf, "default", "extensions");
             if (extensions == NULL)
                 extensions = "default";
-            }
         }
     }
 
@@ -838,7 +837,6 @@ end_of_options:
         if (app_conf_try_string(conf, section, ENV_RAND_SERIAL) != NULL) {
             rand_ser = 1;
         } else {
-            ERR_clear_error();
             serialfile = lookup_conf(conf, section, ENV_SERIAL);
             if (serialfile == NULL)
                 goto end;
@@ -888,7 +886,6 @@ end_of_options:
         if (days == 0) {
             if (!app_conf_try_number(conf, section, ENV_DEFAULT_DAYS, &days))
                 days = 0;
-            }
         }
         if (enddate == NULL && days == 0) {
             BIO_printf(bio_err, "cannot lookup how many days to certify for\n");

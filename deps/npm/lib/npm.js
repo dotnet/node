@@ -437,10 +437,6 @@ class Npm {
     return this.config.localPackage
   }
 
-  get localPackage () {
-    return this.config.localPackage
-  }
-
   get globalDir () {
     return process.platform !== 'win32'
       ? resolve(this.globalPrefix, 'lib', 'node_modules')

@@ -803,9 +803,6 @@ void MarkCompactCollector::FinishConcurrentMarking() {
   if (auto* cpp_heap = CppHeap::From(heap_->cpp_heap_)) {
     cpp_heap->FinishConcurrentMarkingIfNeeded();
   }
-  if (auto* cpp_heap = CppHeap::From(heap_->cpp_heap())) {
-    cpp_heap->FinishConcurrentMarkingIfNeeded();
-  }
 }
 
 void MarkCompactCollector::VerifyMarking() {

@@ -6,8 +6,6 @@ const BaseCommand = require('../base-cmd.js')
 
 const globify = pattern => pattern.split('\\').join('/')
 
-const globify = pattern => pattern.split('\\').join('/')
-
 class HelpSearch extends BaseCommand {
   static description = 'Search npm help documentation'
   static name = 'help-search'

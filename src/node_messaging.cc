@@ -350,21 +350,6 @@ class SerializerDelegate : public ValueSerializer::Delegate {
       return serializer->WriteValue(env_->context(), normal_object);
     }
 
-    // Convert process.env to a regular object.
-    auto env_proxy_ctor_template = env_->env_proxy_ctor_template();
-    if (!env_proxy_ctor_template.IsEmpty() &&
-        env_proxy_ctor_template->HasInstance(object)) {
-      HandleScope scope(isolate);
-      // TODO(bnoordhuis) Prototype-less object in case process.env contains
-      // a "__proto__" key? process.env has a prototype with concomitant
-      // methods like toString(). It's probably confusing if that gets lost
-      // in transmission.
-      Local<Object> normal_object = Object::New(isolate);
-      env_->env_vars()->AssignToObject(isolate, env_->context(), normal_object);
-      serializer->WriteUint32(kNormalObject);  // Instead of a BaseObject.
-      return serializer->WriteValue(env_->context(), normal_object);
-    }
-
     ThrowDataCloneError(env_->clone_unsupported_type_str());
     return Nothing<bool>();
   }

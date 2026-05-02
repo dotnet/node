@@ -303,7 +303,6 @@ int ossl_a2ulabel(const char *in, char *out, size_t outlen)
 
         inptr = tmpptr + 1;
     }
-#undef PUSHC
 
     if (!WPACKET_put_bytes_u8(&pkt, '\0'))
         result = 0;

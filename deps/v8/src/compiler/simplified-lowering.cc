@@ -4911,18 +4911,6 @@ class RepresentationSelector {
     return node;
   }
 
-  void ChangeToSemanticsHintForVerifier(Node* node, const Operator* semantics) {
-    DCHECK_EQ(node->op()->ValueInputCount(), 1);
-    DCHECK_EQ(node->op()->EffectInputCount(), 0);
-    DCHECK_EQ(node->op()->ControlInputCount(), 0);
-    if (verification_enabled()) {
-      ChangeOp(node, common()->SLVerifierHint(semantics, base::nullopt));
-      verifier_->RecordHint(node);
-    } else {
-      DeferReplacement(node, node->InputAt(0));
-    }
-  }
-
  private:
   void ChangeOp(Node* node, const Operator* new_op) {
     compiler::NodeProperties::ChangeOp(node, new_op);

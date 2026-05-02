@@ -292,13 +292,6 @@
     return String.fromCharCode((code >> 10) + 0xD800, (code & 1023) + 0xDC00)
   }
 
-  function codePointToString(code) {
-    // UTF-16 Decoding
-    if (code <= 0xFFFF) { return String.fromCharCode(code) }
-    code -= 0x10000;
-    return String.fromCharCode((code >> 10) + 0xD800, (code & 1023) + 0xDC00)
-  }
-
   var loneSurrogate = /(?:[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF])/;
 
   // These are used when `options.locations` is on, for the

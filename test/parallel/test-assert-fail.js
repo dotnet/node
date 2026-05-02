@@ -1,6 +1,6 @@
 'use strict';
 
-const common = require('../common');
+require('../common');
 const assert = require('assert');
 const { test } = require('node:test');
 
@@ -48,7 +48,3 @@ test('Object prototype get', () => {
   assert.throws(() => assert.fail(''), { code: 'ERR_ASSERTION' });
   delete Object.prototype.get;
 });
-
-Object.prototype.get = common.mustNotCall();
-assert.throws(() => assert.fail(''), { code: 'ERR_ASSERTION' });
-delete Object.prototype.get;

@@ -1319,17 +1319,6 @@ When using [`fs.cp()`][], `src` or `dest` pointed to an invalid path.
 
 <a id="ERR_FS_CP_FIFO_PIPE"></a>
 
-### `ERR_HTTP_BODY_NOT_ALLOWED`
-
-An error is thrown when writing to an HTTP response which does not allow
-contents. <a id="ERR_HTTP_BODY_NOT_ALLOWED"></a>
-
-### `ERR_HTTP_CONTENT_LENGTH_MISMATCH`
-
-Response body size doesn't match with the specified content-length header value.
-
-<a id="ERR_HTTP_CONTENT_LENGTH_MISMATCH"></a>
-
 ### `ERR_FS_CP_FIFO_PIPE`
 
 <!-- YAML
@@ -2387,13 +2376,6 @@ application.
 An attempt was made to perform operations that are not supported when
 building a startup snapshot.
 
-<a id="ERR_NOT_BUILDING_SNAPSHOT"></a>
-
-### `ERR_NOT_BUILDING_SNAPSHOT`
-
-An attempt was made to use operations that can only be used when building
-V8 startup snapshot even though Node.js isn't building one.
-
 <a id="ERR_NO_CRYPTO"></a>
 
 ### `ERR_NO_CRYPTO`
@@ -2920,25 +2902,6 @@ reports.
 An unspecified or non-specific system error has occurred within the Node.js
 process. The error object will have an `err.info` object property with
 additional details.
-
-<a id="ERR_TAP_LEXER_ERROR"></a>
-
-### `ERR_TAP_LEXER_ERROR`
-
-An error representing a failing lexer state.
-
-<a id="ERR_TAP_PARSER_ERROR"></a>
-
-### `ERR_TAP_PARSER_ERROR`
-
-An error representing a failing parser state. Additional information about
-the token causing the error is available via the `cause` property.
-
-<a id="ERR_TAP_VALIDATION_ERROR"></a>
-
-### `ERR_TAP_VALIDATION_ERROR`
-
-This error represents a failed TAP validation.
 
 <a id="ERR_TEST_FAILURE"></a>
 
@@ -4105,17 +4068,6 @@ The linker function returned a module for which linking has failed.
 ### `ERR_VM_MODULE_NOT_LINKED`
 
 The module must be successfully linked before instantiation.
-
-<a id="ERR_VM_MODULE_LINKING_ERRORED"></a>
-
-### `ERR_VM_MODULE_LINKING_ERRORED`
-
-<!-- YAML
-added: v10.0.0
-removed: v18.1.0
--->
-
-The linker function returned a module for which linking has failed.
 
 <a id="ERR_WORKER_UNSUPPORTED_EXTENSION"></a>
 

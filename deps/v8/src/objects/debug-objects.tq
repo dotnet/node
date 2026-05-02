@@ -109,8 +109,3 @@ extern class ErrorStackData extends Struct {
   // This holds the StackTraceInfo for inspector stack trace.
   stack_trace: StackTraceInfo;
 }
-
-extern class PromiseOnStack extends Struct {
-  prev: PromiseOnStack|Zero;
-  promise: Weak<JSObject>;
-}

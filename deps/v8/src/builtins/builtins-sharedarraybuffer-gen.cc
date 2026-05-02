@@ -430,9 +430,6 @@ TF_BUILTIN(AtomicsExchange, SharedArrayBufferBuiltinsAssembler) {
   auto value = Parameter<JSAny>(Descriptor::kValue);
   auto context = Parameter<Context>(Descriptor::kContext);
 
-  Label shared_struct(this);
-  GotoIf(IsJSSharedStruct(maybe_array_or_shared_struct), &shared_struct);
-
   // Inlines AtomicReadModifyWrite
   // https://tc39.es/ecma262/#sec-atomicreadmodifywrite
 

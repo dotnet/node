@@ -3199,11 +3199,7 @@ class LiftoffCompiler {
       if (target->is_loop()) {
         DCHECK(target->label.get()->is_bound());
         int jump_distance = __ pc_offset() - target->label.get()->pos();
-        // For now we just add one as the cost for the tier up check. We might
-        // want to revisit this when tuning tiering budgets later.
-        const int kTierUpCheckCost = 1;
-        TierupCheck(decoder, decoder->position(),
-                    jump_distance + kTierUpCheckCost);
+        TierupCheck(decoder, decoder->position(), jump_distance);
       } else {
         // To estimate time spent in this function more accurately, we could
         // increment the tiering budget on forward jumps. However, we don't

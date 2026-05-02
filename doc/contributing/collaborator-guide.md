@@ -278,10 +278,6 @@ If new commits are pushed to the pull request branch after the latest Jenkins
 CI run, a fresh CI run is required. It can be started by adding the `request-ci`
 label to the pull request.
 
-If new commits are pushed to the pull request branch after the latest Jenkins
-CI run, a fresh CI run is required. It can be started by pressing "Retry" on
-the left sidebar, or by adding the `request-ci` label to the pull request.
-
 #### Useful Jenkins CI jobs
 
 * [`node-test-pull-request`](https://ci.nodejs.org/job/node-test-pull-request/)

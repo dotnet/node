@@ -12389,6 +12389,9 @@ our %unified_info = (
         "crypto/bn/ppc-mont.s" => [
             "crypto/bn/asm/ppc-mont.pl"
         ],
+        "crypto/bn/ppc64-mont-fixed.s" => [
+            "crypto/bn/asm/ppc64-mont-fixed.pl"
+        ],
         "crypto/bn/ppc64-mont.s" => [
             "crypto/bn/asm/ppc64-mont.pl"
         ],

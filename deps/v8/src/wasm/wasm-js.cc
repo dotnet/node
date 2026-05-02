@@ -3717,12 +3717,6 @@ void WasmJs::InstallConditionalFeatures(Isolate* isolate,
         context->set_is_wasm_jspi_installed(Smi::FromInt(1));
       }
     }
-    LookupIterator it(isolate, webassembly, tag_name, LookupIterator::OWN);
-    Maybe<bool> result = JSObject::DefineOwnPropertyIgnoreAttributes(
-        &it, tag_constructor, DONT_ENUM, Just(kDontThrow));
-    // This could still fail if the object was non-extensible, but now we
-    // return anyway so there's no need to even check.
-    USE(result);
   }
 }
 

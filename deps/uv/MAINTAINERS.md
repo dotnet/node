@@ -32,13 +32,6 @@ libuv is currently managed by the following individuals:
 * **Imran Iqbal** ([@imran-iq](https://github.com/imran-iq))
 * **John Barboza** ([@jbarz](https://github.com/jbarz))
 
-## Project Maintainers emeriti
-
-* **Anna Henningsen** ([@addaleax](https://github.com/addaleax))
-* **Bartosz Sosnowski** ([@bzoz](https://github.com/bzoz))
-* **Imran Iqbal** ([@imran-iq](https://github.com/imran-iq))
-* **John Barboza** ([@jbarz](https://github.com/jbarz))
-
 ## Storing a maintainer key in Git
 
 It's quite handy to store a maintainer's signature as a git blob, and have

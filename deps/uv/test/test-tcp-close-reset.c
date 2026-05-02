@@ -338,30 +338,3 @@ TEST_IMPL(tcp_close_reset_accepted_after_socket_shutdown) {
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
-
-TEST_IMPL(tcp_close_reset_accepted_after_socket_shutdown) {
-  int r;
-
-  loop = uv_default_loop();
-
-  start_server(loop, &tcp_server);
-
-  client_close = 0;
-  shutdown_before_close = 2;
-
-  do_connect(loop, &tcp_client);
-
-  ASSERT_EQ(write_cb_called, 0);
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(shutdown_cb_called, 0);
-
-  r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
-
-  ASSERT_EQ(write_cb_called, 4);
-  ASSERT_EQ(close_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 0);
-
-  MAKE_VALGRIND_HAPPY();
-  return 0;
-}

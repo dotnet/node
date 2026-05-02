@@ -863,7 +863,6 @@ constexpr int kNoDeoptimizationId = -1;
 // Deoptimize bailout kind:
 // - Eager: a check failed in the optimized code and deoptimization happens
 //   immediately.
-// - Unused: replaces "Soft" for ABI compatibility.
 // - Lazy: the code has been marked as dependent on some assumption which
 //   is checked elsewhere and can trigger deoptimization the next time the
 //   code is executed.

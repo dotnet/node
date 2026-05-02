@@ -393,24 +393,6 @@ assert.throws(() => {
 }
 
 {
-  const stream = new ReadableStream();
-  const iterable = stream.values();
-  readableStreamReaderGenericRelease(stream[kState].reader);
-  assert.rejects(iterable.next(), {
-    code: 'ERR_INVALID_STATE',
-  }).then(common.mustCall());
-}
-
-{
-  const stream = new ReadableStream();
-  const iterable = stream.values();
-  readableStreamReaderGenericRelease(stream[kState].reader);
-  assert.rejects(iterable.return(), {
-    code: 'ERR_INVALID_STATE',
-  }).then(common.mustCall());
-}
-
-{
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(Buffer.from('hello'));

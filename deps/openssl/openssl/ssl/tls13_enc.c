@@ -279,9 +279,6 @@ size_t tls13_final_finish_mac(SSL_CONNECTION *s, const char *str, size_t slen,
     if (md == NULL)
         return 0;
 
-    if (md == NULL)
-        return 0;
-
     /* Safe to cast away const here since we're not "getting" any data */
     if (sctx->propq != NULL)
         *p++ = OSSL_PARAM_construct_utf8_string(OSSL_ALG_PARAM_PROPERTIES,

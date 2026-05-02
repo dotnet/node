@@ -2786,12 +2786,8 @@ changes:
     underlying stream will _not_ be aborted if the signal is aborted. The
     callback will get called with an `AbortError`. All registered
     listeners added by this function will also be removed.
-  * `cleanup` {boolean} remove all registered stream listeners.
-    **Default:** `false`.
-
 * `callback` {Function} A callback function that takes an optional error
   argument.
-
 * Returns: {Function} A cleanup function which removes all registered
   listeners.
 

@@ -27,7 +27,6 @@ CSOURCES = ares_addrinfo2hostent.c	\
   ares_process.c			\
   ares_qcache.c				\
   ares_query.c				\
-  ares_rand.c				\
   ares_search.c				\
   ares_send.c				\
   ares_set_socket_functions.c		\

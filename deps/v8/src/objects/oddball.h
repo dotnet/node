@@ -45,11 +45,6 @@ V8_OBJECT class Oddball : public PrimitiveHeapObject {
   // Dispatched behavior.
   DECL_VERIFIER(Oddball)
 
-  DECL_CAST(Oddball)
-
-  // Dispatched behavior.
-  DECL_VERIFIER(Oddball)
-
   // Initialize the fields.
   static void Initialize(Isolate* isolate, DirectHandle<Oddball> oddball,
                          const char* to_string, DirectHandle<Number> to_number,

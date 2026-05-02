@@ -2758,7 +2758,7 @@ int speed_main(int argc, char **argv)
         }
         mac_teardown(&mac, loopargs, loopargs_len);
     }
-skip_hmac:
+
     if (doit[D_CBC_DES]) {
         int st = 1;
 

@@ -288,18 +288,3 @@ uv__fs_copy_file_range(int fd_in,
 	return errno = ENOSYS, -1;
 #endif
 }
-
-ssize_t
-uv__fs_copy_file_range(int fd_in,
-                       off_t* off_in,
-                       int fd_out,
-                       off_t* off_out,
-                       size_t len,
-                       unsigned int flags)
-{
-#if __FreeBSD__ >= 13 && !defined(__DragonFly__)
-	return copy_file_range(fd_in, off_in, fd_out, off_out, len, flags);
-#else
-	return errno = ENOSYS, -1;
-#endif
-}

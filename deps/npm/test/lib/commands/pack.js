@@ -95,23 +95,6 @@ t.test('should log scoped package output as valid json', async t => {
   t.ok(fs.statSync(path.resolve(npm.prefix, filename)))
 })
 
-t.test('should log scoped package output as valid json', async t => {
-  const { npm, outputs, logs } = await loadMockNpm(t, {
-    prefixDir: {
-      'package.json': JSON.stringify({
-        name: '@myscope/test-package',
-        version: '1.0.0',
-      }),
-    },
-  })
-  npm.config.set('json', true)
-  await npm.exec('pack', [])
-  const filename = 'myscope-test-package-1.0.0.tgz'
-  t.matchSnapshot(outputs.map(JSON.parse), 'outputs as json')
-  t.matchSnapshot(logs.notice.map(([, m]) => m), 'logs pack contents')
-  t.ok(fs.statSync(path.resolve(npm.prefix, filename)))
-})
-
 t.test('dry run', async t => {
   const { npm, outputs, logs } = await loadMockNpm(t, {
     prefixDir: {

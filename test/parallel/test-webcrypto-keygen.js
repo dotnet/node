@@ -18,8 +18,6 @@ const { subtle } = globalThis.crypto;
 
 const { bigIntArrayToUnsignedBigInt } = require('internal/crypto/util');
 
-const { bigIntArrayToUnsignedBigInt } = require('internal/crypto/util');
-
 const allUsages = [
   'encrypt',
   'decrypt',

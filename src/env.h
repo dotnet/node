@@ -1154,8 +1154,6 @@ class Environment final : public MemoryRetainer {
 
   AliasedInt32Array exit_info_;
 
-  AliasedUint32Array exiting_;
-
   AliasedUint32Array should_abort_on_uncaught_toggle_;
   int should_not_abort_scope_counter_ = 0;
 

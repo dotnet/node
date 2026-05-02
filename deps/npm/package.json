@@ -122,6 +122,7 @@
     "@isaacs/string-locale-compare",
     "@npmcli/arborist",
     "@npmcli/config",
+    "@npmcli/fs",
     "@npmcli/map-workspaces",
     "@npmcli/package-json",
     "@npmcli/promise-spawn",

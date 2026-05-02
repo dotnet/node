@@ -91,7 +91,7 @@ void *ngtcp2_map_find(const ngtcp2_map *map, ngtcp2_map_key_type key);
  * negative error codes:
  *
  * NGTCP2_ERR_INVALID_ARGUMENT
- *     The data associated by |key| does not exist.
+ *     The entry associated by |key| does not exist.
  */
 int ngtcp2_map_remove(ngtcp2_map *map, ngtcp2_map_key_type key);
 

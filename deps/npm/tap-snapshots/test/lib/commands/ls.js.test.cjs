@@ -554,20 +554,6 @@ exports[`test/lib/commands/ls.js TAP ls overridden dep w/ color > should contain
 [0m[0m
 `
 
-exports[`test/lib/commands/ls.js TAP ls overridden dep > should contain overridden outout 1`] = `
-test-overridden@1.0.0 {CWD}/prefix
-\`-- foo@1.0.0
-  \`-- bar@1.0.0 overridden
-
-`
-
-exports[`test/lib/commands/ls.js TAP ls overridden dep w/ color > should contain overridden outout 1`] = `
-[0mtest-overridden@1.0.0 {CWD}/prefix[0m
-[0m\`-- foo@1.0.0[0m
-[0m  \`-- bar@1.0.0 [90moverridden[39m[0m
-[0m[0m
-`
-
 exports[`test/lib/commands/ls.js TAP ls print deduped symlinks > should output tree containing linked deps 1`] = `
 print-deduped-symlinks@1.0.0 {CWD}/prefix
 +-- a@1.0.0
@@ -672,13 +658,6 @@ exports[`test/lib/commands/ls.js TAP ls workspace and missing optional dep > sho
 root@ {CWD}/prefix
 +-- baz@1.0.0 -> ./baz
 \`-- foo@1.0.0
-`
-
-exports[`test/lib/commands/ls.js TAP ls workspace and missing optional dep > should omit missing optional dep 1`] = `
-root@ {CWD}/prefix
-+-- baz@1.0.0 -> ./baz
-\`-- foo@1.0.0
-
 `
 
 exports[`test/lib/commands/ls.js TAP show multiple invalid reasons > ls result 1`] = `

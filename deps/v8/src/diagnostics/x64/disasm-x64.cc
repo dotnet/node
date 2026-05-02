@@ -1213,13 +1213,6 @@ int DisassemblerX64::AVXInstruction(uint8_t* data) {
         AppendToBuffer(", (%s)", cmp_pseudo_op[*current]);
         current += 1;
         break;
-      case 0xC2:
-        AppendToBuffer("vcmpss %s,%s,", NameOfAVXRegister(regop),
-                       NameOfAVXRegister(vvvv));
-        current += PrintRightAVXOperand(current);
-        AppendToBuffer(", (%s)", cmp_pseudo_op[*current]);
-        current += 1;
-        break;
       default:
         UnimplementedInstruction();
     }

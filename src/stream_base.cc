@@ -522,7 +522,6 @@ void StreamBase::AddMethod(Isolate* isolate,
                            Local<FunctionTemplate> t,
                            JSMethodFunction* stream_method,
                            Local<String> string) {
-  Isolate* isolate = env->isolate();
   Local<FunctionTemplate> templ =
       NewFunctionTemplate(isolate,
                           stream_method,

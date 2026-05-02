@@ -573,7 +573,6 @@ void SemiSpaceNewSpace::FillCurrentPageForTesting() {
   heap()->CreateFillerObjectAt(allocation_top(), remaining);
   IncrementAllocationTop(to_space_.page_high());
 }
-#endif  // DEBUG
 
 #ifdef VERIFY_HEAP
 // We do not use the SemiSpaceObjectIterator because verification doesn't assume

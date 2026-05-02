@@ -7590,10 +7590,7 @@ ReduceResult MaglevGraphBuilder::VisitGetKeyedProperty() {
         processed_feedback =
             &processed_feedback->AsElementAccess().Refine(broker(), name);
       }
-    } break;
-
-    default:
-      break;
+    }
   }
 
   return BuildGetKeyedProperty(object, feedback_source, *processed_feedback);
@@ -9246,10 +9243,7 @@ MaybeReduceResult MaglevGraphBuilder::TryReduceStringPrototypeCharCodeAt(
           return GetSmiConstant(*value);
         }
       }
-    } break;
-
-    default:
-      break;
+    }
   }
 
   // Ensure that {receiver} is actually a String.

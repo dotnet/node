@@ -2256,24 +2256,17 @@ static llparse_state_t llhttp__internal__run(
       return s_error;
       UNREACHABLE;
     }
-    case s_n_llhttp__internal__n_error_25:
-    s_n_llhttp__internal__n_error_25: {
-      state->error = 0xa;
-      state->reason = "Invalid header value char";
-      state->error_pos = (const char*) p;
-      state->_current = (void*) (intptr_t) s_error;
-      return s_error;
-      /* UNREACHABLE */;
-      abort();
-    }
     case s_n_llhttp__internal__n_header_value_otherwise:
     s_n_llhttp__internal__n_header_value_otherwise: {
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_otherwise;
       }
       switch (*p) {
-        case 13: {
+        case 10: {
           goto s_n_llhttp__internal__n_span_end_llhttp__on_header_value_1;
+        }
+        case 13: {
+          goto s_n_llhttp__internal__n_span_end_llhttp__on_header_value_2;
         }
         default: {
           goto s_n_llhttp__internal__n_invoke_test_lenient_flags_19;
@@ -2749,19 +2742,6 @@ static llparse_state_t llhttp__internal__run(
         }
         default: {
           goto s_n_llhttp__internal__n_invoke_update_header_state_9;
-        }
-        case 13: {
-          goto s_n_llhttp__internal__n_invoke_update_header_state_8;
-        }
-        case ' ': {
-          p++;
-          goto s_n_llhttp__internal__n_header_value_te_chunked_last;
-        }
-        case ',': {
-          goto s_n_llhttp__internal__n_invoke_load_type_1;
-        }
-        default: {
-          goto s_n_llhttp__internal__n_header_value_te_token;
         }
       }
       UNREACHABLE;
@@ -8100,44 +8080,6 @@ static llparse_state_t llhttp__internal__run(
     }
     UNREACHABLE;
   }
-  s_n_llhttp__internal__n_error_15: {
-    state->error = 0xa;
-    state->reason = "Invalid header value char";
-    state->error_pos = (const char*) p;
-    state->_current = (void*) (intptr_t) s_error;
-    return s_error;
-    /* UNREACHABLE */;
-    abort();
-  }
-  s_n_llhttp__internal__n_invoke_test_lenient_flags_3: {
-    switch (llhttp__internal__c_test_lenient_flags_2(state, p, endp)) {
-      case 1:
-        goto s_n_llhttp__internal__n_header_value_discard_lws;
-      default:
-        goto s_n_llhttp__internal__n_error_15;
-    }
-    /* UNREACHABLE */;
-    abort();
-  }
-  s_n_llhttp__internal__n_error_18: {
-    state->error = 0x2;
-    state->reason = "Expected LF after CR";
-    state->error_pos = (const char*) p;
-    state->_current = (void*) (intptr_t) s_error;
-    return s_error;
-    /* UNREACHABLE */;
-    abort();
-  }
-  s_n_llhttp__internal__n_invoke_test_lenient_flags_5: {
-    switch (llhttp__internal__c_test_lenient_flags_2(state, p, endp)) {
-      case 1:
-        goto s_n_llhttp__internal__n_header_value_discard_lws;
-      default:
-        goto s_n_llhttp__internal__n_error_18;
-    }
-    /* UNREACHABLE */;
-    abort();
-  }
   s_n_llhttp__internal__n_invoke_update_header_state_1: {
     switch (llhttp__internal__c_update_header_state_1(state, p, endp)) {
       default:
@@ -8295,10 +8237,11 @@ static llparse_state_t llhttp__internal__run(
     err = llhttp__on_header_value(state, start, p);
     if (err != 0) {
       state->error = err;
-      state->error_pos = (const char*) p;
+      state->error_pos = (const char*) (p + 1);
       state->_current = (void*) (intptr_t) s_n_llhttp__internal__n_header_value_almost_done;
       return s_error;
     }
+    p++;
     goto s_n_llhttp__internal__n_header_value_almost_done;
     UNREACHABLE;
   }

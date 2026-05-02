@@ -92,7 +92,7 @@ void *nghttp3_map_find(const nghttp3_map *map, nghttp3_map_key_type key);
  * negative error codes:
  *
  * NGHTTP3_ERR_INVALID_ARGUMENT
- *     The data associated by |key| does not exist.
+ *     The entry associated by |key| does not exist.
  */
 int nghttp3_map_remove(nghttp3_map *map, nghttp3_map_key_type key);
 

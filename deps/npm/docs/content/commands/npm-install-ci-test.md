@@ -147,8 +147,10 @@ run any pre- or post-scripts.
 * Default: true
 * Type: Boolean
 
-If set to false, then ignore `package-lock.json` files when installing. This
-will also prevent _writing_ `package-lock.json` if `save` is true.
+When "true" submit audit reports alongside the current npm command to the
+default registry and all registries configured for scopes. See the
+documentation for [`npm audit`](/commands/npm-audit) for details on what is
+submitted.
 
 
 

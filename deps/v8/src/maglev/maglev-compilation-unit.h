@@ -82,16 +82,6 @@ class MaglevCompilationUnit : public ZoneObject {
   void RegisterNodeInGraphLabeller(const Node* node);
   const MaglevCompilationUnit* GetTopLevelCompilationUnit() const;
 
-  void RegisterNodeInGraphLabeller(const Node* node);
-
-  const ZoneVector<ValueRepresentation>& stack_value_repr() const {
-    return stack_value_repr_;
-  }
-
-  void push_stack_value_repr(ValueRepresentation r) {
-    stack_value_repr_.push_back(r);
-  }
-
  private:
   MaglevCompilationInfo* const info_;
   const MaglevCompilationUnit* const caller_;

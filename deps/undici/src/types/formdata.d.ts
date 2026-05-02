@@ -82,14 +82,6 @@ export declare class FormData {
   ) => void
 
   /**
-   * Executes given callback function for each field of the FormData instance
-   */
-  forEach: (
-    callbackfn: (value: FormDataEntryValue, key: string, iterable: FormData) => void,
-    thisArg?: unknown
-  ) => void
-
-  /**
    * Returns an [`iterator`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols) allowing to go through all keys contained in this `FormData` object.
    * Each key is a `string`.
    */

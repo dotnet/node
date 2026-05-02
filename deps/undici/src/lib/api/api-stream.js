@@ -15,7 +15,7 @@ class StreamHandler extends AsyncResource {
       throw new InvalidArgumentError('invalid opts')
     }
 
-    const { signal, method, opaque, body, onInfo, responseHeaders, throwOnError } = opts
+    const { signal, method, opaque, body, onInfo, responseHeaders } = opts
 
     try {
       if (typeof callback !== 'function') {
@@ -56,7 +56,6 @@ class StreamHandler extends AsyncResource {
     this.trailers = null
     this.body = body
     this.onInfo = onInfo || null
-    this.throwOnError = throwOnError || false
 
     if (util.isStream(body)) {
       body.on('error', (err) => {
@@ -104,50 +103,13 @@ class StreamHandler extends AsyncResource {
       context
     })
 
-    let res
-
-    if (this.throwOnError && statusCode >= 400) {
-      const parsedHeaders = responseHeaders === 'raw' ? util.parseHeaders(rawHeaders) : headers
-      const contentType = parsedHeaders['content-type']
-      res = new PassThrough()
-
-      this.callback = null
-      this.runInAsyncScope(getResolveErrorBodyCallback, null,
-        { callback, body: res, contentType, statusCode, statusMessage, headers }
-      )
-    } else {
-      res = this.runInAsyncScope(factory, null, {
-        statusCode,
-        headers,
-        opaque,
-        context
-      })
-
-      if (
-        !res ||
-        typeof res.write !== 'function' ||
-        typeof res.end !== 'function' ||
-        typeof res.on !== 'function'
-      ) {
-        throw new InvalidReturnValueError('expected Writable')
-      }
-
-      // TODO: Avoid finished. It registers an unnecessary amount of listeners.
-      finished(res, { readable: false }, (err) => {
-        const { callback, res, opaque, trailers, abort } = this
-
-        this.res = null
-        if (err || !res.readable) {
-          util.destroy(res, err)
-        }
-
-        this.callback = null
-        this.runInAsyncScope(callback, null, err || null, { opaque, trailers })
-
-        if (err) {
-          abort()
-        }
-      })
+    if (
+      !res ||
+      typeof res.write !== 'function' ||
+      typeof res.end !== 'function' ||
+      typeof res.on !== 'function'
+    ) {
+      throw new InvalidReturnValueError('expected Writable')
     }
 
     // TODO: Avoid finished. It registers an unnecessary amount of listeners.

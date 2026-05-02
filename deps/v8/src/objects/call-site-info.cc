@@ -29,12 +29,6 @@ bool CallSiteInfo::IsPromiseAllSettled() const {
   return fun == fun->native_context()->promise_all_settled();
 }
 
-bool CallSiteInfo::IsPromiseAllSettled() const {
-  if (!IsAsync()) return false;
-  JSFunction fun = JSFunction::cast(function());
-  return fun == fun.native_context().promise_all_settled();
-}
-
 bool CallSiteInfo::IsPromiseAny() const {
   if (!IsAsync()) return false;
   Tagged<JSFunction> fun = Cast<JSFunction>(function());
@@ -765,14 +759,6 @@ void AppendMethodCall(Isolate* isolate, DirectHandle<CallSiteInfo> frame,
   DirectHandle<Object> method_name = CallSiteInfo::GetMethodName(frame);
   DirectHandle<Object> function_name = CallSiteInfo::GetFunctionName(frame);
 
-  Handle<Object> receiver(frame->receiver_or_instance(), isolate);
-  if (receiver->IsJSClassConstructor()) {
-    Handle<JSFunction> function = Handle<JSFunction>::cast(receiver);
-    Handle<String> class_name = JSFunction::GetDebugName(function);
-    if (class_name->length() != 0) {
-      type_name = class_name;
-    }
-  }
   if (IsNonEmptyString(function_name)) {
     DirectHandle<String> function_string = Cast<String>(function_name);
     if (IsNonEmptyString(type_name)) {

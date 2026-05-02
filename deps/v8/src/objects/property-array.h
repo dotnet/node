@@ -49,10 +49,6 @@ class PropertyArray
                                        Tagged<Object> value,
                                        SeqCstAccessTag tag);
 
-  inline Object Swap(int index, Object value, SeqCstAccessTag tag);
-  inline Object Swap(PtrComprCageBase cage_base, int index, Object value,
-                     SeqCstAccessTag tag);
-
   // Signature must be in sync with FixedArray::CopyElements().
   inline static void CopyElements(Isolate* isolate, Tagged<PropertyArray> dst,
                                   int dst_index, Tagged<PropertyArray> src,

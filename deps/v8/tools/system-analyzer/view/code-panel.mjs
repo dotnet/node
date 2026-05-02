@@ -139,23 +139,6 @@ const kJmpRegexp = new RegExp(`jmp ${kRegisterRegexpSource}`);
 const kMovRegexp =
     new RegExp(`mov. ${kRegisterRegexpSource},${kAnyAddressRegexp.source}`);
 
-const kRegisters = ['rsp', 'rbp', 'rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi'];
-// Make sure we dont match register on bytecode: Star1 or Star2
-const kAvoidBytecodeOpsRegexpSource = '(.*?[^a-zA-Z])'
-// Look for registers in strings like:  movl rbx,[rcx-0x30]
-const kRegisterRegexpSource = `(?<register>${kRegisters.join('|')}|r[0-9]+)`
-const kRegisterSplitRegexp =
-    new RegExp(`${kAvoidBytecodeOpsRegexpSource}${kRegisterRegexpSource}`)
-const kIsRegisterRegexp = new RegExp(`^${kRegisterRegexpSource}$`);
-
-const kFullAddressRegexp = /(0x[0-9a-f]{8,})/;
-const kRelativeAddressRegexp = /([+-]0x[0-9a-f]+)/;
-const kAnyAddressRegexp = /(?<address>[+-]?0x[0-9a-f]+)/;
-
-const kJmpRegexp = new RegExp(`jmp ${kRegisterRegexpSource}`);
-const kMovRegexp =
-    new RegExp(`mov. ${kRegisterRegexpSource},${kAnyAddressRegexp.source}`);
-
 class AssemblyFormatter {
   constructor(codeLogEntry) {
     this._fragment = new DocumentFragment();

@@ -317,41 +317,6 @@ static int hkdf_common_set_ctx_params(KDF_HKDF *ctx, const OSSL_PARAM params[])
     return 1;
 }
 
-/*
- * Use WPACKET to concat one or more OSSL_KDF_PARAM_INFO fields into a fixed
- * out buffer of size *outlen.
- * If out is NULL then outlen is used to return the required buffer size.
- */
-static int setinfo_fromparams(const OSSL_PARAM *p, unsigned char *out, size_t *outlen)
-{
-    int ret = 0;
-    WPACKET pkt;
-
-    if (out == NULL) {
-        if (!WPACKET_init_null(&pkt, 0))
-            return 0;
-    } else {
-        if (!WPACKET_init_static_len(&pkt, out, *outlen, 0))
-            return 0;
-    }
-
-    for (; p != NULL; p = OSSL_PARAM_locate_const(p + 1, OSSL_KDF_PARAM_INFO)) {
-        if (p->data_type != OSSL_PARAM_OCTET_STRING)
-            goto err;
-        if (p->data != NULL
-                && p->data_size != 0
-                && !WPACKET_memcpy(&pkt, p->data, p->data_size))
-            goto err;
-    }
-    if (!WPACKET_get_total_written(&pkt, outlen)
-            || !WPACKET_finish(&pkt))
-        goto err;
-    ret = 1;
-err:
-    WPACKET_cleanup(&pkt);
-    return ret;
-}
-
 static int kdf_hkdf_set_ctx_params(void *vctx, const OSSL_PARAM params[])
 {
     KDF_HKDF *ctx = vctx;

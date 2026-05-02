@@ -127,7 +127,7 @@ static void change_file_date(const char *filename, uLong dosdate, tm_unz tmu_dat
 
 static int mymkdir(const char* dirname) {
     int ret=0;
-#if defined(_WIN32)
+#ifdef _WIN32
     ret = _mkdir(dirname);
 #elif defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__Fuchsia__) || defined(__ANDROID_API__)
     ret = mkdir (dirname,0775);

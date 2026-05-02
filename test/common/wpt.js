@@ -461,7 +461,7 @@ class StatusLoader {
         const list = this.grep(filepath);
         result = result.concat(list);
       } else {
-        if (!(/\.\w+\.js$/.test(filepath)) || filepath.endsWith('.helper.js')) {
+        if (!(/\.\w+\.js$/.test(filepath))) {
           continue;
         }
         result.push(filepath);

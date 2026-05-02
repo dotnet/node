@@ -2429,7 +2429,6 @@ void V8FileLogger::SetCodeEventHandler(uint32_t options,
       HandleScope scope(isolate_);
       LogBuiltins();
       LogCodeObjects();
-      LogBuiltins();
       LogCompiledFunctions();
     }
   }
@@ -2523,11 +2522,6 @@ void ExistingCodeLogger::LogCodeObject(Tagged<AbstractCode> object) {
       description =
           isolate_->builtins()->name(abstract_code->builtin_id(cage_base));
       tag = CodeTag::kBytecodeHandler;
-      break;
-    case CodeKind::BYTECODE_HANDLER:
-      description =
-          isolate_->builtins()->name(abstract_code->GetCode().builtin_id());
-      tag = CodeEventListener::BYTECODE_HANDLER_TAG;
       break;
     case CodeKind::BUILTIN:
       if (abstract_code->has_instruction_stream(cage_base)) {

@@ -135,28 +135,6 @@ static int unreserve_encoder_store(void *store, void *data)
     return ossl_method_unlock_store(store);
 }
 
-static int reserve_encoder_store(void *store, void *data)
-{
-    struct encoder_data_st *methdata = data;
-
-    if (store == NULL
-        && (store = get_encoder_store(methdata->libctx)) == NULL)
-        return 0;
-
-    return ossl_method_lock_store(store);
-}
-
-static int unreserve_encoder_store(void *store, void *data)
-{
-    struct encoder_data_st *methdata = data;
-
-    if (store == NULL
-        && (store = get_encoder_store(methdata->libctx)) == NULL)
-        return 0;
-
-    return ossl_method_unlock_store(store);
-}
-
 /* Get encoder methods from a store, or put one in */
 static void *get_encoder_from_store(void *store, const OSSL_PROVIDER **prov,
                                     void *data)
@@ -467,25 +445,6 @@ OSSL_ENCODER *OSSL_ENCODER_fetch(OSSL_LIB_CTX *libctx, const char *name,
     method = inner_ossl_encoder_fetch(&methdata, name, properties);
     dealloc_tmp_encoder_store(methdata.tmp_store);
     return method;
-}
-
-int ossl_encoder_store_cache_flush(OSSL_LIB_CTX *libctx)
-{
-    OSSL_METHOD_STORE *store = get_encoder_store(libctx);
-
-    if (store != NULL)
-        return ossl_method_store_cache_flush_all(store);
-    return 1;
-}
-
-int ossl_encoder_store_remove_all_provided(const OSSL_PROVIDER *prov)
-{
-    OSSL_LIB_CTX *libctx = ossl_provider_libctx(prov);
-    OSSL_METHOD_STORE *store = get_encoder_store(libctx);
-
-    if (store != NULL)
-        return ossl_method_store_remove_all_provided(store, prov);
-    return 1;
 }
 
 int ossl_encoder_store_cache_flush(OSSL_LIB_CTX *libctx)

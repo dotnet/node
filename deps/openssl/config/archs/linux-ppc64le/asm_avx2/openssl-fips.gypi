@@ -322,6 +322,7 @@
       './config/archs/linux-ppc64le/asm_avx2/crypto/aes/vpaes-ppc.s',
       './config/archs/linux-ppc64le/asm_avx2/crypto/bn/bn-ppc.s',
       './config/archs/linux-ppc64le/asm_avx2/crypto/bn/ppc-mont.s',
+      './config/archs/linux-ppc64le/asm_avx2/crypto/bn/ppc64-mont-fixed.s',
       './config/archs/linux-ppc64le/asm_avx2/crypto/chacha/chacha-ppc.s',
       './config/archs/linux-ppc64le/asm_avx2/crypto/chacha/chachap10-ppc.s',
       './config/archs/linux-ppc64le/asm_avx2/crypto/ec/ecp_nistz256-ppc64.s',

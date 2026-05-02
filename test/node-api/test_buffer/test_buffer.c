@@ -28,17 +28,6 @@ static void noopDeleter(node_api_basic_env env,
   deleterCallCount++;
 }
 
-static void malignDeleter(napi_env env, void* data, void* finalize_hint) {
-  NODE_API_ASSERT_RETURN_VOID(env, data != NULL && strcmp(data, theText) == 0, "invalid data");
-  napi_ref finalizer_ref = (napi_ref)finalize_hint;
-  napi_value js_finalizer;
-  napi_value recv;
-  NODE_API_CALL_RETURN_VOID(env, napi_get_reference_value(env, finalizer_ref, &js_finalizer));
-  NODE_API_CALL_RETURN_VOID(env, napi_get_global(env, &recv));
-  NODE_API_CALL_RETURN_VOID(env, napi_call_function(env, recv, js_finalizer, 0, NULL, NULL));
-  NODE_API_CALL_RETURN_VOID(env, napi_delete_reference(env, finalizer_ref));
-}
-
 static napi_value newBuffer(napi_env env, napi_callback_info info) {
   napi_value theBuffer;
   char* theCopy;

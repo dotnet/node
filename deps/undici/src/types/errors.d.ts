@@ -27,12 +27,6 @@ declare namespace Errors {
     code: 'UND_ERR_HEADERS_OVERFLOW'
   }
 
-  /** Headers overflow error. */
-  export class HeadersOverflowError extends UndiciError {
-    name: 'HeadersOverflowError'
-    code: 'UND_ERR_HEADERS_OVERFLOW'
-  }
-
   /** A body exceeds the `bodyTimeout` option. */
   export class BodyTimeoutError extends UndiciError {
     name: 'BodyTimeoutError'
@@ -106,12 +100,6 @@ declare namespace Errors {
     code: 'UND_ERR_RES_CONTENT_LENGTH_MISMATCH'
   }
 
-  /** Response body length does not match content-length header. */
-  export class ResponseContentLengthMismatchError extends UndiciError {
-    name: 'ResponseContentLengthMismatchError';
-    code: 'UND_ERR_RES_CONTENT_LENGTH_MISMATCH';
-  }
-
   /** Trying to use a destroyed client. */
   export class ClientDestroyedError extends UndiciError {
     name: 'ClientDestroyedError'
@@ -179,22 +167,5 @@ declare namespace Errors {
     )
     name: 'SecureProxyConnectionError'
     code: 'UND_ERR_PRX_TLS'
-  }
-
-  /** No upstream has been added to the BalancedPool. */
-  export class BalancedPoolMissingUpstreamError extends UndiciError {
-    name: 'MissingUpstreamError';
-    code: 'UND_ERR_BPL_MISSING_UPSTREAM';
-  }
-
-  export class HTTPParserError extends UndiciError {
-    name: 'HTTPParserError';
-    code: string;
-  }
-
-  /** The response exceed the length allowed. */
-  export class ResponseExceededMaxSizeError extends UndiciError {
-    name: 'ResponseExceededMaxSizeError';
-    code: 'UND_ERR_RES_EXCEEDED_MAX_SIZE';
   }
 }

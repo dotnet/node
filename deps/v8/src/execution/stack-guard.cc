@@ -379,14 +379,6 @@ Tagged<Object> StackGuard::HandleInterrupts(InterruptLevel level) {
   }
 #endif  // V8_ENABLE_MAGLEV
 
-#ifdef V8_ENABLE_MAGLEV
-  if (TestAndClear(&interrupt_flags, INSTALL_MAGLEV_CODE)) {
-    TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.compile"),
-                 "V8.FinalizeMaglevConcurrentCompilation");
-    isolate_->maglev_concurrent_dispatcher()->FinalizeFinishedJobs();
-  }
-#endif  // V8_ENABLE_MAGLEV
-
   if (TestAndClear(&interrupt_flags, API_INTERRUPT)) {
     TRACE_EVENT0("v8.execute", "V8.InvokeApiInterruptCallbacks");
     // Callbacks must be invoked outside of ExecutionAccess lock.
