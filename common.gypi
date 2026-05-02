@@ -520,11 +520,11 @@
         'ldflags': [ '-rdynamic', '-fuse-ld=lld', '-Wl,--build-id' ],
         'target_conditions': [
           ['_toolset=="target"', {
-            'cflags_cc': [ '-I<(llvmtargetdir)/include/c++/v1/' ],
-            'ldflags': [ '-L<(llvmtargetdir)/lib/', '-lc++', '-stdlib=libc++', '-Wl,-rpath,\\$$ORIGIN' ],
+            'cflags_cc': [ '-nostdinc++', '-I<(llvmtargetdir)/include/c++/v1/' ],
+            'ldflags': [ '-L<(llvmtargetdir)/lib/', '-lc++', '-stdlib=libc++', '-Wl,-rpath,\$$ORIGIN' ],
           }],
           ['_toolset=="host"', {
-            'cflags_cc': [ '-I<(llvmhostdir)/include/c++/v1/' ],
+            'cflags_cc': [ '-nostdinc++', '-I<(llvmhostdir)/include/c++/v1/' ],
             'ldflags': [ '-L<(llvmhostdir)/lib/', '-lc++', '-stdlib=libc++', '-Wl,-rpath,<(llvmhostdir)/lib/' ],
           }],
           # The 1990s toolchain on SmartOS can't handle thin archives.
