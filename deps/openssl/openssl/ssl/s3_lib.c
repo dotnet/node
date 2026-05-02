@@ -3832,12 +3832,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
         *(const char **)parg = sc->s3.tmp.peer_sigalg->name;
         return 1;
 
-    case SSL_CTRL_GET_VERIFY_CERT_STORE:
-        return ssl_cert_get_cert_store(s->cert, parg, 0);
-
-    case SSL_CTRL_GET_CHAIN_CERT_STORE:
-        return ssl_cert_get_cert_store(s->cert, parg, 1);
-
     case SSL_CTRL_GET_PEER_SIGNATURE_NID:
         if (sc->s3.tmp.peer_sigalg == NULL)
             return 0;
