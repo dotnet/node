@@ -69,6 +69,7 @@
       <VcBuildCommand>$(VcBuildCommand) small-icu</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) static</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) vs2022</VcBuildCommand>
+      <VcBuildCommand>$(VcBuildCommand) binlog</VcBuildCommand>
     </PropertyGroup>
     <Message Importance="High" Text="** Running $(VcBuildCommand)" />
     <Exec Command="$(VcBuildCommand)"
