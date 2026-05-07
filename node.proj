@@ -133,6 +133,9 @@
     <Copy SourceFiles="@(LLVMTargetFiles)" DestinationFolder="$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)%(LLVMTargetFiles.FileArch)\%(RecursiveDir)">
       <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
     </Copy>
+    <!-- NuGet doesn't preserve symlinks; the libc++.so linker script references libc++.so.1 which must exist -->
+    <Exec Command="cd $([MSBuild]::NormalizePath('$(MonoLLVMDir)$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)', 'lib')) &amp;&amp; ln -sf libc++.so.1.0 libc++.so.1 &amp;&amp; ln -sf libc++abi.so.1.0 libc++abi.so.1" />
+    <Exec Command="cd $([MSBuild]::NormalizePath('$(MonoLLVMDir)$(BuildArchitecture)', 'lib')) &amp;&amp; ln -sf libc++.so.1.0 libc++.so.1 &amp;&amp; ln -sf libc++abi.so.1.0 libc++abi.so.1" />
   </Target>
 
   <Target Name="ReallyBuildUnix" AfterTargets="CopyPythonToTree" Condition="'$(BuildOS)' != 'Windows_NT'">

@@ -938,7 +938,8 @@ int uv__thread_setname(const char* name) {
 #if (defined(__ANDROID_API__) && __ANDROID_API__ < 26) || \
     defined(_AIX) || \
     defined(__MVS__) || \
-    defined(__PASE__)
+    defined(__PASE__) || \
+    (defined(__linux__) && !defined(__GLIBC__))
 int uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {
   return UV_ENOSYS;
 }
