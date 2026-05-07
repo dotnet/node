@@ -66,7 +66,8 @@
       <VcBuildCommand Condition="'$(Configuration)' != 'Release'" >$(VcBuildCommand) debug</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) $(TargetArchitecture)</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) openssl-no-asm</VcBuildCommand>
-      <VcBuildCommand>$(VcBuildCommand) small-icu</VcBuildCommand>
+      <VcBuildCommand Condition="'$(TargetArchitecture)' == 'arm64'">$(VcBuildCommand) full-icu</VcBuildCommand>
+      <VcBuildCommand Condition="'$(TargetArchitecture)' != 'arm64'">$(VcBuildCommand) small-icu</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) static</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) vs2022</VcBuildCommand>
     </PropertyGroup>
