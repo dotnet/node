@@ -86,7 +86,6 @@
       <NodeFiles Include="$(ProjectDir)CHANGELOG.md" />
       <NodeFiles Include="$(ProjectDir)LICENSE" />
       <NodeFiles Include="$(ProjectDir)README.md" />
-      <NodeFiles Include="$(ProjectDir)src\res\node_etw_provider.man" />
       <NodeFiles Remove="$(ProjectDir)deps\npm\bin\np*-cli.js" />
       <NodeFiles Remove="$(NodeBuildDir)bytecode_*.*" />
       <NodeFiles Remove="$(NodeBuildDir)mksnapshot.*" />

@@ -51,6 +51,10 @@ class IsolateSafepoint final {
     LocalHeap* local_heap;
 #if V8_OS_DARWIN
     pthread_override_t qos_override;
+    RunningLocalHeap(LocalHeap* heap, pthread_override_t override_handle)
+        : local_heap(heap), qos_override(override_handle) {}
+#else
+    explicit RunningLocalHeap(LocalHeap* heap) : local_heap(heap) {}
 #endif
   };
 
