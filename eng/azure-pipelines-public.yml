@@ -161,20 +161,3 @@ stages:
 
         - powershell: eng\build.ps1 -ci -restore -build -pack $(archflag) -configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
           displayName: 'Build and package'
-
-        - task: CopyFiles@2
-          displayName: 'Collect binlogs'
-          condition: always()
-          continueOnError: true
-          inputs:
-            SourceFolder: 'artifacts/obj/node'
-            Contents: '**/*.binlog'
-            TargetFolder: '$(Build.ArtifactStagingDirectory)/binlogs'
-
-        - task: PublishPipelineArtifact@1
-          displayName: 'Upload binlogs'
-          condition: always()
-          continueOnError: true
-          inputs:
-            targetPath: '$(Build.ArtifactStagingDirectory)/binlogs'
-            artifactName: 'binlogs-$(assetManifestOS)-$(assetManifestPlatform)'
