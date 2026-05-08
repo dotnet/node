@@ -33,18 +33,18 @@ parameters:
   - arch: arm64
     assetManifestOS: linux
     imagename: linux_arm64
-    rootfsHost: /crossrootfs/x64
+    rootfsHost:
     rootfsTarget: /crossrootfs/arm64
   - arch: x64
     assetManifestOS: linux-musl
     imagename: linux_musl_x64
-    rootfsHost: /crossrootfs/x64
-    rootfsTarget: /crossrootfs/x64-alpine
+    rootfsHost:
+    rootfsTarget: /crossrootfs/x64
   - arch: arm64
     assetManifestOS: linux-musl
     imagename: linux_musl_arm64
-    rootfsHost: /crossrootfs/x64
-    rootfsTarget: /crossrootfs/arm64-alpine
+    rootfsHost:
+    rootfsTarget: /crossrootfs/arm64
 - name: macBuilds
   type: object
   default:
@@ -83,11 +83,11 @@ extends:
       linux_x64:
         image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64
       linux_arm64:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-biarch-amd64-arm64
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64
       linux_musl_x64:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-biarch-amd64-amd64-alpine
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64-musl
       linux_musl_arm64:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-biarch-amd64-arm64-alpine
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64-musl
     stages:
     - stage: build
       displayName: Build

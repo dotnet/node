@@ -44,8 +44,8 @@ stages:
             arm64:
               assetManifestOS: linux
               assetManifestPlatform: arm64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-biarch-amd64-arm64
-              rootfsHost: /crossrootfs/x64
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64
+              rootfsHost:
               rootfsTarget: /crossrootfs/arm64
               archflag: --arch arm64
         pool:
@@ -75,16 +75,16 @@ stages:
             x64:
               assetManifestOS: linux-musl
               assetManifestPlatform: x64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-biarch-amd64-amd64-alpine
-              rootfsHost: /crossrootfs/x64
-              rootfsTarget: /crossrootfs/x64-alpine
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64-musl
+              rootfsHost:
+              rootfsTarget: /crossrootfs/x64
               archflag: --arch x64
             arm64:
               assetManifestOS: linux-musl
               assetManifestPlatform: arm64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-biarch-amd64-arm64-alpine
-              rootfsHost: /crossrootfs/x64
-              rootfsTarget: /crossrootfs/arm64-alpine
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64-musl
+              rootfsHost:
+              rootfsTarget: /crossrootfs/arm64
               archflag: --arch arm64
         pool:
           name: $(DncEngPublicBuildPool)
