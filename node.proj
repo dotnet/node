@@ -134,9 +134,6 @@
     <Copy SourceFiles="@(LLVMTargetFiles)" DestinationFolder="$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)%(LLVMTargetFiles.FileArch)\%(RecursiveDir)">
       <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
     </Copy>
-    <!-- NuGet doesn't preserve symlinks; the libc++.so linker script references libc++.so.1 which must exist -->
-    <Exec Command="cd $([MSBuild]::NormalizePath('$(MonoLLVMDir)$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)', 'lib')) &amp;&amp; ln -sf libc++.so.1.0 libc++.so.1 &amp;&amp; ln -sf libc++abi.so.1.0 libc++abi.so.1" />
-    <Exec Command="cd $([MSBuild]::NormalizePath('$(MonoLLVMDir)$(BuildArchitecture)', 'lib')) &amp;&amp; ln -sf libc++.so.1.0 libc++.so.1 &amp;&amp; ln -sf libc++abi.so.1.0 libc++abi.so.1" />
   </Target>
 
   <Target Name="ReallyBuildUnix" AfterTargets="CopyPythonToTree" Condition="'$(BuildOS)' != 'Windows_NT'">
@@ -170,22 +167,14 @@
       <ConfigureEnvironment>$(ConfigureEnvironment) AR_host=$(ClangBinDir)llvm-ar</ConfigureEnvironment>
       <ConfigureEnvironment>$(ConfigureEnvironment) CXX="$(ClangBinDir)clang++ $(TargetTriple)"</ConfigureEnvironment>
       <ConfigureEnvironment>$(ConfigureEnvironment) CXX_host="$(ClangBinDir)clang++ $(HostTriple)"</ConfigureEnvironment>
-      <CFlags Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirTarget)' != ''">$(CFlags) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</CFlags>
+      <CFlags Condition="'$(BuildOS)' == 'Linux'">$(CFlags) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</CFlags>
-      <CFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirHost)' != ''">$(CFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</CFlagsHost>
-      <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirTarget)' != ''">$(TargetTriple) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</LDFlags>
-      <LDFlags Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirTarget)' == ''">$(TargetTriple)</LDFlags>
+      <LDFlags Condition="'$(BuildOS)' == 'Linux'">$(TargetTriple) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</LDFlags>
-      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</LDFlagsHost>
-      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</LDFlagsHost>
-      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(RootFsDirHost)' != ''">$(LDFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</LDFlagsHost>
-      <LDFlagsHost>$(LDFlagsHost) -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</LDFlagsHost>
       <CXXFlags>$(CFlags)</CXXFlags>
-      <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -nostdinc++ -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
-      <CXXFlagsHost>$(CFlagsHost)</CXXFlagsHost>
-      <CXXFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -nostdinc++ -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib')) -lc++ -stdlib=libc++ -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</CXXFlagsHost>
+      <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) GYP_DEFINES="$(GypEnvironment)"</ConfigureEnvironment>
       <ConfigureCommand>PATH=$(PythonPrefixedPath) $(ConfigureEnvironment) ./configure $(ConfigureFlags)</ConfigureCommand>
       <MakeCommand>PATH=$(PythonPrefixedPath) PREFIX=/ CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)</MakeCommand>
