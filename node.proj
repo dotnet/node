@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.Build.Traversal">
   <PropertyGroup>
-    <RootFsDirHost>$(ROOTFS_DIR)</RootFsDirHost>
-    <RootFsDirHost Condition="'$(ROOTFS_DIR_HOST)' != ''">$(ROOTFS_DIR_HOST)</RootFsDirHost>
     <RootFsDirTarget>$(ROOTFS_DIR)</RootFsDirTarget>
-    <RootFsDirTarget Condition="'$(ROOTFS_DIR_TARGET)' != ''">$(ROOTFS_DIR_TARGET)</RootFsDirTarget>
   </PropertyGroup>
 
   <PropertyGroup>

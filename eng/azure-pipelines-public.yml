@@ -38,15 +38,13 @@ stages:
               assetManifestOS: linux
               assetManifestPlatform: x64
               imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64
-              rootfsHost: /crossrootfs/x64
-              rootfsTarget: /crossrootfs/x64
+              rootfsDir: /crossrootfs/x64
               archflag: --arch x64
             arm64:
               assetManifestOS: linux
               assetManifestPlatform: arm64
               imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64
-              rootfsHost:
-              rootfsTarget: /crossrootfs/arm64
+              rootfsDir: /crossrootfs/arm64
               archflag: --arch arm64
         pool:
           name: $(DncEngPublicBuildPool)
@@ -63,8 +61,7 @@ stages:
             ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/  /p:RestoreUsingNuGetTargets=false
           displayName: 'Build and package'
           env:
-            ROOTFS_DIR_HOST: $(rootfsHost)
-            ROOTFS_DIR_TARGET: $(rootfsTarget)
+            ROOTFS_DIR: $(rootfsDir)
 
       ############ LINUX MUSL BUILD ############
       - job: Build_Linux_musl
@@ -76,15 +73,13 @@ stages:
               assetManifestOS: linux-musl
               assetManifestPlatform: x64
               imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64-musl
-              rootfsHost:
-              rootfsTarget: /crossrootfs/x64
+              rootfsDir: /crossrootfs/x64
               archflag: --arch x64
             arm64:
               assetManifestOS: linux-musl
               assetManifestPlatform: arm64
               imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64-musl
-              rootfsHost:
-              rootfsTarget: /crossrootfs/arm64
+              rootfsDir: /crossrootfs/arm64
               archflag: --arch arm64
         pool:
           name: $(DncEngPublicBuildPool)
@@ -101,8 +96,7 @@ stages:
             ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/  /p:RestoreUsingNuGetTargets=false /p:OutputRid=linux-musl-$(assetManifestPlatform)
           displayName: 'Build and package'
           env:
-            ROOTFS_DIR_HOST: $(rootfsHost)
-            ROOTFS_DIR_TARGET: $(rootfsTarget)
+            ROOTFS_DIR: $(rootfsDir)
 
       ############ MACOS BUILD ############
       - job: Build_macOS

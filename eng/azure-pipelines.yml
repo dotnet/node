@@ -28,23 +28,19 @@ parameters:
   - arch: x64
     assetManifestOS: linux
     imagename: linux_x64
-    rootfsHost: /crossrootfs/x64
-    rootfsTarget: /crossrootfs/x64
+    rootfsDir: /crossrootfs/x64
   - arch: arm64
     assetManifestOS: linux
     imagename: linux_arm64
-    rootfsHost:
-    rootfsTarget: /crossrootfs/arm64
+    rootfsDir: /crossrootfs/arm64
   - arch: x64
     assetManifestOS: linux-musl
     imagename: linux_musl_x64
-    rootfsHost:
-    rootfsTarget: /crossrootfs/x64
+    rootfsDir: /crossrootfs/x64
   - arch: arm64
     assetManifestOS: linux-musl
     imagename: linux_musl_arm64
-    rootfsHost:
-    rootfsTarget: /crossrootfs/arm64
+    rootfsDir: /crossrootfs/arm64
 - name: macBuilds
   type: object
   default:
@@ -120,8 +116,7 @@ extends:
                   ./build.sh --ci --restore --build --pack --arch ${{ buildjob.arch }} --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/  /p:RestoreUsingNuGetTargets=false /p:OutputRid=${{ buildjob.assetManifestOS }}-${{ buildjob.arch }}
                 displayName: 'Build and package'
                 env:
-                  ROOTFS_DIR_HOST: ${{ buildjob.rootfsHost }}
-                  ROOTFS_DIR_TARGET: ${{ buildjob.rootfsTarget }}
+                  ROOTFS_DIR: ${{ buildjob.rootfsDir }}
 
               - bash: ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=${{ buildjob.assetManifestOS }} /p:PlatformName=${{ buildjob.arch }} --projects $(Build.SourcesDirectory)/node.proj
                 displayName: Publish packages
