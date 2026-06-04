@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Dependencies>
   <ProductDependencies>
-    <Dependency Name="runtime.osx-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26257.1">
+    <Dependency Name="runtime.osx-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26274.1">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>e7d328e96ae9c1420787190ca9d06a38228774f5</Sha>
+      <Sha>4a8cfdc665714be0268fa705e8e6f3cf359dd466</Sha>
     </Dependency>
-    <Dependency Name="runtime.osx-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26257.1">
+    <Dependency Name="runtime.osx-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26274.1">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>e7d328e96ae9c1420787190ca9d06a38228774f5</Sha>
+      <Sha>4a8cfdc665714be0268fa705e8e6f3cf359dd466</Sha>
     </Dependency>
-    <Dependency Name="runtime.win-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26257.1">
+    <Dependency Name="runtime.win-arm64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26274.1">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>e7d328e96ae9c1420787190ca9d06a38228774f5</Sha>
+      <Sha>4a8cfdc665714be0268fa705e8e6f3cf359dd466</Sha>
     </Dependency>
-    <Dependency Name="runtime.win-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26257.1">
+    <Dependency Name="runtime.win-x64.Microsoft.NETCore.Runtime.Wasm.Python.Transport" Version="11.0.0-alpha.1.26274.1">
       <Uri>https://github.com/dotnet/cpython</Uri>
-      <Sha>e7d328e96ae9c1420787190ca9d06a38228774f5</Sha>
+      <Sha>4a8cfdc665714be0268fa705e8e6f3cf359dd466</Sha>
     </Dependency>
     <Dependency Name="runtime.linux-arm64.Microsoft.NETCore.Runtime.Mono.LLVM.Sdk" Version="23.1.0-alpha.1.26257.1">
       <Uri>https://github.com/dotnet/llvm-project</Uri>
@@ -51,13 +51,13 @@
     </Dependency>
   </ProductDependencies>
   <ToolsetDependencies>
-    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="11.0.0-beta.26265.4">
+    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="11.0.0-beta.26279.5">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>60e594d8a0e742ae93f96384508dcd690b2fbf01</Sha>
+      <Sha>2bc908b1bdb34e2c42982eb511679bb458ddac2c</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.DotNet.Build.Tasks.Packaging" Version="11.0.0-beta.26265.4">
+    <Dependency Name="Microsoft.DotNet.Build.Tasks.Packaging" Version="11.0.0-beta.26279.5">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>60e594d8a0e742ae93f96384508dcd690b2fbf01</Sha>
+      <Sha>2bc908b1bdb34e2c42982eb511679bb458ddac2c</Sha>
     </Dependency>
   </ToolsetDependencies>
 </Dependencies>
