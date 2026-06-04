@@ -139,7 +139,7 @@ extends:
                 displayName: 'Clean up working directory'
 
               - bash: |
-                  ./build.sh --ci --restore --build --pack --arch ${{ buildjob.arch }} --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
+                  ./build.sh --ci --restore --build --pack --arch ${{ buildjob.arch }} --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false /p:NodeBuildParallelism=4
                 displayName: 'Build and package'
 
               - bash: ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=osx /p:PlatformName=${{ buildjob.arch }} --projects $(Build.SourcesDirectory)/node.proj

@@ -121,7 +121,7 @@ stages:
           displayName: 'Clean up working directory'
 
         - bash: |
-            ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
+            ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false /p:NodeBuildParallelism=4
           displayName: 'Build and package'
 
       ############ WINDOWS BUILD ############

@@ -174,7 +174,8 @@
       <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) GYP_DEFINES="$(GypEnvironment)"</ConfigureEnvironment>
       <ConfigureCommand>PATH=$(PythonPrefixedPath) $(ConfigureEnvironment) ./configure $(ConfigureFlags)</ConfigureCommand>
-      <MakeCommand>PATH=$(PythonPrefixedPath) PREFIX=/ CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)</MakeCommand>
+      <NodeBuildParallelism Condition="'$(NodeBuildParallelism)' == ''">$([System.Environment]::ProcessorCount)</NodeBuildParallelism>
+      <MakeCommand>PATH=$(PythonPrefixedPath) PREFIX=/ CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$(NodeBuildParallelism)</MakeCommand>
       <MakeInstallCommand>PATH=$(PythonPrefixedPath) PREFIX=/ DESTDIR=$(NodeInstallDir) CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make install</MakeInstallCommand>
     </PropertyGroup>
     <Message Importance="High" Text="** Running $(ConfigureCommand)" />
