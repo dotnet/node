@@ -206,7 +206,7 @@ For information about the governance of the Node.js project, see
 * [Trott](https://github.com/Trott) -
   **Rich Trott** <<rtrott@gmail.com>> (he/him)
 
-#### TSC regular members
+<details>
 
 <summary>TSC emeriti members</summary>
 
@@ -230,6 +230,8 @@ For information about the governance of the Node.js project, see
   **Franziska Hinkelmann** <<franziska.hinkelmann@gmail.com>> (she/her)
 * [Fishrock123](https://github.com/Fishrock123) -
   **Jeremiah Senkpiel** <<fishrock123@rocketmail.com>> (he/they)
+* [gabrielschulhof](https://github.com/gabrielschulhof) -
+  **Gabriel Schulhof** <<gabrielschulhof@gmail.com>>
 * [gibfahn](https://github.com/gibfahn) -
   **Gibson Fahnestock** <<gibfahn@gmail.com>> (he/him)
 * [indutny](https://github.com/indutny) -
@@ -252,12 +254,16 @@ For information about the governance of the Node.js project, see
   **Alexis Campailla** <<orangemocha@nodejs.org>>
 * [piscisaureus](https://github.com/piscisaureus) -
   **Bert Belder** <<bertbelder@gmail.com>>
+* [rvagg](https://github.com/rvagg) -
+  **Rod Vagg** <<r@va.gg>>
 * [sam-github](https://github.com/sam-github) -
   **Sam Roberts** <<vieuxtech@gmail.com>>
 * [shigeki](https://github.com/shigeki) -
   **Shigeki Ohtsu** <<ohtsu@ohtsu.org>> (he/him)
 * [thefourtheye](https://github.com/thefourtheye) -
   **Sakthipriyan Vairamani** <<thechargingvolcano@gmail.com>> (he/him)
+* [TimothyGu](https://github.com/TimothyGu) -
+  **Tiancheng "Timothy" Gu** <<timothygu99@gmail.com>> (he/him)
 * [trevnorris](https://github.com/trevnorris) -
   **Trevor Norris** <<trev.norris@gmail.com>>
 
@@ -321,8 +327,6 @@ For information about the governance of the Node.js project, see
   **Feng Yu** <<F3n67u@outlook.com>> (he/him)
 * [fhinkel](https://github.com/fhinkel) -
   **Franziska Hinkelmann** <<franziska.hinkelmann@gmail.com>> (she/her)
-* [F3n67u](https://github.com/F3n67u) -
-  **Feng Yu** <<F3n67u@outlook.com>> (he/him)
 * [Flarna](https://github.com/Flarna) -
   **Gerhard Stöbich** <<deb2001-github@yahoo.de>> (he/they)
 * [gabrielschulhof](https://github.com/gabrielschulhof) -

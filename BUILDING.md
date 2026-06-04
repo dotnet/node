@@ -945,19 +945,6 @@ configure option:
 ./configure --openssl-conf-name=<some_conf_name>
 ```
 
-### Configure OpenSSL appname
-
-Node.js can use an OpenSSL configuration file by specifying the environment
-variable `OPENSSL_CONF`, or using the command line option `--openssl-conf`, and
-if none of those are specified will default to reading the default OpenSSL
-configuration file `openssl.cnf`. Node.js will only read a section that is by
-default named `nodejs_conf`, but this name can be overridden using the following
-configure option:
-
-```console
-$ ./configure --openssl-conf-name=<some_conf_name>
-```
-
 ## Building Node.js with FIPS-compliant OpenSSL
 
 Node.js supports FIPS when statically or dynamically linked with OpenSSL 3 via

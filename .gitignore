@@ -9,8 +9,6 @@
 !deps/**/.*
 !.devcontainer.json
 !test/fixtures/**/.*
-!.CodeQL.yml
-!.config
 !.clang-format
 !.cpplint
 !.editorconfig
@@ -173,3 +171,5 @@ compile_commands.json
 /.dotnet
 /.packages
 /artifacts
+!.CodeQL.yml
+!.config

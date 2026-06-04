@@ -506,19 +506,6 @@ if defined dll (
     if errorlevel 1 echo Cannot copy node.def && goto package_error
   )
 )
-if defined dll (
-  copy /Y libnode.dll %TARGET_NAME%\ > nul
-  if errorlevel 1 echo Cannot copy libnode.dll && goto package_error
-
-  mkdir %TARGET_NAME%\Release > nul
-  copy /Y node.def %TARGET_NAME%\Release\ > nul
-  if errorlevel 1 echo Cannot copy node.def && goto package_error
-
-  set HEADERS_ONLY=1
-  python ..\tools\install.py install %CD%\%TARGET_NAME% \ > nul
-  if errorlevel 1 echo Cannot install headers && goto package_error
-  set HEADERS_ONLY=
-)
 cd ..
 
 :package

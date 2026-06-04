@@ -640,12 +640,6 @@ parser.add_argument('--experimental-enable-pointer-compression',
     default=None,
     help='[Experimental] Enable V8 pointer compression (limits max heap to 4GB and breaks ABI compatibility)')
 
-parser.add_argument('--disable-shared-readonly-heap',
-    action='store_true',
-    dest='disable_shared_ro_heap',
-    default=None,
-    help='Disable the shared read-only heap feature in V8')
-
 parser.add_argument('--v8-options',
     action='store',
     dest='v8_options',

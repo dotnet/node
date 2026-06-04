@@ -845,7 +845,6 @@
         '<(SHARED_INTERMEDIATE_DIR)' # for node_natives.h
       ],
       'dependencies': [
-        'deps/base64/base64.gyp:base64',
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
         'deps/nbytes/nbytes.gyp:nbytes',
@@ -869,8 +868,6 @@
         'openssl_system_ca_path%': '',
         'openssl_default_cipher_list%': '',
       },
-
-      'cflags': ['-Werror=unused-result'],
 
       'defines': [
         'NODE_ARCH="<(target_arch)"',
@@ -1185,7 +1182,6 @@
 
       'dependencies': [
         '<(node_lib_target_name)',
-        'deps/base64/base64.gyp:base64',
         'deps/googletest/googletest.gyp:gtest',
         'deps/googletest/googletest.gyp:gtest_main',
         'deps/histogram/histogram.gyp:histogram',
