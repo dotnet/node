@@ -2160,14 +2160,7 @@ def configure_intl(o):
   #   shlib_suffix = 'so.%s'
   if flavor == 'win':
     icu_config['variables']['icu_asm_ext'] = 'obj'
-    icu_asm_opts = [ '-o ' ]
-    if options.clang_cl:
-      # ClangCL builds need explicit CPU architecture for genccode object generation
-      target_arch = options.dest_cpu or host_arch_cc()
-      cpu_arch_map = { 'x64': 'x64', 'ia32': 'x86', 'x86': 'x86', 'arm64': 'arm64' }
-      cpu_arch = cpu_arch_map.get(target_arch, target_arch)
-      icu_asm_opts += [ '-c', cpu_arch ]
-    icu_config['variables']['icu_asm_opts'] = icu_asm_opts
+    icu_config['variables']['icu_asm_opts'] = [ '-o ' ]
   elif with_intl == 'small-icu' or options.cross_compiling:
     icu_config['variables']['icu_asm_ext'] = 'c'
     icu_config['variables']['icu_asm_opts'] = []
