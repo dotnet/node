@@ -515,6 +515,7 @@
           '-fno-exceptions',
           '-fno-strict-aliasing',
           '-std=gnu++20',
+          '-stdlib=libc++',
         ],
         'defines': [ '__STDC_FORMAT_MACROS' ],
         'ldflags': [ '-rdynamic', '-fuse-ld=lld', '-Wl,--build-id' ],
