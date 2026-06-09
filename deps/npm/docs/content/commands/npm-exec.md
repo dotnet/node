@@ -118,6 +118,8 @@ $ npm exec -- foo@latest bar --package=@npmcli/foo
 
 The package or packages to install for [`npm exec`](/commands/npm-exec)
 
+
+
 #### `call`
 
 * Default: ""
@@ -129,6 +131,7 @@ custom command to be run along with the installed packages.
 ```bash
 npm exec --package yo --package generator-node --call "yo node"
 ```
+
 
 
 #### `workspace`
@@ -352,7 +355,7 @@ project.
 
 ### See Also
 
-* [npm run-script](/commands/npm-run-script)
+* [npm run](/commands/npm-run)
 * [npm scripts](/using-npm/scripts)
 * [npm test](/commands/npm-test)
 * [npm start](/commands/npm-start)

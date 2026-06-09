@@ -1,7 +1,16 @@
+const { inspect } = require('node:util')
 const t = require('tap')
 const mockNpm = require('../../fixtures/mock-npm')
+const tmock = require('../../fixtures/tmock')
 
-const mockProfile = async (t, { npmProfile, readUserInfo, qrcode, config, ...opts } = {}) => {
+const mockProfile = async (t, {
+  npmProfile, readUserInfo, qrcode, config, isTTY, ...opts } = {}) => {
+  const mockReadUserInfo = {
+    '{LIB}/utils/read-user-info.js': readUserInfo || {
+      async password () {},
+      async otp () {},
+    },
+  }
   const mocks = {
     'npm-profile': npmProfile || {
       async get () {},
@@ -9,24 +18,20 @@ const mockProfile = async (t, { npmProfile, readUserInfo, qrcode, config, ...opt
       async createToken () {},
     },
     'qrcode-terminal': qrcode || { generate: (url, cb) => cb() },
-    'cli-table3': class extends Array {
-      toString () {
-        return this.filter(Boolean)
-          .map(i => [...Object.entries(i)].map(v => v.join(': ')))
-          .join('\n')
-      }
-    },
-    '{LIB}/utils/read-user-info.js': readUserInfo || {
-      async password () {},
-      async otp () {},
-    },
+    ...mockReadUserInfo,
+    '{LIB}/utils/auth.js': tmock(t, '{LIB}/utils/auth.js', mockReadUserInfo),
   }
 
   const mock = await mockNpm(t, {
     ...opts,
+    command: 'profile',
     config: {
       color: false,
       ...config,
+    },
+    globals: {
+      'process.stdin.isTTY': isTTY,
+      'process.stdout.isTTY': isTTY,
     },
     mocks: {
       ...mocks,
@@ -37,10 +42,6 @@ const mockProfile = async (t, { npmProfile, readUserInfo, qrcode, config, ...opt
   return {
     ...mock,
     result: () => mock.joinedOutput(),
-    profile: {
-      exec: (args) => mock.npm.exec('profile', args),
-      usage: () => mock.npm.cmd('profile').then(c => c.usage),
-    },
   }
 }
 
@@ -61,7 +62,7 @@ const userProfile = {
 
 t.test('no args', async t => {
   const { profile } = await mockProfile(t)
-  await t.rejects(profile.exec([]), await profile.usage())
+  await t.rejects(profile.exec([]), await profile.usage)
 })
 
 t.test('profile get no args', async t => {
@@ -97,16 +98,6 @@ t.test('profile get no args', async t => {
 
     await profile.exec(['get'])
     t.matchSnapshot(result(), 'should output all profile info as parseable result')
-  })
-
-  t.test('--color', async t => {
-    const { profile, result } = await mockProfile(t, {
-      npmProfile: defaultNpmProfile,
-      config: { color: 'always' },
-    })
-
-    await profile.exec(['get'])
-    t.matchSnapshot(result(), 'should output all profile info with color result')
   })
 
   t.test('no tfa enabled', async t => {
@@ -476,8 +467,8 @@ t.test('profile set <key> <value>', async t => {
     await profile.exec(['set', 'password'])
 
     t.equal(
-      logs.warn[0][1],
-      'Passwords do not match, please try again.',
+      logs.warn.byTitle('profile')[0],
+      'profile Passwords do not match, please try again.',
       'should log password mismatch message'
     )
 
@@ -536,6 +527,12 @@ t.test('enable-2fa', async t => {
         t.match(pass, 'bar', 'should use password for basic auth')
         return {}
       },
+      async get () {
+        return {
+          userProfile,
+          tfa: null,
+        }
+      },
     }
 
     const { npm, profile } = await mockProfile(t, {
@@ -560,8 +557,14 @@ t.test('enable-2fa', async t => {
 
   t.test('from basic username/password auth', async t => {
     const npmProfile = {
-      async createToken (pass) {
+      async createToken () {
         return {}
+      },
+      async get () {
+        return {
+          ...userProfile,
+          tfa: null,
+        }
       },
     }
 
@@ -597,7 +600,9 @@ t.test('enable-2fa', async t => {
   })
 
   t.test('from basic auth, asks for otp', async t => {
-    t.plan(9)
+    t.plan(10)
+
+    let setCallCount = 0
 
     const npmProfile = {
       async createToken (pass) {
@@ -607,19 +612,37 @@ t.test('enable-2fa', async t => {
       async get () {
         return userProfile
       },
-      async set (newProfile, conf) {
-        t.match(
-          newProfile,
-          {
+      async set (newProfile) {
+        setCallCount++
+        if (setCallCount === 1) {
+          t.match(
+            newProfile,
+            {
+              tfa: {
+                mode: 'auth-only',
+              },
+            },
+            'should set tfa mode on first call'
+          )
+          const err = new Error('One-time password required')
+          err.code = 'EOTP'
+          throw err
+        } else if (setCallCount === 2) {
+          t.match(
+            newProfile,
+            {
+              tfa: {
+                mode: 'auth-only',
+              },
+            },
+            'should set tfa mode'
+          )
+          return {
+            ...userProfile,
             tfa: {
               mode: 'auth-only',
             },
-          },
-          'should set tfa mode'
-        )
-        return {
-          ...userProfile,
-          tfa: null,
+          }
         }
       },
     }
@@ -632,7 +655,7 @@ t.test('enable-2fa', async t => {
       async otp (label) {
         t.equal(
           label,
-          'Enter one-time password: ',
+          'This operation requires a one-time password.\nEnter OTP:',
           'should ask for otp confirmation'
         )
         return '123456'
@@ -640,6 +663,7 @@ t.test('enable-2fa', async t => {
     }
 
     const { npm, profile, result } = await mockProfile(t, {
+      isTTY: true,
       npmProfile,
       readUserInfo,
     })
@@ -679,7 +703,7 @@ t.test('enable-2fa', async t => {
           },
         }
       },
-      async set (newProfile, conf) {
+      async set (newProfile) {
         setCount++
 
         // when profile response shows that 2fa is pending the
@@ -767,7 +791,7 @@ t.test('enable-2fa', async t => {
           },
         }
       },
-      async set (newProfile, conf) {
+      async set () {
         return {
           ...userProfile,
           tfa: 'http://foo?secret=1234',
@@ -779,7 +803,7 @@ t.test('enable-2fa', async t => {
       async password () {
         return 'password1234'
       },
-      async otp (label) {
+      async otp () {
         return '123456'
       },
     }
@@ -806,7 +830,7 @@ t.test('enable-2fa', async t => {
       async get () {
         return userProfile
       },
-      async set (newProfile, conf) {
+      async set () {
         return {
           ...userProfile,
           tfa: null,
@@ -829,7 +853,7 @@ t.test('enable-2fa', async t => {
       config: { otp: '123456' },
     })
 
-    npm.config.getCredentialsByURI = reg => {
+    npm.config.getCredentialsByURI = () => {
       return { token: 'token' }
     }
 
@@ -837,12 +861,12 @@ t.test('enable-2fa', async t => {
 
     t.equal(
       result(),
-      'Two factor authentication mode changed to: auth-and-writes',
+      'Two factor authentication is already enabled and set to auth-and-writes',
       'should output success msg'
     )
   })
 
-  t.test('missing tfa from user profile', async t => {
+  t.test('errors when tfa is return null (not otpauth URL) and tfa is not setup already (with auth-only)', async t => {
     const npmProfile = {
       async get () {
         return {
@@ -850,7 +874,7 @@ t.test('enable-2fa', async t => {
           tfa: undefined,
         }
       },
-      async set (newProfile, conf) {
+      async set () {
         return {
           ...userProfile,
           tfa: null,
@@ -867,25 +891,24 @@ t.test('enable-2fa', async t => {
       },
     }
 
-    const { npm, profile, result } = await mockProfile(t, {
+    const { npm, profile } = await mockProfile(t, {
       npmProfile,
       readUserInfo,
     })
 
-    npm.config.getCredentialsByURI = reg => {
+    npm.config.getCredentialsByURI = () => {
       return { token: 'token' }
     }
 
-    await profile.exec(['enable-2fa', 'auth-only'])
-
-    t.equal(
-      result(),
-      'Two factor authentication mode changed to: auth-only',
-      'should output success msg'
-    )
+    await t.rejects(async () => {
+      await profile.exec(['enable-2fa', 'auth-only'])
+    }, new Error(
+      'Unknown error enabling two-factor authentication. Expected otpauth URL' +
+        ', got: ' + inspect(null)
+    ))
   })
 
-  t.test('defaults to auth-and-writes permission if no mode specified', async t => {
+  t.test('errors when tfa is return null (not otpauth URL) and tfa is not setup already', async t => {
     const npmProfile = {
       async get () {
         return {
@@ -893,7 +916,7 @@ t.test('enable-2fa', async t => {
           tfa: undefined,
         }
       },
-      async set (newProfile, conf) {
+      async set () {
         return {
           ...userProfile,
           tfa: null,
@@ -910,21 +933,21 @@ t.test('enable-2fa', async t => {
       },
     }
 
-    const { npm, profile, result } = await mockProfile(t, {
+    const { npm, profile } = await mockProfile(t, {
       npmProfile,
       readUserInfo,
     })
 
-    npm.config.getCredentialsByURI = reg => {
+    npm.config.getCredentialsByURI = () => {
       return { token: 'token' }
     }
 
-    await profile.exec(['enable-2fa'])
-    t.equal(
-      result(),
-      'Two factor authentication mode changed to: auth-and-writes',
-      'should enable 2fa with auth-and-writes permission'
-    )
+    await t.rejects(async () => {
+      await profile.exec(['enable-2fa'])
+    }, new Error(
+      'Unknown error enabling two-factor authentication. Expected otpauth URL' +
+        ', got: ' + inspect(null)
+    ))
   })
 })
 
@@ -949,23 +972,33 @@ t.test('disable-2fa', async t => {
   })
 
   t.test('requests otp', async t => {
-    const npmProfile = t => ({
-      async get () {
-        return userProfile
-      },
-      async set (newProfile, conf) {
-        t.same(
-          newProfile,
-          {
-            tfa: {
-              password: 'password1234',
-              mode: 'disable',
-            },
-          },
-          'should send the new info for setting in profile'
-        )
-      },
-    })
+    const OTP_ERROR = Object.assign(new Error('One-time password required'), { code: 'EOTP' })
+
+    const npmProfile = (t) => {
+      let setCallCount = 0
+      return {
+        async get () {
+          return userProfile
+        },
+        async set (newProfile) {
+          setCallCount++
+          if (setCallCount === 1) {
+            throw OTP_ERROR
+          } else if (setCallCount === 2) {
+            t.same(
+              newProfile,
+              {
+                tfa: {
+                  password: 'password1234',
+                  mode: 'disable',
+                },
+              },
+              'should send the new info for setting in profile'
+            )
+          }
+        },
+      }
+    }
 
     const readUserInfo = t => ({
       async password () {
@@ -975,7 +1008,7 @@ t.test('disable-2fa', async t => {
       async otp (label) {
         t.equal(
           label,
-          'Enter one-time password: ',
+          'This operation requires a one-time password.\nEnter OTP:',
           'should ask for otp confirmation'
         )
         return '1234'
@@ -988,6 +1021,7 @@ t.test('disable-2fa', async t => {
       const { profile, result } = await mockProfile(t, {
         npmProfile: npmProfile(t),
         readUserInfo: readUserInfo(t),
+        isTTY: true,
       })
 
       await profile.exec(['disable-2fa'])
@@ -1003,6 +1037,7 @@ t.test('disable-2fa', async t => {
         npmProfile: npmProfile(t),
         readUserInfo: readUserInfo(t),
         config,
+        isTTY: true,
       })
 
       await profile.exec(['disable-2fa'])
@@ -1019,6 +1054,7 @@ t.test('disable-2fa', async t => {
         npmProfile: npmProfile(t),
         readUserInfo: readUserInfo(t),
         config,
+        isTTY: true,
       })
 
       await profile.exec(['disable-2fa'])
@@ -1034,7 +1070,7 @@ t.test('disable-2fa', async t => {
       async get () {
         return userProfile
       },
-      async set (newProfile, conf) {
+      async set (newProfile) {
         t.same(
           newProfile,
           {
@@ -1052,7 +1088,7 @@ t.test('disable-2fa', async t => {
       async password () {
         return 'password1234'
       },
-      async otp (label) {
+      async otp () {
         throw new Error('should not ask for otp')
       },
     }
@@ -1081,8 +1117,7 @@ t.test('unknown subcommand', async t => {
 
 t.test('completion', async t => {
   const testComp = async (t, { argv, expect, title } = {}) => {
-    const { npm } = await mockProfile(t)
-    const profile = await npm.cmd('profile')
+    const { profile } = await mockProfile(t)
     t.resolveMatch(profile.completion({ conf: { argv: { remain: argv } } }), expect, title)
   }
 
@@ -1114,8 +1149,7 @@ t.test('completion', async t => {
   })
 
   t.test('npm profile unknown subcommand autocomplete', async t => {
-    const { npm } = await mockProfile(t)
-    const profile = await npm.cmd('profile')
+    const { profile } = await mockProfile(t)
     t.rejects(
       profile.completion({ conf: { argv: { remain: ['npm', 'profile', 'asdf'] } } }),
       { message: 'asdf not recognized' },

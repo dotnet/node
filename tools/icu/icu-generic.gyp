@@ -139,20 +139,43 @@
               # full data - just build the full data file, then we are done.
               'sources': [ '<(SHARED_INTERMEDIATE_DIR)/icudt<(icu_ver_major)<(icu_endianness)_dat.<(icu_asm_ext)' ],
               'dependencies': [ 'genccode#host' ],
-              'actions': [
-                {
-                  'action_name': 'icudata',
-                  'msvs_quote_cmd': 0,
-                  'inputs': [ '<(icu_data_in)' ],
-                  'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/icudt<(icu_ver_major)<(icu_endianness)_dat.<(icu_asm_ext)' ],
-                  # on Windows, we can go directly to .obj file (-o) option.
-                  'action': [ '<(PRODUCT_DIR)/genccode<(EXECUTABLE_SUFFIX)',
-                              '<@(icu_asm_opts)', # -o
-                              '-d', '<(SHARED_INTERMEDIATE_DIR)',
-                              '-n', 'icudata',
-                              '-e', 'icudt<(icu_ver_major)',
-                              '<@(_inputs)' ],
-                },
+              'conditions': [
+                [ 'clang==1', {
+                  'actions': [
+                    {
+                      'action_name': 'icudata',
+                      'msvs_quote_cmd': 0,
+                      'inputs': [ '<(icu_data_in)' ],
+                      'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/icudt<(icu_ver_major)<(icu_endianness)_dat.<(icu_asm_ext)' ],
+                      # on Windows, we can go directly to .obj file (-o) option.
+                      # for Clang use "-c <(target_arch)" option
+                      'action': [ '<(PRODUCT_DIR)/genccode<(EXECUTABLE_SUFFIX)',
+                                  '<@(icu_asm_opts)', # -o
+                                  '-c', '<(target_arch)',
+                                  '-d', '<(SHARED_INTERMEDIATE_DIR)',
+                                  '-n', 'icudata',
+                                  '-e', 'icudt<(icu_ver_major)',
+                                  '<@(_inputs)' ],
+                    },
+                  ],
+                }, {
+                  'actions': [
+                    {
+                      'action_name': 'icudata',
+                      'msvs_quote_cmd': 0,
+                      'inputs': [ '<(icu_data_in)' ],
+                      'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/icudt<(icu_ver_major)<(icu_endianness)_dat.<(icu_asm_ext)' ],
+                      # on Windows, we can go directly to .obj file (-o) option.
+                      # for MSVC do not use "-c <(target_arch)" option
+                      'action': [ '<(PRODUCT_DIR)/genccode<(EXECUTABLE_SUFFIX)',
+                                  '<@(icu_asm_opts)', # -o
+                                  '-d', '<(SHARED_INTERMEDIATE_DIR)',
+                                  '-n', 'icudata',
+                                  '-e', 'icudt<(icu_ver_major)',
+                                  '<@(_inputs)' ],
+                    },
+                  ],
+                }]
               ],
             }, { # icu_small == TRUE and OS == win
               # link against stub data primarily
@@ -168,9 +191,7 @@
                   'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/icutmp/icudt<(icu_ver_major)<(icu_endianness).dat' ],
                   'action': [ '<(python)',
                               'icutrim.py',
-                              '--icupkg', '<(PRODUCT_DIR)/icupkg<(EXECUTABLE_SUFFIX)',
-                              '--genrb', '<(PRODUCT_DIR)/genrb<(EXECUTABLE_SUFFIX)',
-                              '--iculslocs', '<(PRODUCT_DIR)/iculslocs<(EXECUTABLE_SUFFIX)',
+                              '-P', '<(PRODUCT_DIR)/.', # '.' suffix is a workaround against GYP assumptions :(
                               '-D', '<(icu_data_in)',
                               '--delete-tmp',
                               '-T', '<(SHARED_INTERMEDIATE_DIR)/icutmp',
@@ -185,12 +206,24 @@
                   'msvs_quote_cmd': 0,
                   'inputs': [ '<(SHARED_INTERMEDIATE_DIR)/icutmp/icudt<(icu_ver_major)<(icu_endianness).dat' ],
                   'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/icudt<(icu_ver_major)<(icu_endianness)_dat.<(icu_asm_ext)' ],
-                  'action': [ '<(PRODUCT_DIR)/genccode<(EXECUTABLE_SUFFIX)',
-                              '<@(icu_asm_opts)', # -o
-                              '-d', '<(SHARED_INTERMEDIATE_DIR)/',
-                              '-n', 'icudata',
-                              '-e', 'icusmdt<(icu_ver_major)',
-                              '<@(_inputs)' ],
+                  'conditions': [
+                    [ 'clang==1', {
+                      'action': [ '<(PRODUCT_DIR)/genccode<(EXECUTABLE_SUFFIX)',
+                                  '<@(icu_asm_opts)', # -o
+                                  '-c', '<(target_arch)',
+                                  '-d', '<(SHARED_INTERMEDIATE_DIR)/',
+                                  '-n', 'icudata',
+                                  '-e', 'icusmdt<(icu_ver_major)',
+                                  '<@(_inputs)' ],
+                    }, {
+                      'action': [ '<(PRODUCT_DIR)/genccode<(EXECUTABLE_SUFFIX)',
+                                  '<@(icu_asm_opts)', # -o
+                                  '-d', '<(SHARED_INTERMEDIATE_DIR)/',
+                                  '-n', 'icudata',
+                                  '-e', 'icusmdt<(icu_ver_major)',
+                                  '<@(_inputs)' ],
+                    }],
+                  ],
                 },
               ],
               # This file contains the small ICU data.
@@ -255,9 +288,7 @@
                   'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/icutmp/icudt<(icu_ver_major)<(icu_endianness).dat' ],
                   'action': [ '<(python)',
                               'icutrim.py',
-                              '--icupkg', '<(PRODUCT_DIR)/icupkg<(EXECUTABLE_SUFFIX)',
-                              '--genrb', '<(PRODUCT_DIR)/genrb<(EXECUTABLE_SUFFIX)',
-                              '--iculslocs', '<(PRODUCT_DIR)/iculslocs<(EXECUTABLE_SUFFIX)',
+                              '-P', '<(PRODUCT_DIR)',
                               '-D', '<(icu_data_in)',
                               '--delete-tmp',
                               '-T', '<(SHARED_INTERMEDIATE_DIR)/icutmp',

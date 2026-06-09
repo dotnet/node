@@ -39,6 +39,7 @@ In the output:
   included in `package.json` are always marked `dependencies`.
 * `homepage` (when using `--long` / `-l`) is the `homepage` value contained
   in the package's packument
+* `depended by location` (when using `--long` / `-l`) shows location of the package that depends on the displayed dependency
 * Red means there's a newer version matching your semver requirements, so
   you should update now.
 * Yellow indicates that there's a newer version _above_ your semver
@@ -95,6 +96,8 @@ When running `npm outdated` and `npm ls`, setting `--all` will show all
 outdated or installed packages, rather than only those directly depended
 upon by the current project.
 
+
+
 #### `json`
 
 * Default: false
@@ -107,12 +110,16 @@ Whether or not to output JSON data, rather than the normal output.
 
 Not supported by all npm commands.
 
+
+
 #### `long`
 
 * Default: false
 * Type: Boolean
 
 Show extended information in `ls`, `search`, and `help-search`.
+
+
 
 #### `parseable`
 
@@ -121,6 +128,8 @@ Show extended information in `ls`, `search`, and `help-search`.
 
 Output parseable results from commands that write to standard output. For
 `npm search`, this will be tab-separated table format.
+
+
 
 #### `global`
 
@@ -135,6 +144,8 @@ folder instead of the current working directory. See
   of the current working directory.
 * bin files are linked to `{prefix}/bin`
 * man pages are linked to `{prefix}/share/man`
+
+
 
 #### `workspace`
 
@@ -157,6 +168,23 @@ workspace which does not yet exist, to create the folder and set it up as a
 brand new workspace within the project.
 
 This value is not exported to the environment for child processes.
+
+#### `before`
+
+* Default: null
+* Type: null or Date
+
+If passed to `npm install`, will rebuild the npm tree such that only
+versions that were available **on or before** the given date are installed.
+If there are no versions available for the current set of dependencies, the
+command will error.
+
+If the requested version is a `dist-tag` and the given tag does not pass the
+`--before` filter, the most recent version less than or equal to that tag
+will be used. For example, `foo@latest` might install `foo@1.2` even though
+`latest` is `2.0`.
+
+
 
 ### See Also
 

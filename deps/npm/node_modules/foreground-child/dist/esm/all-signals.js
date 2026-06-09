@@ -1,5 +1,5 @@
 import constants from 'node:constants';
-export const allSignals = 
+export const allSignals =
 // this is the full list of signals that Node will let us do anything with
 Object.keys(constants).filter(k => k.startsWith('SIG') &&
     // https://github.com/tapjs/signal-exit/issues/21

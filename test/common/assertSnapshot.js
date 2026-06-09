@@ -5,11 +5,19 @@ const test = require('node:test');
 const fs = require('node:fs/promises');
 const assert = require('node:assert/strict');
 
-const stackFramesRegexp = /(\s+)((.+?)\s+\()?(?:\(?(.+?):(\d+)(?::(\d+))?)\)?(\s+\{)?(\[\d+m)?(\n|$)/g;
+const stackFramesRegexp = /(?<=\n)(\s+)((.+?)\s+\()?(?:\(?(.+?):(\d+)(?::(\d+))?)\)?(\s+\{)?(\[\d+m)?(\n|$)/g;
 const windowNewlineRegexp = /\r/g;
+
+function replaceNodeVersion(str) {
+  return str.replaceAll(process.version, '*');
+}
 
 function replaceStackTrace(str, replacement = '$1*$7$8\n') {
   return str.replace(stackFramesRegexp, replacement);
+}
+
+function replaceInternalStackTrace(str) {
+  return str.replaceAll(/(\W+).*node:internal.*/g, '$1*');
 }
 
 function replaceWindowsLineEndings(str) {
@@ -17,7 +25,14 @@ function replaceWindowsLineEndings(str) {
 }
 
 function replaceWindowsPaths(str) {
-  return str.replaceAll(path.win32.sep, path.posix.sep);
+  return common.isWindows ? str.replaceAll(path.win32.sep, path.posix.sep) : str;
+}
+
+function transformProjectRoot(replacement = '') {
+  const projectRoot = path.resolve(__dirname, '../..');
+  return (str) => {
+    return str.replaceAll('\\\'', "'").replaceAll(projectRoot, replacement);
+  };
 }
 
 function transform(...args) {
@@ -34,7 +49,17 @@ async function assertSnapshot(actual, filename = process.argv[1]) {
   if (process.env.NODE_REGENERATE_SNAPSHOTS) {
     await fs.writeFile(snapshot, actual);
   } else {
-    const expected = await fs.readFile(snapshot, 'utf8');
+    let expected;
+    try {
+      expected = await fs.readFile(snapshot, 'utf8');
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        console.log(
+          'Snapshot file does not exist. You can create a new one by running the test with NODE_REGENERATE_SNAPSHOTS=1',
+        );
+      }
+      throw e;
+    }
     assert.strictEqual(actual, replaceWindowsLineEndings(expected));
   }
 }
@@ -59,9 +84,16 @@ async function spawnAndAssert(filename, transform = (x) => x, { tty = false, ...
     test({ skip: 'Skipping pseudo-tty tests, as pseudo terminals are not available on Windows.' });
     return;
   }
-  const flags = common.parseTestFlags(filename);
-  const executable = tty ? 'tools/pseudo-tty.py' : process.execPath;
-  const args = tty ? [process.execPath, ...flags, filename] : [...flags, filename];
+  let { flags } = common.parseTestMetadata(filename);
+  if (options.flags) {
+    flags = [...options.flags, ...flags];
+  }
+
+  const executable = tty ? (process.env.PYTHON || 'python3') : process.execPath;
+  const args =
+    tty ?
+      [path.join(__dirname, '../..', 'tools/pseudo-tty.py'), process.execPath, ...flags, filename] :
+      [...flags, filename];
   const { stdout, stderr } = await common.spawnPromisified(executable, args, options);
   await assertSnapshot(transform(`${stdout}${stderr}`), filename);
 }
@@ -69,9 +101,12 @@ async function spawnAndAssert(filename, transform = (x) => x, { tty = false, ...
 module.exports = {
   assertSnapshot,
   getSnapshotPath,
+  replaceNodeVersion,
   replaceStackTrace,
+  replaceInternalStackTrace,
   replaceWindowsLineEndings,
   replaceWindowsPaths,
   spawnAndAssert,
   transform,
+  transformProjectRoot,
 };

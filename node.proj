@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.Build.Traversal">
   <PropertyGroup>
-    <RootFsDirHost>$(ROOTFS_DIR)</RootFsDirHost>
-    <RootFsDirHost Condition="'$(ROOTFS_DIR_HOST)' != ''">$(ROOTFS_DIR_HOST)</RootFsDirHost>
     <RootFsDirTarget>$(ROOTFS_DIR)</RootFsDirTarget>
-    <RootFsDirTarget Condition="'$(ROOTFS_DIR_TARGET)' != ''">$(ROOTFS_DIR_TARGET)</RootFsDirTarget>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -66,7 +63,8 @@
       <VcBuildCommand Condition="'$(Configuration)' != 'Release'" >$(VcBuildCommand) debug</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) $(TargetArchitecture)</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) openssl-no-asm</VcBuildCommand>
-      <VcBuildCommand>$(VcBuildCommand) small-icu</VcBuildCommand>
+      <VcBuildCommand Condition="'$(TargetArchitecture)' == 'arm64'">$(VcBuildCommand) full-icu</VcBuildCommand>
+      <VcBuildCommand Condition="'$(TargetArchitecture)' != 'arm64'">$(VcBuildCommand) small-icu</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) static</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) vs2022</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) binlog</VcBuildCommand>
@@ -86,7 +84,6 @@
       <NodeFiles Include="$(ProjectDir)CHANGELOG.md" />
       <NodeFiles Include="$(ProjectDir)LICENSE" />
       <NodeFiles Include="$(ProjectDir)README.md" />
-      <NodeFiles Include="$(ProjectDir)src\res\node_etw_provider.man" />
       <NodeFiles Remove="$(ProjectDir)deps\npm\bin\np*-cli.js" />
       <NodeFiles Remove="$(NodeBuildDir)bytecode_*.*" />
       <NodeFiles Remove="$(NodeBuildDir)mksnapshot.*" />
@@ -170,21 +167,15 @@
       <CFlags Condition="'$(BuildOS)' == 'Linux'">$(CFlags) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</CFlags>
       <CFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</CFlags>
-      <CFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</CFlagsHost>
       <LDFlags Condition="'$(BuildOS)' == 'Linux'">$(TargetTriple) --gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'x64'">-arch x86_64</LDFlags>
       <LDFlags Condition="'$(BuildOS)' == 'OSX' and '$(TargetArchitecture)' == 'arm64'">-arch arm64</LDFlags>
-      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64'">-target x86_64-linux-gnu</LDFlagsHost>
-      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</LDFlagsHost>
-      <LDFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(LDFlagsHost) --gcc-toolchain=$(RootFsDirHost)/usr/ --sysroot=$(RootFsDirHost)/</LDFlagsHost>
-      <LDFlagsHost>$(LDFlagsHost) -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</LDFlagsHost>
       <CXXFlags>$(CFlags)</CXXFlags>
       <CXXFlags Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(MonoLLVMTargetOSPrefix)$(TargetArchitecture)\lib')) -lc++ -stdlib=libc++</CXXFlags>
-      <CXXFlagsHost>$(CFlagsHost)</CXXFlagsHost>
-      <CXXFlagsHost Condition="'$(BuildOS)' == 'Linux'">$(CXXFlags) -I$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\include\c++\v1')) -L$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib')) -lc++ -stdlib=libc++ -Wl,-rpath,$([MSBuild]::NormalizePath('$(MonoLLVMDir)\$(BuildArchitecture)\lib'))</CXXFlagsHost>
       <ConfigureEnvironment Condition="'$(BuildOS)' == 'Linux'">$(ConfigureEnvironment) GYP_DEFINES="$(GypEnvironment)"</ConfigureEnvironment>
       <ConfigureCommand>PATH=$(PythonPrefixedPath) $(ConfigureEnvironment) ./configure $(ConfigureFlags)</ConfigureCommand>
-      <MakeCommand>PATH=$(PythonPrefixedPath) PREFIX=/ CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$([System.Environment]::ProcessorCount)</MakeCommand>
+      <NodeBuildParallelism Condition="'$(NodeBuildParallelism)' == ''">$([System.Environment]::ProcessorCount)</NodeBuildParallelism>
+      <MakeCommand>PATH=$(PythonPrefixedPath) PREFIX=/ CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make -j$(NodeBuildParallelism)</MakeCommand>
       <MakeInstallCommand>PATH=$(PythonPrefixedPath) PREFIX=/ DESTDIR=$(NodeInstallDir) CFLAGS=%22$(CFlags)%22 LDFLAGS=%22$(LDFlags)%22 CXXFLAGS=%22$(CXXFlags)%22 make install</MakeInstallCommand>
     </PropertyGroup>
     <Message Importance="High" Text="** Running $(ConfigureCommand)" />

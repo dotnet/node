@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.allSignals = void 0;
 const node_constants_1 = __importDefault(require("node:constants"));
-exports.allSignals = 
+exports.allSignals =
 // this is the full list of signals that Node will let us do anything with
 Object.keys(node_constants_1.default).filter(k => k.startsWith('SIG') &&
     // https://github.com/tapjs/signal-exit/issues/21

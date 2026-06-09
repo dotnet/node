@@ -37,16 +37,14 @@ stages:
             x64:
               assetManifestOS: linux
               assetManifestPlatform: x64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-amd64
-              rootfsHost: /crossrootfs/x64
-              rootfsTarget: /crossrootfs/x64
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64
+              rootfsDir: /crossrootfs/x64
               archflag: --arch x64
             arm64:
               assetManifestOS: linux
               assetManifestPlatform: arm64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-biarch-amd64-arm64
-              rootfsHost: /crossrootfs/x64
-              rootfsTarget: /crossrootfs/arm64
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64
+              rootfsDir: /crossrootfs/arm64
               archflag: --arch arm64
         pool:
           name: $(DncEngPublicBuildPool)
@@ -63,8 +61,7 @@ stages:
             ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/  /p:RestoreUsingNuGetTargets=false
           displayName: 'Build and package'
           env:
-            ROOTFS_DIR_HOST: $(rootfsHost)
-            ROOTFS_DIR_TARGET: $(rootfsTarget)
+            ROOTFS_DIR: $(rootfsDir)
 
       ############ LINUX MUSL BUILD ############
       - job: Build_Linux_musl
@@ -75,16 +72,14 @@ stages:
             x64:
               assetManifestOS: linux-musl
               assetManifestPlatform: x64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-biarch-amd64-amd64-alpine
-              rootfsHost: /crossrootfs/x64
-              rootfsTarget: /crossrootfs/x64-alpine
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64-musl
+              rootfsDir: /crossrootfs/x64
               archflag: --arch x64
             arm64:
               assetManifestOS: linux-musl
               assetManifestPlatform: arm64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-biarch-amd64-arm64-alpine
-              rootfsHost: /crossrootfs/x64
-              rootfsTarget: /crossrootfs/arm64-alpine
+              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64-musl
+              rootfsDir: /crossrootfs/arm64
               archflag: --arch arm64
         pool:
           name: $(DncEngPublicBuildPool)
@@ -101,8 +96,7 @@ stages:
             ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/  /p:RestoreUsingNuGetTargets=false /p:OutputRid=linux-musl-$(assetManifestPlatform)
           displayName: 'Build and package'
           env:
-            ROOTFS_DIR_HOST: $(rootfsHost)
-            ROOTFS_DIR_TARGET: $(rootfsTarget)
+            ROOTFS_DIR: $(rootfsDir)
 
       ############ MACOS BUILD ############
       - job: Build_macOS
@@ -119,7 +113,7 @@ stages:
               assetManifestPlatform: arm64
               archflag: --arch arm64
         pool:
-          vmImage: macos-14
+          vmImage: macos-15
         steps:
         - script: |
             git clean -ffdx
@@ -127,7 +121,7 @@ stages:
           displayName: 'Clean up working directory'
 
         - bash: |
-            ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
+            ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false /p:NodeBuildParallelism=4
           displayName: 'Build and package'
 
       ############ WINDOWS BUILD ############
@@ -153,10 +147,10 @@ stages:
             git reset --hard HEAD
           displayName: 'Clean up working directory'
 
-        # nodejs configure needs python 3.11
+        # nodejs configure needs python 3.12
         - task: UsePythonVersion@0
           inputs:
-            versionSpec: '3.11'
+            versionSpec: '3.12'
             addToPath: true
 
         - powershell: eng\build.ps1 -ci -restore -build -pack $(archflag) -configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false

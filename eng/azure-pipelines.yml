@@ -28,23 +28,19 @@ parameters:
   - arch: x64
     assetManifestOS: linux
     imagename: linux_x64
-    rootfsHost: /crossrootfs/x64
-    rootfsTarget: /crossrootfs/x64
+    rootfsDir: /crossrootfs/x64
   - arch: arm64
     assetManifestOS: linux
     imagename: linux_arm64
-    rootfsHost: /crossrootfs/x64
-    rootfsTarget: /crossrootfs/arm64
+    rootfsDir: /crossrootfs/arm64
   - arch: x64
     assetManifestOS: linux-musl
     imagename: linux_musl_x64
-    rootfsHost: /crossrootfs/x64
-    rootfsTarget: /crossrootfs/x64-alpine
+    rootfsDir: /crossrootfs/x64
   - arch: arm64
     assetManifestOS: linux-musl
     imagename: linux_musl_arm64
-    rootfsHost: /crossrootfs/x64
-    rootfsTarget: /crossrootfs/arm64-alpine
+    rootfsDir: /crossrootfs/arm64
 - name: macBuilds
   type: object
   default:
@@ -81,13 +77,13 @@ extends:
         os: windows
     containers:
       linux_x64:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-amd64
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64
       linux_arm64:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-biarch-amd64-arm64
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64
       linux_musl_x64:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-biarch-amd64-amd64-alpine
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64-musl
       linux_musl_arm64:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0-cross-biarch-amd64-arm64-alpine
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-arm64-musl
     stages:
     - stage: build
       displayName: Build
@@ -120,8 +116,7 @@ extends:
                   ./build.sh --ci --restore --build --pack --arch ${{ buildjob.arch }} --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/  /p:RestoreUsingNuGetTargets=false /p:OutputRid=${{ buildjob.assetManifestOS }}-${{ buildjob.arch }}
                 displayName: 'Build and package'
                 env:
-                  ROOTFS_DIR_HOST: ${{ buildjob.rootfsHost }}
-                  ROOTFS_DIR_TARGET: ${{ buildjob.rootfsTarget }}
+                  ROOTFS_DIR: ${{ buildjob.rootfsDir }}
 
               - bash: ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=${{ buildjob.assetManifestOS }} /p:PlatformName=${{ buildjob.arch }} --projects $(Build.SourcesDirectory)/node.proj
                 displayName: Publish packages
@@ -135,7 +130,7 @@ extends:
               timeoutInMinutes: 600
               pool:
                 name: Azure Pipelines
-                image: macos-14
+                image: macos-15
                 os: macOS
               steps:
               - script: |
@@ -144,7 +139,7 @@ extends:
                 displayName: 'Clean up working directory'
 
               - bash: |
-                  ./build.sh --ci --restore --build --pack --arch ${{ buildjob.arch }} --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
+                  ./build.sh --ci --restore --build --pack --arch ${{ buildjob.arch }} --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false /p:NodeBuildParallelism=4
                 displayName: 'Build and package'
 
               - bash: ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=osx /p:PlatformName=${{ buildjob.arch }} --projects $(Build.SourcesDirectory)/node.proj
