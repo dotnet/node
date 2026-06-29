@@ -6,7 +6,7 @@
     <PreReleaseVersionIteration>1</PreReleaseVersionIteration>
   </PropertyGroup>
   <PropertyGroup>
-    <MicrosoftDotNetBuildTasksPackagingVersion>11.0.0-beta.26310.1</MicrosoftDotNetBuildTasksPackagingVersion>
+    <MicrosoftDotNetBuildTasksPackagingVersion>11.0.0-beta.26325.1</MicrosoftDotNetBuildTasksPackagingVersion>
     <!-- Python -->
     <runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26308.1</runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
     <runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26308.1</runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
