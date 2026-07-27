@@ -69,6 +69,8 @@
       <VcBuildCommand>$(VcBuildCommand) small-icu</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) static</VcBuildCommand>
       <VcBuildCommand>$(VcBuildCommand) vs2022</VcBuildCommand>
+      <!-- Build with Control Flow Guard (/guard:cf) enabled. -->
+      <VcBuildCommand>$(VcBuildCommand) cfg</VcBuildCommand>
     </PropertyGroup>
     <Message Importance="High" Text="** Running $(VcBuildCommand)" />
     <Exec Command="$(VcBuildCommand)"
