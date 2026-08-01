@@ -8,7 +8,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <!-- dotnet/arcade -->
-    <MicrosoftDotNetBuildTasksPackagingVersion>8.0.0-beta.26278.3</MicrosoftDotNetBuildTasksPackagingVersion>
+    <MicrosoftDotNetBuildTasksPackagingVersion>8.0.0-beta.26371.5</MicrosoftDotNetBuildTasksPackagingVersion>
     <!-- dotnet/cpython -->
     <runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>8.0.0-rtm.26281.3</runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
     <runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>8.0.0-rtm.26281.3</runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
