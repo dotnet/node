@@ -7,7 +7,7 @@
                 "type": "git",
                 "git": {
                     "repositoryUrl": "https://github.com/nodejs/node",
-                    "commitHash": "d795edb56765d4ec743bcda5a0c1452bed74de0c"
+                    "commitHash": "9623d9ad85d37d2f0610ec4a82b48182cf2c6061"
                 }
             },
             "developmentDependency": false
