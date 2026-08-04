@@ -10,6 +10,7 @@ const {
   RequestContentLengthMismatchError,
   ResponseContentLengthMismatchError,
   RequestAbortedError,
+  InvalidArgumentError,
   HeadersTimeoutError,
   HeadersOverflowError,
   SocketError,
@@ -57,6 +58,9 @@ const constants = require('../llhttp/constants.js')
 const EMPTY_BUF = Buffer.alloc(0)
 const FastBuffer = Buffer[Symbol.species]
 const removeAllListeners = util.removeAllListeners
+const kIdleSocketValidation = Symbol('kIdleSocketValidation')
+const kIdleSocketValidationTimeout = Symbol('kIdleSocketValidationTimeout')
+const kSocketUsed = Symbol('kSocketUsed')
 
 let extractBody
 
@@ -64,11 +68,24 @@ function lazyllhttp () {
   const llhttpWasmData = process.env.JEST_WORKER_ID ? require('../llhttp/llhttp-wasm.js') : undefined
 
   let mod
-  try {
-    mod = new WebAssembly.Module(require('../llhttp/llhttp_simd-wasm.js'))
-  } catch (e) {
-    /* istanbul ignore next */
 
+  // We disable wasm SIMD on ppc64 as it seems to be broken on Power 9 architectures.
+  let useWasmSIMD = process.arch !== 'ppc64'
+  // The Env Variable UNDICI_NO_WASM_SIMD allows explicitly overriding the default behavior
+  if (process.env.UNDICI_NO_WASM_SIMD === '1') {
+    useWasmSIMD = false
+  } else if (process.env.UNDICI_NO_WASM_SIMD === '0') {
+    useWasmSIMD = true
+  }
+
+  if (useWasmSIMD) {
+    try {
+      mod = new WebAssembly.Module(require('../llhttp/llhttp_simd-wasm.js'))
+    } catch {
+    }
+  }
+
+  if (!mod) {
     // We could check if the error was caused by the simd option not
     // being enabled, but the occurring of this other error
     // * https://github.com/emscripten-core/emscripten/issues/11495
@@ -85,7 +102,6 @@ function lazyllhttp () {
        * @returns {number}
        */
       wasm_on_url: (p, at, len) => {
-        /* istanbul ignore next */
         return 0
       },
       /**
@@ -204,6 +220,7 @@ class Parser {
      */
     this.socket = socket
     this.timeout = null
+    this.timeoutWeakRef = new WeakRef(this)
     this.timeoutValue = null
     this.timeoutType = null
     this.statusCode = 0
@@ -241,16 +258,15 @@ class Parser {
 
       if (delay) {
         if (type & USE_FAST_TIMER) {
-          this.timeout = timers.setFastTimeout(onParserTimeout, delay, new WeakRef(this))
+          this.timeout = timers.setFastTimeout(onParserTimeout, delay, this.timeoutWeakRef)
         } else {
-          this.timeout = setTimeout(onParserTimeout, delay, new WeakRef(this))
+          this.timeout = setTimeout(onParserTimeout, delay, this.timeoutWeakRef)
           this.timeout?.unref()
         }
       }
 
       this.timeoutValue = delay
     } else if (this.timeout) {
-      // istanbul ignore else: only for jest
       if (this.timeout.refresh) {
         this.timeout.refresh()
       }
@@ -271,7 +287,6 @@ class Parser {
 
     assert(this.timeoutType === TIMEOUT_BODY)
     if (this.timeout) {
-      // istanbul ignore else: only for jest
       if (this.timeout.refresh) {
         this.timeout.refresh()
       }
@@ -325,10 +340,6 @@ class Parser {
         currentBufferRef = chunk
         currentParser = this
         ret = llhttp.llhttp_execute(this.ptr, currentBufferPtr, chunk.length)
-        /* eslint-disable-next-line no-useless-catch */
-      } catch (err) {
-        /* istanbul ignore next: difficult to make a test case for */
-        throw err
       } finally {
         currentParser = null
         currentBufferRef = null
@@ -343,22 +354,60 @@ class Parser {
           this.paused = true
           socket.unshift(data)
         } else {
-          const ptr = llhttp.llhttp_get_error_reason(this.ptr)
-          let message = ''
-          /* istanbul ignore else: difficult to make a test case for */
-          if (ptr) {
-            const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0)
-            message =
-              'Response does not match the HTTP/1.1 protocol (' +
-              Buffer.from(llhttp.memory.buffer, ptr, len).toString() +
-              ')'
-          }
-          throw new HTTPParserError(message, constants.ERROR[ret], data)
+          throw this.createError(ret, data)
         }
       }
     } catch (err) {
       util.destroy(socket, err)
     }
+  }
+
+  finish () {
+    assert(currentParser === null)
+    assert(this.ptr != null)
+    assert(!this.paused)
+
+    const { llhttp } = this
+
+    let ret
+
+    try {
+      currentParser = this
+      ret = llhttp.llhttp_finish(this.ptr)
+    } finally {
+      currentParser = null
+    }
+
+    if (ret === constants.ERROR.OK) {
+      return null
+    }
+
+    if (ret === constants.ERROR.PAUSED || ret === constants.ERROR.PAUSED_UPGRADE) {
+      this.paused = true
+      return null
+    }
+
+    return this.createError(ret, EMPTY_BUF)
+  }
+
+  createError (ret, data) {
+    const { llhttp, contentLength, bytesRead } = this
+
+    if (contentLength && bytesRead !== parseInt(contentLength, 10)) {
+      return new ResponseContentLengthMismatchError()
+    }
+
+    const ptr = llhttp.llhttp_get_error_reason(this.ptr)
+    let message = ''
+    if (ptr) {
+      const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0)
+      message =
+        'Response does not match the HTTP/1.1 protocol (' +
+        Buffer.from(llhttp.memory.buffer, ptr, len).toString() +
+        ')'
+    }
+
+    return new HTTPParserError(message, constants.ERROR[ret], data)
   }
 
   destroy () {
@@ -391,8 +440,12 @@ class Parser {
   onMessageBegin () {
     const { socket, client } = this
 
-    /* istanbul ignore next: difficult to make a test case for */
     if (socket.destroyed) {
+      return -1
+    }
+
+    if (client[kRunning] === 0) {
+      util.destroy(socket, new SocketError('bad response', util.getSocketInfo(socket)))
       return -1
     }
 
@@ -520,14 +573,17 @@ class Parser {
   onHeadersComplete (statusCode, upgrade, shouldKeepAlive) {
     const { client, socket, headers, statusText } = this
 
-    /* istanbul ignore next: difficult to make a test case for */
     if (socket.destroyed) {
+      return -1
+    }
+
+    if (client[kRunning] === 0) {
+      util.destroy(socket, new SocketError('bad response', util.getSocketInfo(socket)))
       return -1
     }
 
     const request = client[kQueue][client[kRunningIdx]]
 
-    /* istanbul ignore next: difficult to make a test case for */
     if (!request) {
       return -1
     }
@@ -561,7 +617,6 @@ class Parser {
         : client[kBodyTimeout]
       this.setTimeout(bodyTimeout, TIMEOUT_BODY)
     } else if (this.timeout) {
-      // istanbul ignore else: only for jest
       if (this.timeout.refresh) {
         this.timeout.refresh()
       }
@@ -642,7 +697,6 @@ class Parser {
 
     assert(this.timeoutType === TIMEOUT_BODY)
     if (this.timeout) {
-      // istanbul ignore else: only for jest
       if (this.timeout.refresh) {
         this.timeout.refresh()
       }
@@ -698,7 +752,6 @@ class Parser {
       return 0
     }
 
-    /* istanbul ignore next: should be handled by llhttp? */
     if (request.method !== 'HEAD' && contentLength && bytesRead !== parseInt(contentLength, 10)) {
       util.destroy(socket, new ResponseContentLengthMismatchError())
       return -1
@@ -707,6 +760,7 @@ class Parser {
     request.onComplete(headers)
 
     client[kQueue][client[kRunningIdx]++] = null
+    socket[kSocketUsed] = client[kPending] === 0
 
     if (socket[kWriting]) {
       assert(client[kRunning] === 0)
@@ -736,10 +790,14 @@ class Parser {
   }
 }
 
-function onParserTimeout (parser) {
-  const { socket, timeoutType, client, paused } = parser.deref()
+function onParserTimeout (parserWeakRef) {
+  const parser = parserWeakRef.deref()
+  if (!parser) {
+    return
+  }
 
-  /* istanbul ignore else */
+  const { socket, timeoutType, client, paused } = parser
+
   if (timeoutType === TIMEOUT_HEADERS) {
     if (!socket[kWriting] || socket.writableNeedDrain || client[kRunning] > 1) {
       assert(!paused, 'cannot be paused while waiting for headers')
@@ -760,7 +818,7 @@ function onParserTimeout (parser) {
  * @param {import('net').Socket} socket
  * @returns
  */
-async function connectH1 (client, socket) {
+function connectH1 (client, socket) {
   client[kSocket] = socket
 
   if (!llhttpInstance) {
@@ -779,6 +837,9 @@ async function connectH1 (client, socket) {
   socket[kWriting] = false
   socket[kReset] = false
   socket[kBlocking] = false
+  socket[kIdleSocketValidation] = 0
+  socket[kIdleSocketValidationTimeout] = null
+  socket[kSocketUsed] = false
   socket[kParser] = new Parser(client, socket, llhttpInstance)
 
   util.addListener(socket, 'error', onHttpSocketError)
@@ -821,7 +882,7 @@ async function connectH1 (client, socket) {
      * @returns {boolean}
      */
     busy (request) {
-      if (socket[kWriting] || socket[kReset] || socket[kBlocking]) {
+      if (socket[kWriting] || socket[kReset] || socket[kBlocking] || socket[kIdleSocketValidation] === 1) {
         return true
       }
 
@@ -867,8 +928,11 @@ function onHttpSocketError (err) {
   // On Mac OS, we get an ECONNRESET even if there is a full body to be forwarded
   // to the user.
   if (err.code === 'ECONNRESET' && parser.statusCode && !parser.shouldKeepAlive) {
-    // We treat all incoming data so for as a valid response.
-    parser.onMessageComplete()
+    const parserErr = parser.finish()
+    if (parserErr) {
+      this[kError] = parserErr
+      this[kClient][kOnError](parserErr)
+    }
     return
   }
 
@@ -885,8 +949,10 @@ function onHttpSocketEnd () {
   const parser = this[kParser]
 
   if (parser.statusCode && !parser.shouldKeepAlive) {
-    // We treat all incoming data so far as a valid response.
-    parser.onMessageComplete()
+    const parserErr = parser.finish()
+    if (parserErr) {
+      util.destroy(this, parserErr)
+    }
     return
   }
 
@@ -896,10 +962,11 @@ function onHttpSocketEnd () {
 function onHttpSocketClose () {
   const parser = this[kParser]
 
+  clearIdleSocketValidation(this)
+
   if (parser) {
     if (!this[kError] && parser.statusCode && !parser.shouldKeepAlive) {
-      // We treat all incoming data so far as a valid response.
-      parser.onMessageComplete()
+      this[kError] = parser.finish() || this[kError]
     }
 
     this[kParser].destroy()
@@ -943,6 +1010,28 @@ function onSocketClose () {
   this[kClosed] = true
 }
 
+function clearIdleSocketValidation (socket) {
+  if (socket[kIdleSocketValidationTimeout]) {
+    clearTimeout(socket[kIdleSocketValidationTimeout])
+    socket[kIdleSocketValidationTimeout] = null
+  }
+
+  socket[kIdleSocketValidation] = 0
+}
+
+function scheduleIdleSocketValidation (client, socket) {
+  socket[kIdleSocketValidation] = 1
+  socket[kIdleSocketValidationTimeout] = setTimeout(() => {
+    socket[kIdleSocketValidationTimeout] = null
+    socket[kIdleSocketValidation] = 2
+
+    if (client[kSocket] === socket && !socket.destroyed) {
+      client[kResume]()
+    }
+  }, 0)
+  socket[kIdleSocketValidationTimeout].unref?.()
+}
+
 /**
  * @param {import('./client.js')} client
  */
@@ -958,6 +1047,32 @@ function resumeH1 (client) {
     } else if (socket[kNoRef] && socket.ref) {
       socket.ref()
       socket[kNoRef] = false
+    }
+
+    if (client[kRunning] === 0 && client[kPending] > 0 && socket[kSocketUsed]) {
+      if (socket[kIdleSocketValidation] === 0) {
+        scheduleIdleSocketValidation(client, socket)
+        socket[kParser].readMore()
+        if (socket.destroyed) {
+          return
+        }
+        return
+      }
+
+      if (socket[kIdleSocketValidation] === 1) {
+        socket[kParser].readMore()
+        if (socket.destroyed) {
+          return
+        }
+        return
+      }
+    }
+
+    if (client[kRunning] === 0) {
+      socket[kParser].readMore()
+      if (socket.destroyed) {
+        return
+      }
     }
 
     if (client[kSize] === 0) {
@@ -1020,8 +1135,16 @@ function writeH1 (client, request) {
     }
     body = bodyStream.stream
     contentLength = bodyStream.length
-  } else if (util.isBlobLike(body) && request.contentType == null && body.type) {
-    headers.push('content-type', body.type)
+  } else if (util.isBlobLike(body) && request.contentType == null) {
+    const contentType = body.type
+    if (contentType) {
+      const contentTypeValue = `${contentType}`
+      if (!util.isValidHeaderValue(contentTypeValue)) {
+        util.errorRequest(client, request, new InvalidArgumentError('invalid content-type header'))
+        return false
+      }
+      headers.push('content-type', contentTypeValue)
+    }
   }
 
   if (body && typeof body.read === 'function') {
@@ -1058,6 +1181,7 @@ function writeH1 (client, request) {
   }
 
   const socket = client[kSocket]
+  clearIdleSocketValidation(socket)
 
   /**
    * @param {Error} [err]
@@ -1111,6 +1235,10 @@ function writeH1 (client, request) {
     socket[kBlocking] = true
   }
 
+  if (socket.setTypeOfService) {
+    socket.setTypeOfService(request.typeOfService)
+  }
+
   let header = `${method} ${path} HTTP/1.1\r\n`
 
   if (typeof host === 'string') {
@@ -1146,7 +1274,6 @@ function writeH1 (client, request) {
     channels.sendHeaders.publish({ request, headers: header, socket })
   }
 
-  /* istanbul ignore else: assertion */
   if (!body || bodyLength === 0) {
     writeBuffer(abort, null, client, request, socket, contentLength, header, expectsPayload)
   } else if (util.isBuffer(body)) {
@@ -1527,7 +1654,6 @@ class AsyncWriter {
 
     if (!ret) {
       if (socket[kParser].timeout && socket[kParser].timeoutType === TIMEOUT_HEADERS) {
-        // istanbul ignore else: only for jest
         if (socket[kParser].timeout.refresh) {
           socket[kParser].timeout.refresh()
         }
@@ -1578,7 +1704,6 @@ class AsyncWriter {
     }
 
     if (socket[kParser].timeout && socket[kParser].timeoutType === TIMEOUT_HEADERS) {
-      // istanbul ignore else: only for jest
       if (socket[kParser].timeout.refresh) {
         socket[kParser].timeout.refresh()
       }

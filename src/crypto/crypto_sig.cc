@@ -3,6 +3,7 @@
 #include "base_object-inl.h"
 #include "crypto/crypto_ec.h"
 #include "crypto/crypto_keys.h"
+#include "crypto/crypto_pqc.h"
 #include "crypto/crypto_util.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
@@ -199,6 +200,10 @@ void CheckThrow(Environment* env, SignBase::Error error) {
     case SignBase::Error::MalformedSignature:
       return THROW_ERR_CRYPTO_OPERATION_FAILED(env, "Malformed signature");
 
+    case SignBase::Error::ContextUnsupported:
+      return THROW_ERR_CRYPTO_OPERATION_FAILED(
+          env, "Context parameter is unsupported");
+
     case SignBase::Error::Init:
     case SignBase::Error::Update:
     case SignBase::Error::PrivateKey:
@@ -230,6 +235,19 @@ void CheckThrow(Environment* env, SignBase::Error error) {
 
 bool UseP1363Encoding(const EVPKeyPointer& key, const DSASigEnc dsa_encoding) {
   return key.isSigVariant() && dsa_encoding == DSASigEnc::P1363;
+}
+
+bool SupportsContextString(const EVPKeyPointer& key) {
+  if (!OPENSSL_WITH_SIGNATURE_CONTEXT_STRING) return false;
+
+  const int id = key.id();
+#if OPENSSL_WITH_PQC
+  if (IsPqcSignatureKeyId(id)) return true;
+#endif
+#ifndef OPENSSL_IS_BORINGSSL
+  if (id == EVP_PKEY_ED25519 || id == EVP_PKEY_ED448) return true;
+#endif
+  return false;
 }
 }  // namespace
 
@@ -276,7 +294,7 @@ void Sign::Initialize(Environment* env, Local<Object> target) {
   Isolate* isolate = env->isolate();
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
 
-  t->InstanceTemplate()->SetInternalFieldCount(SignBase::kInternalFieldCount);
+  t->InstanceTemplate()->SetInternalFieldCount(Sign::kInternalFieldCount);
 
   SetProtoMethod(isolate, t, "init", SignInit);
   SetProtoMethod(isolate, t, "update", SignUpdate);
@@ -403,7 +421,7 @@ void Verify::Initialize(Environment* env, Local<Object> target) {
   Isolate* isolate = env->isolate();
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
 
-  t->InstanceTemplate()->SetInternalFieldCount(SignBase::kInternalFieldCount);
+  t->InstanceTemplate()->SetInternalFieldCount(Verify::kInternalFieldCount);
 
   SetProtoMethod(isolate, t, "init", VerifyInit);
   SetProtoMethod(isolate, t, "update", VerifyUpdate);
@@ -534,7 +552,8 @@ SignConfiguration::SignConfiguration(SignConfiguration&& other) noexcept
       flags(other.flags),
       padding(other.padding),
       salt_length(other.salt_length),
-      dsa_encoding(other.dsa_encoding) {}
+      dsa_encoding(other.dsa_encoding),
+      context_string(std::move(other.context_string)) {}
 
 SignConfiguration& SignConfiguration::operator=(
     SignConfiguration&& other) noexcept {
@@ -545,9 +564,10 @@ SignConfiguration& SignConfiguration::operator=(
 
 void SignConfiguration::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("key", key);
-  if (job_mode == kCryptoJobAsync) {
+  if (IsCryptoJobAsync(job_mode)) {
     tracker->TrackFieldWithSize("data", data.size());
     tracker->TrackFieldWithSize("signature", signature.size());
+    tracker->TrackFieldWithSize("context_string", context_string.size());
   }
 }
 
@@ -578,45 +598,55 @@ Maybe<void> SignTraits::AdditionalConfig(
     params->key = std::move(data);
   }
 
-  ArrayBufferOrViewContents<char> data(args[offset + 5]);
+  ArrayBufferOrViewContents<char> data(args[offset + 6]);
   if (!data.CheckSizeInt32()) [[unlikely]] {
     THROW_ERR_OUT_OF_RANGE(env, "data is too big");
     return Nothing<void>();
   }
-  params->data = mode == kCryptoJobAsync
-      ? data.ToCopy()
-      : data.ToByteSource();
+  params->data = IsCryptoJobAsync(mode) ? data.ToCopy() : data.ToByteSource();
 
-  if (args[offset + 6]->IsString()) {
-    Utf8Value digest(env->isolate(), args[offset + 6]);
+  if (args[offset + 7]->IsString()) {
+    Utf8Value digest(env->isolate(), args[offset + 7]);
     params->digest = Digest::FromName(*digest);
     if (!params->digest) [[unlikely]] {
-      THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", *digest);
+      THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", digest);
       return Nothing<void>();
     }
   }
 
-  if (args[offset + 7]->IsInt32()) {  // Salt length
+  if (args[offset + 8]->IsInt32()) {  // Salt length
     params->flags |= SignConfiguration::kHasSaltLength;
     params->salt_length =
-        GetSaltLenFromJS(args[offset + 7]).value_or(params->salt_length);
+        GetSaltLenFromJS(args[offset + 8]).value_or(params->salt_length);
   }
-  if (args[offset + 8]->IsUint32()) {  // Padding
+  if (args[offset + 9]->IsUint32()) {  // Padding
     params->flags |= SignConfiguration::kHasPadding;
     params->padding =
-        GetPaddingFromJS(params->key.GetAsymmetricKey(), args[offset + 8]);
+        GetPaddingFromJS(params->key.GetAsymmetricKey(), args[offset + 9]);
   }
 
-  if (args[offset + 9]->IsUint32()) {  // DSA Encoding
-    params->dsa_encoding = GetDSASigEncFromJS(args[offset + 9]);
+  if (args[offset + 10]->IsUint32()) {  // DSA Encoding
+    params->dsa_encoding = GetDSASigEncFromJS(args[offset + 10]);
     if (params->dsa_encoding == DSASigEnc::Invalid) [[unlikely]] {
       THROW_ERR_OUT_OF_RANGE(env, "invalid signature encoding");
       return Nothing<void>();
     }
   }
 
+  if (!args[offset + 11]->IsUndefined()) {  // Context string
+    ArrayBufferOrViewContents<char> context_string(args[offset + 11]);
+    if (context_string.size() > 255) [[unlikely]] {
+      THROW_ERR_OUT_OF_RANGE(env, "context string must be at most 255 bytes");
+      return Nothing<void>();
+    }
+    params->flags |= SignConfiguration::kHasContextString;
+    params->context_string = IsCryptoJobAsync(mode)
+                                 ? context_string.ToCopy()
+                                 : context_string.ToByteSource();
+  }
+
   if (params->mode == SignConfiguration::Mode::Verify) {
-    ArrayBufferOrViewContents<char> signature(args[offset + 10]);
+    ArrayBufferOrViewContents<char> signature(args[offset + 12]);
     if (!signature.CheckSizeInt32()) [[unlikely]] {
       THROW_ERR_OUT_OF_RANGE(env, "signature is too big");
       return Nothing<void>();
@@ -628,9 +658,8 @@ Maybe<void> SignTraits::AdditionalConfig(
     if (UseP1363Encoding(akey, params->dsa_encoding)) {
       params->signature = ConvertSignatureToDER(akey, signature.ToByteSource());
     } else {
-      params->signature = mode == kCryptoJobAsync
-          ? signature.ToCopy()
-          : signature.ToByteSource();
+      params->signature = IsCryptoJobAsync(mode) ? signature.ToCopy()
+                                                 : signature.ToByteSource();
     }
   }
 
@@ -647,12 +676,34 @@ bool SignTraits::DeriveBits(Environment* env,
     return false;
   const auto& key = params.key.GetAsymmetricKey();
 
+  bool has_context = (params.flags & SignConfiguration::kHasContextString &&
+                      params.context_string.size() > 0);
+
+  if (has_context && !SupportsContextString(key)) {
+    if (can_throw) crypto::CheckThrow(env, SignBase::Error::ContextUnsupported);
+    return false;
+  }
+
   auto ctx = ([&] {
-    switch (params.mode) {
-      case SignConfiguration::Mode::Sign:
-        return context.signInit(key, params.digest);
-      case SignConfiguration::Mode::Verify:
-        return context.verifyInit(key, params.digest);
+    if (has_context) {
+      ncrypto::Buffer<const unsigned char> context_buf{
+          .data = params.context_string.data<unsigned char>(),
+          .len = params.context_string.size(),
+      };
+
+      switch (params.mode) {
+        case SignConfiguration::Mode::Sign:
+          return context.signInitWithContext(key, params.digest, context_buf);
+        case SignConfiguration::Mode::Verify:
+          return context.verifyInitWithContext(key, params.digest, context_buf);
+      }
+    } else {
+      switch (params.mode) {
+        case SignConfiguration::Mode::Sign:
+          return context.signInit(key, params.digest);
+        case SignConfiguration::Mode::Verify:
+          return context.verifyInit(key, params.digest);
+      }
     }
     UNREACHABLE();
   })();

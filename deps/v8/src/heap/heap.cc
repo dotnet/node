@@ -5915,20 +5915,6 @@ void Heap::SetUpSpaces(LinearAllocationArea& new_allocation_info,
   }
 }
 
-void Heap::InitializeHashSeed() {
-  DCHECK(!deserialization_complete_);
-  uint64_t new_hash_seed;
-  if (v8_flags.hash_seed == 0) {
-    int64_t rnd = isolate()->random_number_generator()->NextInt64();
-    new_hash_seed = static_cast<uint64_t>(rnd);
-  } else {
-    new_hash_seed = static_cast<uint64_t>(v8_flags.hash_seed);
-  }
-  Tagged<ByteArray> hash_seed = ReadOnlyRoots(this).hash_seed();
-  MemCopy(hash_seed->begin(), reinterpret_cast<uint8_t*>(&new_hash_seed),
-          kInt64Size);
-}
-
 std::shared_ptr<v8::TaskRunner> Heap::GetForegroundTaskRunner(
     TaskPriority priority) const {
   return V8::GetCurrentPlatform()->GetForegroundTaskRunner(
@@ -6247,13 +6233,14 @@ void Heap::TearDown() {
 }
 
 // static
-bool Heap::IsFreeSpaceValid(FreeSpace object) {
+bool Heap::IsFreeSpaceValid(const FreeSpace* object) {
   Heap* heap = HeapUtils::GetOwnerHeap(object);
   Tagged<Object> free_space_map =
       heap->isolate()->root(RootIndex::kFreeSpaceMap);
   CHECK(!heap->deserialization_complete() ||
-        object.map_slot().contains_map_value(free_space_map.ptr()));
-  CHECK_LE(FreeSpace::kNextOffset + kTaggedSize, object.size(kRelaxedLoad));
+        object->map_slot().contains_map_value(free_space_map.ptr()));
+  CHECK_LE(offsetof(FreeSpace, next_) + kTaggedSize,
+           object->size(kRelaxedLoad));
   return true;
 }
 

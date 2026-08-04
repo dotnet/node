@@ -165,3 +165,58 @@ class TestWritable extends Writable {
   const writer = writableStream.getWriter();
   writer.closed.then(common.mustCall());
 }
+
+{
+  const duplex = new PassThrough();
+  const writableStream = newWritableStreamFromStreamWritable(duplex);
+  const ec = new TextEncoder();
+  const arrayBuffer = ec.encode('hello').buffer;
+  writableStream
+    .getWriter()
+    .write(arrayBuffer)
+    .then(common.mustCall());
+
+  duplex.on('data', common.mustCall((chunk) => {
+    assert(chunk instanceof Buffer);
+    assert(chunk.equals(Buffer.from('hello')));
+  }));
+}
+
+{
+  const duplex = new PassThrough({ objectMode: true });
+  const writableStream = newWritableStreamFromStreamWritable(duplex);
+  const ec = new TextEncoder();
+  const arrayBuffer = ec.encode('hello').buffer;
+  writableStream
+    .getWriter()
+    .write(arrayBuffer)
+    .then(common.mustCall());
+
+  duplex.on('data', common.mustCall((chunk) => {
+    assert(chunk instanceof ArrayBuffer);
+    assert.strictEqual(chunk, arrayBuffer);
+  }));
+}
+
+{
+  // Test that the stream doesn't hang when the underlying Writable
+  // emits 'drain' synchronously during write().
+  // Fixes: https://github.com/nodejs/node/issues/61145
+  const writable = new Writable({
+    write(chunk, encoding, callback) {
+      callback();
+    },
+  });
+
+  // Force synchronous 'drain' emission during write()
+  // to simulate a stream that doesn't have Node.js's built-in kSync protection.
+  writable.write = function(chunk) {
+    this.emit('drain');
+    return false;
+  };
+
+  const writableStream = newWritableStreamFromStreamWritable(writable);
+  const writer = writableStream.getWriter();
+  writer.write(new Uint8Array([1, 2, 3])).then(common.mustCall());
+  writer.write(new Uint8Array([4, 5, 6])).then(common.mustCall());
+}

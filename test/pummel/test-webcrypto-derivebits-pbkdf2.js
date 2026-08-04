@@ -24,12 +24,12 @@ const kDerivedKeyTypes = [
   ['AES-CTR', 256, undefined, 'encrypt', 'decrypt'],
   ['AES-GCM', 128, undefined, 'encrypt', 'decrypt'],
   ['AES-GCM', 256, undefined, 'encrypt', 'decrypt'],
-  ['AES-KW', 128, undefined, 'wrapKey', 'unwrapKey'],
-  ['AES-KW', 256, undefined, 'wrapKey', 'unwrapKey'],
   ['HMAC', 256, 'SHA-1', 'sign', 'verify'],
   ['HMAC', 256, 'SHA-256', 'sign', 'verify'],
   ['HMAC', 256, 'SHA-384', 'sign', 'verify'],
   ['HMAC', 256, 'SHA-512', 'sign', 'verify'],
+  ['AES-KW', 128, undefined, 'wrapKey', 'unwrapKey'],
+  ['AES-KW', 256, undefined, 'wrapKey', 'unwrapKey'],
 ];
 
 const kPasswords = {
@@ -362,50 +362,40 @@ const kDerivations = {
 };
 
 async function setupBaseKeys() {
-  const promises = [];
-
   const baseKeys = {};
   const noBits = {};
   const noKey = {};
   let wrongKey = null;
 
-  Object.keys(kPasswords).forEach((size) => {
-    promises.push(
-      subtle.importKey(
-        'raw',
-        Buffer.from(kPasswords[size], 'hex'),
-        { name: 'PBKDF2' },
-        false,
-        ['deriveKey', 'deriveBits'])
-        .then((key) => baseKeys[size] = key));
-
-    promises.push(
-      subtle.importKey(
-        'raw',
-        Buffer.from(kPasswords[size], 'hex'),
-        { name: 'PBKDF2' },
-        false,
-        ['deriveBits'])
-        .then((key) => noKey[size] = key));
-
-    promises.push(
-      subtle.importKey(
-        'raw',
-        Buffer.from(kPasswords[size], 'hex'),
-        { name: 'PBKDF2' },
-        false,
-        ['deriveKey'])
-        .then((key) => noBits[size] = key));
-  });
-
-  promises.push(
-    subtle.generateKey(
-      { name: 'ECDH', namedCurve: 'P-521' },
+  await Promise.all(Object.keys(kPasswords).flatMap((size) => [
+    subtle.importKey(
+      'raw',
+      Buffer.from(kPasswords[size], 'hex'),
+      { name: 'PBKDF2' },
       false,
       ['deriveKey', 'deriveBits'])
-      .then((key) => wrongKey = key.privateKey));
+        .then((key) => baseKeys[size] = key),
 
-  await Promise.all(promises);
+    subtle.importKey(
+      'raw',
+      Buffer.from(kPasswords[size], 'hex'),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveBits'])
+        .then((key) => noKey[size] = key),
+
+    subtle.importKey(
+      'raw',
+      Buffer.from(kPasswords[size], 'hex'),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveKey'])
+        .then((key) => noBits[size] = key),
+  ]).concat(subtle.generateKey(
+    { name: 'ECDH', namedCurve: 'P-521' },
+    false,
+    ['deriveKey', 'deriveBits'])
+      .then((key) => wrongKey = key.privateKey)));
 
   return { baseKeys, noBits, noKey, wrongKey };
 }

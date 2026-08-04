@@ -4,7 +4,6 @@ const assert = require('assert');
 
 // Import of pure js (non-shared) deps for comparison
 const acorn = require('../../deps/acorn/acorn/package.json');
-const cjs_module_lexer = require('../../deps/cjs-module-lexer/src/package.json');
 
 const expected_keys = [
   'ares',
@@ -15,6 +14,8 @@ const expected_keys = [
   'v8',
   'zlib',
   'nghttp2',
+  'nghttp3',
+  'ngtcp2',
   'napi',
   'llhttp',
   'uvwasi',
@@ -22,8 +23,8 @@ const expected_keys = [
   'simdjson',
   'simdutf',
   'ada',
-  'cjs_module_lexer',
   'nbytes',
+  'merve',
 ];
 
 
@@ -42,11 +43,6 @@ if (hasUndici) {
 if (common.hasCrypto) {
   expected_keys.push('openssl');
   expected_keys.push('ncrypto');
-}
-
-if (common.hasQuic) {
-  expected_keys.push('ngtcp2');
-  expected_keys.push('nghttp3');
 }
 
 if (common.hasIntl) {
@@ -73,6 +69,7 @@ assert.match(process.versions.acorn, commonTemplate);
 assert.match(process.versions.ares, commonTemplate);
 assert.match(process.versions.brotli, commonTemplate);
 assert.match(process.versions.llhttp, commonTemplate);
+assert.match(process.versions.merve, commonTemplate);
 assert.match(process.versions.node, commonTemplate);
 assert.match(process.versions.uv, commonTemplate);
 assert.match(process.versions.nbytes, commonTemplate);
@@ -88,7 +85,6 @@ assert.match(
   /^\d+\.\d+\.\d+(?:\.\d+)?-node\.\d+(?: \(candidate\))?$/
 );
 assert.match(process.versions.modules, /^\d+$/);
-assert.match(process.versions.cjs_module_lexer, commonTemplate);
 
 if (common.hasCrypto) {
   const { hasOpenSSL3 } = require('../common/crypto');
@@ -123,5 +119,3 @@ if (hasUndici) {
 
 const expectedAcornVersion = acorn.version;
 assert.strictEqual(process.versions.acorn, expectedAcornVersion);
-const expectedCjsModuleLexerVersion = cjs_module_lexer.version;
-assert.strictEqual(process.versions.cjs_module_lexer, expectedCjsModuleLexerVersion);

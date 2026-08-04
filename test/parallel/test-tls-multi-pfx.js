@@ -3,6 +3,11 @@ const common = require('../common');
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
+if (process.features.openssl_is_boringssl) {
+  require('../common/boringssl').testMultiPfxSelectionDifference();
+  return;
+}
+
 const assert = require('assert');
 const tls = require('tls');
 const fixtures = require('../common/fixtures');
@@ -21,7 +26,7 @@ const ciphers = [];
 
 const server = tls.createServer(options, function(conn) {
   conn.end('ok');
-}).listen(0, function() {
+}).listen(0, common.mustCall(function() {
   const ecdsa = tls.connect(this.address().port, {
     ciphers: 'ECDHE-ECDSA-AES256-GCM-SHA384',
     maxVersion: 'TLSv1.2',
@@ -39,7 +44,7 @@ const server = tls.createServer(options, function(conn) {
       server.close();
     }));
   }));
-});
+}));
 
 process.on('exit', function() {
   assert.deepStrictEqual(ciphers, [{

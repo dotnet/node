@@ -31,6 +31,7 @@ class Outdated extends ArboristWorkspaceCmd {
     'global',
     'workspace',
     'before',
+    'min-release-age',
   ]
 
   #tree
@@ -95,8 +96,7 @@ class Outdated extends ArboristWorkspaceCmd {
   }
 
   #getEdges (nodes, type) {
-    // when no nodes are provided then it should only read direct deps
-    // from the root node and its workspaces direct dependencies
+    // when no nodes are provided then it should only read direct deps from the root node and its workspaces direct dependencies
     if (!nodes) {
       this.#getEdgesOut(this.#tree)
       this.#getWorkspacesEdges()
@@ -170,8 +170,7 @@ class Outdated extends ArboristWorkspaceCmd {
       }
     }
 
-    // deps different from prod not currently
-    // on disk are not included in the output
+    // deps different from prod not currently on disk are not included in the output
     if (edge.error === MISSING && type !== 'dependencies') {
       return
     }
@@ -204,9 +203,9 @@ class Outdated extends ArboristWorkspaceCmd {
         })
       }
     } catch (err) {
-      // silently catch and ignore ETARGET, E403 &
-      // E404 errors, deps are just skipped
-      if (!['ETARGET', 'E404', 'E404'].includes(err.code)) {
+      // silently catch and ignore ETARGET, E403 & E404 errors
+      // deps are just skipped
+      if (!['ETARGET', 'E403', 'E404'].includes(err.code)) {
         throw err
       }
     }
@@ -261,10 +260,8 @@ class Outdated extends ArboristWorkspaceCmd {
   }
 
   #json (list) {
-    // TODO(BREAKING_CHANGE): this should just return an array. It's a list and
-    // turing it into an object with keys is lossy since multiple items in the
-    // list could have the same key. For now we hack that by only changing
-    // top level values into arrays if they have multiple outdated items
+    // TODO(BREAKING_CHANGE): this should just return an array.
+    // It's a list and turning it into an object with keys is lossy since multiple items in the list could have the same key. For now we hack that by only changing top level values into arrays if they have multiple outdated items
     return list.reduce((acc, d) => {
       const dep = {
         current: d.current,
@@ -278,7 +275,7 @@ class Outdated extends ArboristWorkspaceCmd {
           dependedByLocation: d.dependedByLocation } : {},
       }
       acc[d.name] = acc[d.name]
-        // If this item alread has an outdated dep then we turn it into an array
+        // If this item already has an outdated dep then we turn it into an array
         ? (Array.isArray(acc[d.name]) ? acc[d.name] : [acc[d.name]]).concat(dep)
         : dep
       return acc

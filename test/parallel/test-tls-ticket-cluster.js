@@ -24,6 +24,11 @@ const common = require('../common');
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
+if (process.features.openssl_is_boringssl) {
+  require('../common/boringssl').testTls13SessionTicketSemanticsDiffer();
+  return;
+}
+
 const assert = require('assert');
 const tls = require('tls');
 const cluster = require('cluster');
@@ -59,10 +64,10 @@ if (cluster.isPrimary) {
       } else {
         shoot();
       }
-    }).once('session', (session) => {
+    }).once('session', common.mustCallAtLeast((session) => {
       assert(!lastSession);
       lastSession = session;
-    });
+    }, 0));
 
     c.resume(); // See close_notify comment in server
   }

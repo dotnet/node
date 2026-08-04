@@ -54,9 +54,10 @@ const noop = () => {};
 const hasCrypto = Boolean(process.versions.openssl) &&
                   !process.env.NODE_SKIP_CRYPTO;
 
+const hasInspector = Boolean(process.features.inspector);
 const hasSQLite = Boolean(process.versions.sqlite);
 
-const hasQuic = hasCrypto && !!process.config.variables.node_quic;
+const hasQuic = hasCrypto && !!process.features.quic;
 
 /**
  * Parse test metadata from the specified file.
@@ -349,8 +350,6 @@ const knownGlobals = new Set([
  'CompressionStream',
  'DecompressionStream',
  'Storage',
- 'localStorage',
- 'sessionStorage',
 ].forEach((i) => {
   if (globalThis[i] !== undefined) {
     knownGlobals.add(globalThis[i]);
@@ -363,6 +362,14 @@ if (hasCrypto) {
   knownGlobals.add(globalThis.CryptoKey);
   knownGlobals.add(globalThis.SubtleCrypto);
 }
+
+if (hasSQLite) {
+  knownGlobals.add(globalThis.localStorage);
+  knownGlobals.add(globalThis.sessionStorage);
+}
+
+const { Worker } = require('node:worker_threads');
+knownGlobals.add(Worker);
 
 function allowGlobals(...allowlist) {
   for (const val of allowlist) {
@@ -708,7 +715,7 @@ function expectsError(validator, exact) {
 }
 
 function skipIfInspectorDisabled() {
-  if (!process.features.inspector) {
+  if (!hasInspector) {
     skip('V8 inspector is disabled');
   }
 }
@@ -910,6 +917,12 @@ function expectRequiredTLAError(err) {
   }
 }
 
+function sleepSync(ms) {
+  const sab = new SharedArrayBuffer(4);
+  const i32 = new Int32Array(sab);
+  Atomics.wait(i32, 0, 0, ms);
+}
+
 const common = {
   allowGlobals,
   buildType,
@@ -927,6 +940,7 @@ const common = {
   hasIntl,
   hasCrypto,
   hasQuic,
+  hasInspector,
   hasSQLite,
   invalidArgTypeHelper,
   isAlive,
@@ -937,6 +951,7 @@ const common = {
   isOpenBSD,
   isMacOS,
   isPi,
+  isRiscv64,
   isSunOS,
   isWindows,
   localIPv6Hosts,
@@ -959,6 +974,7 @@ const common = {
   skipIfInspectorDisabled,
   skipIfSQLiteMissing,
   spawnPromisified,
+  sleepSync,
 
   get enoughTestMem() {
     return require('os').totalmem() > 0x70000000; /* 1.75 Gb */

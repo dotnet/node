@@ -158,7 +158,7 @@ process.on('exit', (code) => {
 added: v0.5.10
 -->
 
-* `message` { Object | boolean | number | string | null } a parsed JSON object
+* `message` {Object|boolean|number|string|null} a parsed JSON object
   or a serializable primitive value.
 * `sendHandle` {net.Server|net.Socket} a [`net.Server`][] or [`net.Socket`][]
   object, or undefined.
@@ -923,8 +923,8 @@ added: v0.1.27
 The `process.argv` property returns an array containing the command-line
 arguments passed when the Node.js process was launched. The first element will
 be [`process.execPath`][]. See `process.argv0` if access to the original value
-of `argv[0]` is needed. The second element will be the path to the JavaScript
-file being executed. The remaining elements will be any additional command-line
+of `argv[0]` is needed. If a [program entry point][] was provided, the second element
+will be the absolute path to it. The remaining elements are additional command-line
 arguments.
 
 For example, assuming the following script for `process-args.js`:
@@ -994,7 +994,7 @@ changes:
     description: Change stability index for this feature from Experimental to Stable.
 -->
 
-* Type: {number}
+* Returns: {number}
 
 Gets the amount of free memory that is still available to the process
 (in bytes).
@@ -1105,30 +1105,28 @@ when running the `./configure` script.
 
 An example of the possible output looks like:
 
-<!-- eslint-skip -->
-
-```js
+```json
 {
-  target_defaults:
-   { cflags: [],
-     default_configuration: 'Release',
-     defines: [],
-     include_dirs: [],
-     libraries: [] },
-  variables:
+  "target_defaults":
+   { "cflags": [],
+     "default_configuration": "Release",
+     "defines": [],
+     "include_dirs": [],
+     "libraries": [] },
+  "variables":
    {
-     host_arch: 'x64',
-     napi_build_version: 5,
-     node_install_npm: 'true',
-     node_prefix: '',
-     node_shared_cares: 'false',
-     node_shared_http_parser: 'false',
-     node_shared_libuv: 'false',
-     node_shared_zlib: 'false',
-     node_use_openssl: 'true',
-     node_shared_openssl: 'false',
-     target_arch: 'x64',
-     v8_use_snapshot: 1
+     "host_arch": "x64",
+     "napi_build_version": 5,
+     "node_install_npm": "true",
+     "node_prefix": "",
+     "node_shared_cares": "false",
+     "node_shared_http_parser": "false",
+     "node_shared_libuv": "false",
+     "node_shared_zlib": "false",
+     "node_use_openssl": "true",
+     "node_shared_openssl": "false",
+     "target_arch": "x64",
+     "v8_use_snapshot": 1
    }
 }
 ```
@@ -1166,7 +1164,7 @@ changes:
     description: Aligned return value with `uv_get_constrained_memory`.
 -->
 
-* Type: {number}
+* Returns: {number}
 
 Gets the amount of memory available to the process (in bytes) based on
 limits imposed by the OS. If there is no such constraint, or the constraint
@@ -1608,20 +1606,18 @@ See environ(7).
 
 An example of this object looks like:
 
-<!-- eslint-skip -->
-
-```js
+```json
 {
-  TERM: 'xterm-256color',
-  SHELL: '/usr/local/bin/bash',
-  USER: 'maciej',
-  PATH: '~/.bin/:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin',
-  PWD: '/Users/maciej',
-  EDITOR: 'vim',
-  SHLVL: '1',
-  HOME: '/Users/maciej',
-  LOGNAME: 'maciej',
-  _: '/usr/local/bin/node'
+  "TERM": "xterm-256color",
+  "SHELL": "/usr/local/bin/bash",
+  "USER": "maciej",
+  "PATH": "~/.bin/:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin",
+  "PWD": "/Users/maciej",
+  "EDITOR": "vim",
+  "SHLVL": "1",
+  "HOME": "/Users/maciej",
+  "LOGNAME": "maciej",
+  "_": "/usr/local/bin/node"
 }
 ```
 
@@ -1750,10 +1746,8 @@ Results in `process.execArgv`:
 
 And `process.argv`:
 
-<!-- eslint-disable @stylistic/js/semi -->
-
-```js
-['/usr/local/bin/node', 'script.js', '--version']
+```json
+["/usr/local/bin/node", "script.js", "--version"]
 ```
 
 Refer to [`Worker` constructor][] for the detailed behavior of worker
@@ -1770,10 +1764,8 @@ added: v0.1.100
 The `process.execPath` property returns the absolute pathname of the executable
 that started the Node.js process. Symbolic links, if any, are resolved.
 
-<!-- eslint-disable @stylistic/js/semi -->
-
-```js
-'/usr/local/bin/node'
+```json
+"/usr/local/bin/node"
 ```
 
 ## `process.execve(file[, args[, env]])`
@@ -2086,6 +2078,10 @@ This value is therefore identical to that of `process.features.tls`.
 added:
  - v23.0.0
  - v22.10.0
+changes:
+  - version: v24.12.0
+    pr-url: https://github.com/nodejs/node/pull/60600
+    description: Type stripping is now stable.
 -->
 
 > Stability: 1.2 - Release candidate
@@ -2094,7 +2090,7 @@ added:
 
 A value that is `"strip"` by default,
 `"transform"` if Node.js is run with `--experimental-transform-types`, and `false` if
-Node.js is run with `--no-experimental-strip-types`.
+Node.js is run with `--no-strip-types`.
 
 ## `process.features.uv`
 
@@ -2779,9 +2775,11 @@ debugger. See [Signal Events][].
 added:
   - v21.7.0
   - v20.12.0
+changes:
+  - version: v24.10.0
+    pr-url: https://github.com/nodejs/node/pull/59925
+    description: This API is no longer experimental.
 -->
-
-> Stability: 1.1 - Active development
 
 * `path` {string | URL | Buffer | undefined}. **Default:** `'./.env'`
 
@@ -3096,7 +3094,7 @@ is drained immediately after.
 
 So in CJS modules `process.nextTick()` callbacks are always run before `queueMicrotask()` ones.
 However since ESM modules are processed already as part of the microtask queue, there
-`queueMicrotask()` callbacks are always exectued before `process.nextTick()` ones since Node.js
+`queueMicrotask()` callbacks are always executed before `process.nextTick()` ones since Node.js
 is already in the process of draining the microtask queue.
 
 ```mjs
@@ -3374,15 +3372,13 @@ tarball.
   * `'Hydrogen'` for the 18.x LTS line beginning with 18.12.0.
     For other LTS Release code names, see [Node.js Changelog Archive](https://github.com/nodejs/node/blob/HEAD/doc/changelogs/CHANGELOG_ARCHIVE.md)
 
-<!-- eslint-skip -->
-
-```js
+```json
 {
-  name: 'node',
-  lts: 'Hydrogen',
-  sourceUrl: 'https://nodejs.org/download/release/v18.12.0/node-v18.12.0.tar.gz',
-  headersUrl: 'https://nodejs.org/download/release/v18.12.0/node-v18.12.0-headers.tar.gz',
-  libUrl: 'https://nodejs.org/download/release/v18.12.0/win-x64/node.lib'
+  "name": "node",
+  "lts": "Hydrogen",
+  "sourceUrl": "https://nodejs.org/download/release/v18.12.0/node-v18.12.0.tar.gz",
+  "headersUrl": "https://nodejs.org/download/release/v18.12.0/node-v18.12.0-headers.tar.gz",
+  "libUrl": "https://nodejs.org/download/release/v18.12.0/win-x64/node.lib"
 }
 ```
 
@@ -4324,7 +4320,7 @@ When a new value is assigned, different platforms will impose different maximum
 length restrictions on the title. Usually such restrictions are quite limited.
 For instance, on Linux and macOS, `process.title` is limited to the size of the
 binary name plus the length of the command-line arguments because setting the
-`process.title` overwrites the `argv` memory of the process. Node.js v0.8
+`process.title` overwrites the `argv` memory of the process. Node.js 0.8
 allowed for longer process title strings by also overwriting the `environ`
 memory but that was potentially insecure and confusing in some (rather obscure)
 cases.
@@ -4346,6 +4342,29 @@ The `process.traceDeprecation` property indicates whether the
 documentation for the [`'warning'` event][process_warning] and the
 [`emitWarning()` method][process_emit_warning] for more information about this
 flag's behavior.
+
+## `process.traceProcessWarnings`
+
+<!-- YAML
+added: v6.10.0
+-->
+
+* {boolean}
+
+The `process.traceProcessWarnings` property indicates whether the `--trace-warnings` flag
+is set on the current Node.js process. This property allows programmatic control over the
+tracing of warnings, enabling or disabling stack traces for warnings at runtime.
+
+```js
+// Enable trace warnings
+process.traceProcessWarnings = true;
+
+// Emit a warning with a stack trace
+process.emitWarning('Warning with stack trace');
+
+// Disable trace warnings
+process.traceProcessWarnings = false;
+```
 
 ## `process.umask()`
 
@@ -4410,7 +4429,7 @@ added:
 
 > Stability: 1 - Experimental
 
-* `maybeUnfefable` {any} An object that may be "unref'd".
+* `maybeRefable` {any} An object that may be "unref'd".
 
 An object is "unrefable" if it implements the Node.js "Refable protocol".
 Specifically, this means that the object implements the `Symbol.for('nodejs.ref')`
@@ -4497,32 +4516,35 @@ console.log(versions);
 Will generate an object similar to:
 
 ```console
-{ node: '23.0.0',
-  acorn: '8.11.3',
-  ada: '2.7.8',
-  ares: '1.28.1',
-  base64: '0.5.2',
-  brotli: '1.1.0',
-  cjs_module_lexer: '1.2.2',
-  cldr: '45.0',
-  icu: '75.1',
-  llhttp: '9.2.1',
-  modules: '127',
-  napi: '9',
-  nghttp2: '1.61.0',
-  nghttp3: '0.7.0',
-  ngtcp2: '1.3.0',
-  openssl: '3.0.13+quic',
-  simdjson: '3.8.0',
-  simdutf: '5.2.4',
-  sqlite: '3.46.0',
-  tz: '2024a',
-  undici: '6.13.0',
-  unicode: '15.1',
-  uv: '1.48.0',
-  uvwasi: '0.0.20',
-  v8: '12.4.254.14-node.11',
-  zlib: '1.3.0.1-motley-7d77fb7' }
+{ node: '26.0.0-pre',
+  acorn: '8.15.0',
+  ada: '3.4.1',
+  amaro: '1.1.5',
+  ares: '1.34.6',
+  brotli: '1.2.0',
+  merve: '1.0.0',
+  cldr: '48.0',
+  icu: '78.2',
+  llhttp: '9.3.0',
+  modules: '144',
+  napi: '10',
+  nbytes: '0.1.1',
+  ncrypto: '0.0.1',
+  nghttp2: '1.68.0',
+  nghttp3: '',
+  ngtcp2: '',
+  openssl: '3.5.4',
+  simdjson: '4.2.4',
+  simdutf: '7.3.3',
+  sqlite: '3.51.2',
+  tz: '2025c',
+  undici: '7.18.2',
+  unicode: '17.0',
+  uv: '1.51.0',
+  uvwasi: '0.0.23',
+  v8: '14.3.127.18-node.10',
+  zlib: '1.3.1-e00f703',
+  zstd: '1.5.7' }
 ```
 
 ## Exit codes
@@ -4616,7 +4638,7 @@ cases:
 [`net.Server`]: net.md#class-netserver
 [`net.Socket`]: net.md#class-netsocket
 [`os.constants.dlopen`]: os.md#dlopen-constants
-[`postMessageToThread()`]: worker_threads.md#workerpostmessagetothreadthreadid-value-transferlist-timeout
+[`postMessageToThread()`]: worker_threads.md#worker_threadspostmessagetothreadthreadid-value-transferlist-timeout
 [`process.argv`]: #processargv
 [`process.config`]: #processconfig
 [`process.execPath`]: #processexecpath
@@ -4643,6 +4665,7 @@ cases:
 [process.cpuUsage]: #processcpuusagepreviousvalue
 [process_emit_warning]: #processemitwarningwarning-type-code-ctor
 [process_warning]: #event-warning
+[program entry point]: https://nodejs.org/api/cli.html#program-entry-point
 [report documentation]: report.md
 [terminal raw mode]: tty.md#readstreamsetrawmodemode
 [uv_get_available_memory]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_get_available_memory

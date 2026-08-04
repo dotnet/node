@@ -2286,6 +2286,13 @@ object such that no properties can be set on it, and no prototype.
 
 #### `napi_typedarray_type`
 
+<!-- YAML
+changes:
+  - version: v24.13.1
+    pr-url: https://github.com/nodejs/node/pull/58879
+    description: Added `napi_float16_array` for Float16Array support.
+-->
+
 ```c
 typedef enum {
   napi_int8_array,
@@ -2299,6 +2306,7 @@ typedef enum {
   napi_float64_array,
   napi_bigint64_array,
   napi_biguint64_array,
+  napi_float16_array,
 } napi_typedarray_type;
 ```
 
@@ -2565,6 +2573,41 @@ object just created has been garbage collected.
 JavaScript `ArrayBuffer`s are described in
 [Section ArrayBuffer objects][] of the ECMAScript Language Specification.
 
+#### `node_api_create_external_sharedarraybuffer`
+
+<!-- YAML
+added: v24.16.0
+-->
+
+```c
+napi_status
+node_api_create_external_sharedarraybuffer(napi_env env,
+                                           void* external_data,
+                                           size_t byte_length,
+                                           node_api_noenv_finalize finalize_cb,
+                                           void* finalize_hint,
+                                           napi_value* result)
+```
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] external_data`: Pointer to the underlying byte buffer of the
+  `SharedArrayBuffer`.
+* `[in] byte_length`: The length in bytes of the underlying buffer.
+* `[in] finalize_cb`: Optional callback to call when the `SharedArrayBuffer` is
+  being collected. Called on an arbitrary thread. Because a `SharedArrayBuffer`
+  can outlive the environment it's created in, the callback does not receive a
+  reference to `env`.
+* `[in] finalize_hint`: Optional hint to pass to the finalize callback during
+  collection.
+* `[out] result`: A `napi_value` representing a JavaScript `SharedArrayBuffer`.
+
+Returns `napi_ok` if the API succeeded.
+
+Create a `SharedArrayBuffer` with externally managed memory.
+
+See the entry on [`napi_create_external_arraybuffer`][] for runtime
+compatibility.
+
 #### `napi_create_external_buffer`
 
 <!-- YAML
@@ -2637,6 +2680,43 @@ It is the equivalent of doing `new Object()` in JavaScript.
 The JavaScript `Object` type is described in [Section object type][] of the
 ECMAScript Language Specification.
 
+#### `node_api_create_object_with_properties`
+
+<!-- YAML
+added: v24.12.0
+-->
+
+> Stability: 1 - Experimental
+
+```cpp
+napi_status node_api_create_object_with_properties(napi_env env,
+                                                   napi_value prototype_or_null,
+                                                   const napi_value* property_names,
+                                                   const napi_value* property_values,
+                                                   size_t property_count,
+                                                   napi_value* result)
+```
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] prototype_or_null`: The prototype object for the new object. Can be a
+  `napi_value` representing a JavaScript object to use as the prototype, a
+  `napi_value` representing JavaScript `null`, or a `nullptr` that will be converted to `null`.
+* `[in] property_names`: Array of `napi_value` representing the property names.
+* `[in] property_values`: Array of `napi_value` representing the property values.
+* `[in] property_count`: Number of properties in the arrays.
+* `[out] result`: A `napi_value` representing a JavaScript `Object`.
+
+Returns `napi_ok` if the API succeeded.
+
+This API creates a JavaScript `Object` with the specified prototype and
+properties. This is more efficient than calling `napi_create_object` followed
+by multiple `napi_set_property` calls, as it can create the object with all
+properties atomically, avoiding potential V8 map transitions.
+
+The arrays `property_names` and `property_values` must have the same length
+specified by `property_count`. The properties are added to the object in the
+order they appear in the arrays.
+
 #### `napi_create_symbol`
 
 <!-- YAML
@@ -2699,6 +2779,10 @@ Language Specification.
 <!-- YAML
 added: v8.0.0
 napiVersion: 1
+changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62710
+    description: Added support for `SharedArrayBuffer`.
 -->
 
 ```c
@@ -2713,21 +2797,25 @@ napi_status napi_create_typedarray(napi_env env,
 * `[in] env`: The environment that the API is invoked under.
 * `[in] type`: Scalar datatype of the elements within the `TypedArray`.
 * `[in] length`: Number of elements in the `TypedArray`.
-* `[in] arraybuffer`: `ArrayBuffer` underlying the typed array.
-* `[in] byte_offset`: The byte offset within the `ArrayBuffer` from which to
-  start projecting the `TypedArray`.
+* `[in] arraybuffer`: `ArrayBuffer` or `SharedArrayBuffer` underlying the
+  typed array.
+* `[in] byte_offset`: The byte offset within the `ArrayBuffer` or
+  `SharedArrayBuffer` from which to start projecting the `TypedArray`.
 * `[out] result`: A `napi_value` representing a JavaScript `TypedArray`.
 
 Returns `napi_ok` if the API succeeded.
 
 This API creates a JavaScript `TypedArray` object over an existing
-`ArrayBuffer`. `TypedArray` objects provide an array-like view over an
-underlying data buffer where each element has the same underlying binary scalar
-datatype.
+`ArrayBuffer` or `SharedArrayBuffer`. `TypedArray` objects provide an
+array-like view over an underlying data buffer where each element has the same
+underlying binary scalar datatype.
 
-It's required that `(length * size_of_element) + byte_offset` should
-be <= the size in bytes of the array passed in. If not, a `RangeError` exception
-is raised.
+It is required that `(length * size_of_element) + byte_offset` is less than or
+equal to the size in bytes of the `ArrayBuffer` or `SharedArrayBuffer` passed
+in. If not, a `RangeError` exception is raised.
+
+For element sizes greater than 1, `byte_offset` is required to be a multiple
+of the element size. If not, a `RangeError` exception is raised.
 
 JavaScript `TypedArray` objects are described in
 [Section TypedArray objects][] of the ECMAScript Language Specification.
@@ -2769,6 +2857,10 @@ exceeds the size of the `ArrayBuffer`, a `RangeError` exception is raised.
 <!-- YAML
 added: v8.3.0
 napiVersion: 1
+changes:
+  - version: v24.13.1
+    pr-url: https://github.com/nodejs/node/pull/60473
+    description: Added support for `SharedArrayBuffer`.
 -->
 
 ```c
@@ -2781,16 +2873,18 @@ napi_status napi_create_dataview(napi_env env,
 
 * `[in] env`: The environment that the API is invoked under.
 * `[in] length`: Number of elements in the `DataView`.
-* `[in] arraybuffer`: `ArrayBuffer` underlying the `DataView`.
+* `[in] arraybuffer`: `ArrayBuffer` or `SharedArrayBuffer` underlying the
+  `DataView`.
 * `[in] byte_offset`: The byte offset within the `ArrayBuffer` from which to
   start projecting the `DataView`.
 * `[out] result`: A `napi_value` representing a JavaScript `DataView`.
 
 Returns `napi_ok` if the API succeeded.
 
-This API creates a JavaScript `DataView` object over an existing `ArrayBuffer`.
-`DataView` objects provide an array-like view over an underlying data buffer,
-but one which allows items of different size and type in the `ArrayBuffer`.
+This API creates a JavaScript `DataView` object over an existing `ArrayBuffer`
+or `SharedArrayBuffer`. `DataView` objects provide an array-like view over an
+underlying data buffer, but one which allows items of different size and type in
+the `ArrayBuffer` or `SharedArrayBuffer`.
 
 It is required that `byte_length + byte_offset` is less than or equal to the
 size in bytes of the array passed in. If not, a `RangeError` exception is
@@ -3299,6 +3393,10 @@ Specification.
 <!-- YAML
 added: v8.0.0
 napiVersion: 1
+changes:
+  - version: v24.9.0
+    pr-url: https://github.com/nodejs/node/pull/59071
+    description: Added support for `SharedArrayBuffer`.
 -->
 
 ```c
@@ -3309,21 +3407,20 @@ napi_status napi_get_arraybuffer_info(napi_env env,
 ```
 
 * `[in] env`: The environment that the API is invoked under.
-* `[in] arraybuffer`: `napi_value` representing the `ArrayBuffer` being queried.
-* `[out] data`: The underlying data buffer of the `ArrayBuffer`. If byte\_length
+* `[in] arraybuffer`: `napi_value` representing the `ArrayBuffer` or `SharedArrayBuffer` being queried.
+* `[out] data`: The underlying data buffer of the `ArrayBuffer` or `SharedArrayBuffer`
   is `0`, this may be `NULL` or any other pointer value.
 * `[out] byte_length`: Length in bytes of the underlying data buffer.
 
 Returns `napi_ok` if the API succeeded.
 
-This API is used to retrieve the underlying data buffer of an `ArrayBuffer` and
-its length.
+This API is used to retrieve the underlying data buffer of an `ArrayBuffer` or `SharedArrayBuffer` and its length.
 
 _WARNING_: Use caution while using this API. The lifetime of the underlying data
-buffer is managed by the `ArrayBuffer` even after it's returned. A
+buffer is managed by the `ArrayBuffer` or `SharedArrayBuffer` even after it's returned. A
 possible safe way to use this API is in conjunction with
 [`napi_create_reference`][], which can be used to guarantee control over the
-lifetime of the `ArrayBuffer`. It's also safe to use the returned data buffer
+lifetime of the `ArrayBuffer` or `SharedArrayBuffer`. It's also safe to use the returned data buffer
 within the same callback as long as there are no calls to other APIs that might
 trigger a GC.
 
@@ -3407,7 +3504,8 @@ napi_status napi_get_typedarray_info(napi_env env,
   the `byte_offset` value so that it points to the first element in the
   `TypedArray`. If the length of the array is `0`, this may be `NULL` or
   any other pointer value.
-* `[out] arraybuffer`: The `ArrayBuffer` underlying the `TypedArray`.
+* `[out] arraybuffer`: The `ArrayBuffer` or `SharedArrayBuffer` underlying the
+  `TypedArray`.
 * `[out] byte_offset`: The byte offset within the underlying native array
   at which the first element of the arrays is located. The value for the data
   parameter has already been adjusted so that data points to the first element
@@ -4278,6 +4376,63 @@ This API represents the invocation of the `ArrayBuffer` `IsDetachedBuffer`
 operation as defined in [Section isDetachedBuffer][] of the ECMAScript Language
 Specification.
 
+### `node_api_is_sharedarraybuffer`
+
+<!-- YAML
+added: v24.9.0
+-->
+
+> Stability: 1 - Experimental
+
+```c
+napi_status node_api_is_sharedarraybuffer(napi_env env, napi_value value, bool* result)
+```
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] value`: The JavaScript value to check.
+* `[out] result`: Whether the given `napi_value` represents a `SharedArrayBuffer`.
+
+Returns `napi_ok` if the API succeeded.
+
+This API checks if the Object passed in is a `SharedArrayBuffer`.
+
+### `node_api_create_sharedarraybuffer`
+
+<!-- YAML
+added: v24.9.0
+-->
+
+> Stability: 1 - Experimental
+
+```c
+napi_status node_api_create_sharedarraybuffer(napi_env env,
+                                             size_t byte_length,
+                                             void** data,
+                                             napi_value* result)
+```
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] byte_length`: The length in bytes of the shared array buffer to create.
+* `[out] data`: Pointer to the underlying byte buffer of the `SharedArrayBuffer`.
+  `data` can optionally be ignored by passing `NULL`.
+* `[out] result`: A `napi_value` representing a JavaScript `SharedArrayBuffer`.
+
+Returns `napi_ok` if the API succeeded.
+
+This API returns a Node-API value corresponding to a JavaScript `SharedArrayBuffer`.
+`SharedArrayBuffer`s are used to represent fixed-length binary data buffers that
+can be shared across multiple workers.
+
+The `SharedArrayBuffer` allocated will have an underlying byte buffer whose size is
+determined by the `byte_length` parameter that's passed in.
+The underlying buffer is optionally returned back to the caller in case the
+caller wants to directly manipulate the buffer. This buffer can only be
+written to directly from native code. To write to this buffer from JavaScript,
+a typed array or `DataView` object would need to be created.
+
+JavaScript `SharedArrayBuffer` objects are described in
+[Section SharedArrayBuffer objects][] of the ECMAScript Language Specification.
+
 ## Working with JavaScript properties
 
 Node-API exposes a set of APIs to get and set properties on JavaScript
@@ -4939,6 +5094,28 @@ This method seals a given object. This prevents new properties from being
 added to it, as well as marking all existing properties as non-configurable.
 This is described in [Section 19.1.2.20](https://tc39.es/ecma262/#sec-object.seal)
 of the ECMA-262 specification.
+
+#### `node_api_set_prototype`
+
+<!-- YAML
+added: v24.13.1
+-->
+
+> Stability: 1 - Experimental
+
+```c
+napi_status node_api_set_prototype(napi_env env,
+                                   napi_value object,
+                                   napi_value value);
+```
+
+* `[in] env`: The environment that the Node-API call is invoked under.
+* `[in] object`: The object on which to set the prototype.
+* `[in] value`: The prototype value.
+
+Returns `napi_ok` if the API succeeded.
+
+This API sets the prototype of the `Object` passed in.
 
 ## Working with JavaScript functions
 
@@ -6387,11 +6564,13 @@ NAPI_EXTERN napi_status napi_get_uv_event_loop(node_api_basic_env env,
 * `[in] env`: The environment that the API is invoked under.
 * `[out] loop`: The current libuv loop instance.
 
-Note: While libuv has been relatively stable over time, it does
-not provide an ABI stability guarantee. Use of this function should be avoided.
-Its use may result in an addon that does not work across Node.js versions.
-[asynchronous-thread-safe-function-calls](https://nodejs.org/docs/latest/api/n-api.html#asynchronous-thread-safe-function-calls)
-are an alternative for many use cases.
+Note: While libuv only [guarantees ABI stability](https://github.com/libuv/libuv?tab=readme-ov-file#versioning)
+in a major version, its use may result in an addon that does not work across
+Node.js major versions.
+
+[ThreadSafeFunction](#asynchronous-thread-safe-function-calls)
+is an ABI-stable alternative for many use cases to calling into the
+JavaScript thread from another thread.
 
 ## Asynchronous thread-safe function calls
 
@@ -6791,6 +6970,7 @@ the add-on's file name during loading.
 [Section IsArray]: https://tc39.es/ecma262/#sec-isarray
 [Section IsStrctEqual]: https://tc39.es/ecma262/#sec-strict-equality-comparison
 [Section Promise objects]: https://tc39.es/ecma262/#sec-promise-objects
+[Section SharedArrayBuffer objects]: https://tc39.es/ecma262/#sec-sharedarraybuffer-objects
 [Section ToBoolean]: https://tc39.es/ecma262/#sec-toboolean
 [Section ToNumber]: https://tc39.es/ecma262/#sec-tonumber
 [Section ToObject]: https://tc39.es/ecma262/#sec-toobject

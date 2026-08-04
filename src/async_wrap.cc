@@ -68,7 +68,8 @@ static const char* const provider_names[] = {
 void AsyncWrap::DestroyAsyncIdsCallback(Environment* env) {
   Local<Function> fn = env->async_hooks_destroy_function();
 
-  TryCatchScope try_catch(env, TryCatchScope::CatchMode::kFatal);
+  TryCatchScope try_catch(env,
+                          TryCatchScope::CatchMode::kFatalRethrowStackOverflow);
 
   do {
     std::vector<double> destroy_async_id_list;
@@ -97,7 +98,8 @@ void Emit(Environment* env, double async_id, AsyncHooks::Fields type,
 
   HandleScope handle_scope(env->isolate());
   Local<Value> async_id_value = Number::New(env->isolate(), async_id);
-  TryCatchScope try_catch(env, TryCatchScope::CatchMode::kFatal);
+  TryCatchScope try_catch(env,
+                          TryCatchScope::CatchMode::kFatalRethrowStackOverflow);
   USE(fn->Call(env->context(), Undefined(env->isolate()), 1, &async_id_value));
 }
 
@@ -278,7 +280,7 @@ void AsyncWrap::PushAsyncContext(const FunctionCallbackInfo<Value>& args) {
   // then the checks in push_async_ids() and pop_async_id() will.
   double async_id = args[0]->NumberValue(env->context()).FromJust();
   double trigger_async_id = args[1]->NumberValue(env->context()).FromJust();
-  env->async_hooks()->push_async_context(async_id, trigger_async_id, {});
+  env->async_hooks()->push_async_context(async_id, trigger_async_id, nullptr);
 }
 
 
@@ -317,6 +319,13 @@ void AsyncWrap::AsyncReset(const FunctionCallbackInfo<Value>& args) {
   wrap->AsyncReset(resource, execution_async_id);
 }
 
+// Useful for debugging async context propagation. Not intended for public use.
+void AsyncWrap::GetAsyncContextFrame(const FunctionCallbackInfo<Value>& args) {
+  AsyncWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&wrap, args.This());
+
+  args.GetReturnValue().Set(wrap->context_frame());
+}
 
 void AsyncWrap::GetProviderType(const FunctionCallbackInfo<Value>& args) {
   AsyncWrap* wrap;
@@ -331,9 +340,12 @@ void AsyncWrap::EmitDestroy(bool from_gc) {
   // Ensure no double destroy is emitted via AsyncReset().
   async_id_ = kInvalidAsyncId;
 
-  if (!persistent().IsEmpty() && !from_gc) {
-    HandleScope handle_scope(env()->isolate());
-    USE(object()->Set(env()->context(), env()->resource_symbol(), object()));
+  if (!from_gc) {
+    if (!persistent().IsEmpty()) {
+      HandleScope handle_scope(env()->isolate());
+      USE(object()->Set(env()->context(), env()->resource_symbol(), object()));
+    }
+    set_context_frame({});
   }
 }
 
@@ -364,6 +376,10 @@ Local<FunctionTemplate> AsyncWrap::GetConstructorTemplate(
         FIXED_ONE_BYTE_STRING(isolate_data->isolate(), "AsyncWrap"));
     SetProtoMethod(isolate, tmpl, "getAsyncId", AsyncWrap::GetAsyncId);
     SetProtoMethod(isolate, tmpl, "asyncReset", AsyncWrap::AsyncReset);
+    SetProtoMethod(isolate,
+                   tmpl,
+                   "getAsyncContextFrameForDebuggingOnly",
+                   AsyncWrap::GetAsyncContextFrame);
     SetProtoMethod(
         isolate, tmpl, "getProviderType", AsyncWrap::GetProviderType);
     isolate_data->set_async_wrap_ctor_template(tmpl);
@@ -493,6 +509,7 @@ void AsyncWrap::RegisterExternalReferences(
   registry->Register(RegisterDestroyHook);
   registry->Register(AsyncWrap::GetAsyncId);
   registry->Register(AsyncWrap::AsyncReset);
+  registry->Register(AsyncWrap::GetAsyncContextFrame);
   registry->Register(AsyncWrap::GetProviderType);
 }
 
@@ -510,9 +527,9 @@ AsyncWrap::AsyncWrap(Environment* env,
 }
 
 AsyncWrap::AsyncWrap(Environment* env, Local<Object> object)
-    : BaseObject(env, object),
-      context_frame_(env->isolate(),
-                     async_context_frame::current(env->isolate())) {}
+    : BaseObject(env, object) {
+  set_context_frame(async_context_frame::current(env->isolate()));
+}
 
 // This method is necessary to work around one specific problem:
 // Before the init() hook runs, if there is one, the BaseObject() constructor
@@ -615,7 +632,7 @@ void AsyncWrap::AsyncReset(Local<Object> resource, double execution_async_id) {
 
   EmitTraceAsyncStart();
 
-  context_frame_.Reset(isolate, async_context_frame::current(isolate));
+  set_context_frame(async_context_frame::current(isolate));
 
   EmitAsyncInit(env(), resource,
                 env()->async_hooks()->provider_string(provider_type()),
@@ -646,7 +663,8 @@ void AsyncWrap::EmitAsyncInit(Environment* env,
     object,
   };
 
-  TryCatchScope try_catch(env, TryCatchScope::CatchMode::kFatal);
+  TryCatchScope try_catch(env,
+                          TryCatchScope::CatchMode::kFatalRethrowStackOverflow);
   USE(init_fn->Call(env->context(), object, arraysize(argv), argv));
 }
 
@@ -656,17 +674,13 @@ MaybeLocal<Value> AsyncWrap::MakeCallback(const Local<Function> cb,
                                           Local<Value>* argv) {
   EmitTraceEventBefore();
 
+  // If this check fails it indicates an use after-free.
+  DCHECK(!context_frame().IsEmpty());
+
   ProviderType provider = provider_type();
   async_context context { get_async_id(), get_trigger_async_id() };
-  MaybeLocal<Value> ret =
-      InternalMakeCallback(env(),
-                           object(),
-                           object(),
-                           cb,
-                           argc,
-                           argv,
-                           context,
-                           context_frame_.Get(env()->isolate()));
+  MaybeLocal<Value> ret = InternalMakeCallback(
+      env(), object(), object(), cb, argc, argv, context, context_frame());
 
   // This is a static call with cached values because the `this` object may
   // no longer be alive at this point.

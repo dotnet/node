@@ -1,62 +1,60 @@
 ---
-title: config
+title: Config
 section: 7
-description: More than you probably want to know about npm configuration
+description: About npm configuration
 ---
 
 ### Description
 
-This article details npm configuration in general. To learn about the `config` command,
-see [`npm config`](/commands/npm-config).
+This article details npm configuration in general.
+To learn about the `config` command, see [`npm config`](/commands/npm-config).
 
 npm gets its configuration values from the following sources, sorted by priority:
 
 #### Command Line Flags
 
-Putting `--foo bar` on the command line sets the `foo` configuration
-parameter to `"bar"`.  A `--` argument tells the cli parser to stop
-reading flags.  Using `--flag` without specifying any value will set
-the value to `true`.
+Putting `--foo bar` on the command line sets the `foo` configuration parameter to `"bar"`.
+A `--` argument tells the cli parser to stop reading flags.
+Using `--flag` without specifying any value will set the value to `true`.
 
-Example: `--flag1 --flag2` will set both configuration parameters
-to `true`, while `--flag1 --flag2 bar` will set `flag1` to `true`,
-and `flag2` to `bar`.  Finally, `--flag1 --flag2 -- bar` will set
-both configuration parameters to `true`, and the `bar` is taken
-as a command argument.
+Example: `--flag1 --flag2` will set both configuration parameters to `true`, while `--flag1 --flag2 bar` will set `flag1` to `true`, and `flag2` to `bar`.
+Finally, `--flag1 --flag2 -- bar` will set both configuration parameters to `true`, and the `bar` is taken as a command argument.
+
+**Common examples:**
+
+* `npm install --prefix /path/to/dir` - Runs npm commands in a different directory without changing the current working directory
+* `npm install --global` - Installs packages globally (shorthand: `-g`)
+* `npm install --save-dev` - Saves to devDependencies (shorthand: `-D`)
+
+Any configuration option documented in the [Config Settings](#config-settings) section below can be set via command line flags using `--option-name value` syntax.
 
 #### Environment Variables
 
-Any environment variables that start with `npm_config_` will be
-interpreted as a configuration parameter.  For example, putting
-`npm_config_foo=bar` in your environment will set the `foo`
-configuration parameter to `bar`.  Any environment configurations that
-are not given a value will be given the value of `true`.  Config
-values are case-insensitive, so `NPM_CONFIG_FOO=bar` will work the
-same. However, please note that inside [`scripts`](/using-npm/scripts)
-npm will set its own environment variables and Node will prefer
-those lowercase versions over any uppercase ones that you might set.
+Any environment variables that start with `npm_config_` will be interpreted as a configuration parameter.
+For example, putting `npm_config_foo=bar` in your environment will set the `foo` configuration parameter to `bar`.
+Any environment configurations that are not given a value will be given the value of `true`.
+Config values are case-insensitive, so `NPM_CONFIG_FOO=bar` will work the same.
+However, please note that inside [`scripts`](/using-npm/scripts) npm will set its own environment variables and Node will prefer those lowercase versions over any uppercase ones that you might set.
 For details see [this issue](https://github.com/npm/npm/issues/14528).
 
-Notice that you need to use underscores instead of dashes, so `--allow-same-version`
-would become `npm_config_allow_same_version=true`.
+Notice that you need to use underscores instead of dashes, so `--allow-same-version` would become `npm_config_allow_same_version=true`.
+
+**Important:** When defining custom configuration keys in `.npmrc` files, use hyphens instead of underscores (e.g., `custom-key=value`). This ensures they can be overridden by environment variables, since npm automatically converts underscores to hyphens when reading environment variables. Keys with underscores in `.npmrc` files cannot be overridden via environment variables.
 
 #### npmrc Files
 
 The four relevant files are:
 
 * per-project configuration file (`/path/to/my/project/.npmrc`)
-* per-user configuration file (defaults to `$HOME/.npmrc`; configurable via CLI
-  option `--userconfig` or environment variable `$NPM_CONFIG_USERCONFIG`)
-* global configuration file (defaults to `$PREFIX/etc/npmrc`; configurable via
-  CLI option `--globalconfig` or environment variable `$NPM_CONFIG_GLOBALCONFIG`)
+* per-user configuration file (defaults to `$HOME/.npmrc`; configurable via CLI option `--userconfig` or environment variable `$NPM_CONFIG_USERCONFIG`)
+* global configuration file (defaults to `$PREFIX/etc/npmrc`; configurable via CLI option `--globalconfig` or environment variable `$NPM_CONFIG_GLOBALCONFIG`)
 * npm's built-in configuration file (`/path/to/npm/npmrc`)
 
 See [npmrc](/configuring-npm/npmrc) for more details.
 
 #### Default Configs
 
-Run `npm config ls -l` to see a set of configuration parameters that are
-internal to npm, and are defaults if nothing else is specified.
+Run `npm config ls -l` to see a set of configuration parameters that are internal to npm, and are defaults if nothing else is specified.
 
 ### Shorthands and Other CLI Niceties
 
@@ -103,9 +101,8 @@ The following shorthands are parsed on the command-line:
 * `--ws`: `--workspaces`
 * `-y`: `--yes`
 
-If the specified configuration param resolves unambiguously to a known
-configuration parameter, then it is expanded to that configuration
-parameter.  For example:
+If the specified configuration param resolves unambiguously to a known configuration parameter, then it is expanded to that configuration parameter.
+For example:
 
 ```bash
 npm ls --par
@@ -113,10 +110,8 @@ npm ls --par
 npm ls --parseable
 ```
 
-If multiple single-character shorthands are strung together, and the
-resulting combination is unambiguously not some other configuration
-param, then it is expanded to its various component pieces.  For
-example:
+If multiple single-character shorthands are strung together, and the resulting combination is unambiguously not some other configuration param, then it is expanded to its various component pieces.
+For example:
 
 ```bash
 npm ls -gpld
@@ -145,17 +140,19 @@ safer to use a registry-provided authentication bearer token stored in the
 
 * Default: 'public' for new packages, existing packages it will not change the
   current level
-* Type: null, "restricted", or "public"
+* Type: null, "restricted", "public", or "private"
 
 If you do not want your scoped package to be publicly viewable (and
 installable) set `--access=restricted`.
 
-Unscoped packages can not be set to `restricted`.
+Unscoped packages cannot be set to `restricted`.
 
 Note: This defaults to not changing the current access level for existing
 packages. Specifying a value of `restricted` or `public` during publish will
 change the access for an existing package the same way that `npm access set
 status` would.
+
+The value `private` is an alias for `restricted`.
 
 
 
@@ -170,6 +167,79 @@ upon by the current project.
 
 
 
+#### `allow-directory`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to install dependencies from directories. That
+is, dependencies that point to a directory instead of a version or semver
+range. Please note that this could leave your tree incomplete and some
+packages may not function as intended or designed. Changing this setting
+will not remove dependencies that are already installed.
+
+`all` allows any directories to be installed. `none` prevents any
+directories from being installed. `root` only allows directories defined in
+your project's package.json to be installed. Also allows directory
+dependencies to be used for other commands like `npm view`
+
+
+
+#### `allow-file`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to install dependencies from tarball files. That
+is, dependencies that point to a local tarball file instead of a version or
+semver range. Please note that this could leave your tree incomplete and
+some packages may not function as intended or designed. Changing this
+setting will not remove dependencies that are already installed.
+
+`all` allows any tarball file to be installed. `none` prevents any tarball
+file from being installed. `root` only allows tarball files defined in your
+project's package.json to be installed. Also allows tarball file
+dependencies to be used for other commands like `npm view`
+
+
+
+#### `allow-git`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to fetch dependencies from git references. That
+is, dependencies that point to a git repo instead of a version or semver
+range. Please note that this could leave your tree incomplete and some
+packages may not function as intended or designed. Changing this setting
+will not remove dependencies that are already installed.
+
+`all` allows any git dependencies to be fetched and installed. `none`
+prevents any git dependencies from being fetched and installed. `root` only
+allows git dependencies defined in your project's package.json to be fetched
+and installed. Also allows git dependencies to be fetched for other commands
+like `npm view`
+
+
+
+#### `allow-remote`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to fetch dependencies from urls. That is,
+dependencies that point to a tarball url instead of a version or semver
+range. Please note that this could leave your tree incomplete and some
+packages may not function as intended or designed. Changing this setting
+will not remove dependencies that are already installed.
+
+`all` allows any url to be installed. `none` prevents any url from being
+installed. `root` only allows urls defined in your project's package.json to
+be installed. Also allows url dependencies to be used for other commands
+like `npm view`
+
+
+
 #### `allow-same-version`
 
 * Default: false
@@ -177,6 +247,51 @@ upon by the current project.
 
 Prevents throwing an error when `npm version` is used to set the new version
 to the same value as the current version.
+
+
+
+#### `allow-scripts`
+
+* Default: ""
+* Type: String (can be set multiple times)
+
+Comma-separated list of packages whose install-time lifecycle scripts
+(`preinstall`, `install`, `postinstall`, and `prepare` for non-registry
+dependencies) are allowed to run.
+
+This setting is intended for one-off and global contexts: `npm exec`, `npx`,
+and `npm install -g`, where no project `package.json` is involved. For
+team-wide policy in a project, use the `allowScripts` field in
+`package.json` (which also supports explicit denials), or configure it in
+`.npmrc`. Passing `--allow-scripts` on the command line during a
+project-scoped `npm install`, `ci`, `update`, or `rebuild` is an error.
+
+Each name is matched against a dependency's resolved identity, not against
+the package's self-reported name. `--ignore-scripts` and
+`--dangerously-allow-all-scripts` both override this setting.
+
+
+
+#### `allow-scripts-pending`
+
+* Default: false
+* Type: Boolean
+
+List packages with install scripts that are not yet covered by the
+`allowScripts` policy, without modifying `package.json`. Only meaningful for
+`npm approve-scripts`.
+
+
+
+#### `allow-scripts-pin`
+
+* Default: true
+* Type: Boolean
+
+Write pinned (`pkg@version`) entries when approving install scripts. Set to
+`false` to write name-only entries that allow any version. Has no effect on
+`npm deny-scripts`, which always writes name-only entries regardless of this
+setting.
 
 
 
@@ -227,6 +342,12 @@ If the requested version is a `dist-tag` and the given tag does not pass the
 will be used. For example, `foo@latest` might install `foo@1.2` even though
 `latest` is `2.0`.
 
+If `before` and `min-release-age` are both set in the same source, `before`
+wins (an explicit absolute date overrides a relative window). Across
+sources, the standard precedence applies (cli > env > project > user >
+global), so a higher-priority source can always relax or override a
+lower-priority one.
+
 
 
 #### `bin-links`
@@ -254,6 +375,17 @@ Set to `false` to suppress browser behavior and instead print urls to
 terminal.
 
 Set to `true` to use default system URL opener.
+
+
+
+#### `bypass-2fa`
+
+* Default: false
+* Type: Boolean
+
+When creating a Granular Access Token with `npm token create`, setting this
+to true will allow the token to bypass two-factor authentication. This is
+useful for automation and CI/CD workflows.
 
 
 
@@ -358,9 +490,21 @@ are same as `cpu` field of package.json, which comes from `process.arch`.
 
 
 
+#### `dangerously-allow-all-scripts`
+
+* Default: false
+* Type: Boolean
+
+If `true`, bypass the `allowScripts` policy entirely and run every
+dependency install script regardless of whether it was approved or denied.
+Intended as a migration escape hatch only; its use is strongly discouraged.
+`--ignore-scripts` still takes precedence over this setting.
+
+
+
 #### `depth`
 
-* Default: `Infinity` if `--all` is set, otherwise `0`
+* Default: `Infinity` if `--all` is set; otherwise, `0`
 * Type: null or Number
 
 The depth to go when recursing packages for `npm ls`.
@@ -499,7 +643,7 @@ This can be overridden by setting the `--force` flag.
 
 Tells to expect a specific number of results from the command.
 
-This config can not be used with: `expect-results`
+This config cannot be used with: `expect-results`
 
 #### `expect-results`
 
@@ -509,7 +653,18 @@ This config can not be used with: `expect-results`
 Tells npm whether or not to expect results from the command. Can be either
 true (expect some results) or false (expect no results).
 
-This config can not be used with: `expect-result-count`
+This config cannot be used with: `expect-result-count`
+
+#### `expires`
+
+* Default: null
+* Type: null or Number
+
+When creating a Granular Access Token with `npm token create`, this sets the
+expiration in days. If not specified, the server will determine the default
+expiration.
+
+
 
 #### `fetch-retries`
 
@@ -735,6 +890,18 @@ the order in which omit/include are specified on the command-line.
 
 
 
+#### `include-attestations`
+
+* Default: false
+* Type: Boolean
+
+When used with `npm audit signatures --json`, includes the full sigstore
+attestation bundles in the JSON output for each verified package. The
+bundles contain DSSE envelopes, verification material, and transparency log
+entries.
+
+
+
 #### `include-staged`
 
 * Default: false
@@ -947,8 +1114,8 @@ instead of the current working directory. See
 
 #### `lockfile-version`
 
-* Default: Version 3 if no lockfile, auto-converting v1 lockfiles to v3,
-  otherwise maintain current lockfile version.
+* Default: Version 3 if no lockfile, auto-converting v1 lockfiles to v3;
+  otherwise, maintain current lockfile version.
 * Type: null, 1, 2, 3, "1", "2", or "3"
 
 Set the lockfile format version to be used in package-lock.json and
@@ -1036,6 +1203,35 @@ Any "%s" in the message will be replaced with the version number.
 
 
 
+#### `min-release-age`
+
+* Default: null
+* Type: null or Number
+
+If set, npm will build the npm tree such that only versions that were
+available more than the given number of days ago will be installed. If there
+are no versions available for the current set of dependencies, the command
+will error.
+
+This flag is a complement to `before`, which accepts an exact date instead
+of a relative number of days. The two may coexist (e.g. `min-release-age` in
+your `.npmrc` is preserved when npm internally spawns a sub-process with
+`--before` while preparing a `git:` or `github:` dependency); when both
+apply, `before` wins within a single source and across sources the standard
+precedence rules apply.
+
+This value is not exported to the environment for child processes.
+
+#### `name`
+
+* Default: null
+* Type: null or String
+
+When creating a Granular Access Token with `npm token create`, this sets the
+name/description for the token.
+
+
+
 #### `node-gyp`
 
 * Default: The path to the node-gyp bin that ships with npm
@@ -1084,7 +1280,7 @@ allow the CLI to fill in missing cache data, see `--prefer-offline`.
 #### `omit`
 
 * Default: 'dev' if the `NODE_ENV` environment variable is set to
-  'production', otherwise empty.
+  'production'; otherwise, empty.
 * Type: "dev", "optional", or "peer" (can be set multiple times)
 
 Dependency types to omit from the installation tree on disk.
@@ -1110,6 +1306,27 @@ This option causes npm to create lock files without a `resolved` key for
 registry dependencies. Subsequent installs will need to resolve tarball
 endpoints with the configured registry, likely resulting in a longer install
 time.
+
+
+
+#### `orgs`
+
+* Default: null
+* Type: null or String (can be set multiple times)
+
+When creating a Granular Access Token with `npm token create`, this limits
+the token access to specific organizations.
+
+
+
+#### `orgs-permission`
+
+* Default: null
+* Type: null, "read-only", "read-write", or "no-access"
+
+When creating a Granular Access Token with `npm token create`, sets the
+permission level for organizations. Options are "read-only", "read-write",
+or "no-access".
 
 
 
@@ -1180,6 +1397,37 @@ For `list` this means the output will be based on the tree described by the
 
 
 
+#### `packages`
+
+* Default:
+* Type: null or String (can be set multiple times)
+
+When creating a Granular Access Token with `npm token create`, this limits
+the token access to specific packages.
+
+
+
+#### `packages-all`
+
+* Default: false
+* Type: Boolean
+
+When creating a Granular Access Token with `npm token create`, grants the
+token access to all packages instead of limiting to specific packages.
+
+
+
+#### `packages-and-scopes-permission`
+
+* Default: null
+* Type: null, "read-only", "read-write", or "no-access"
+
+When creating a Granular Access Token with `npm token create`, sets the
+permission level for packages and scopes. Options are "read-only",
+"read-write", or "no-access".
+
+
+
 #### `parseable`
 
 * Default: false
@@ -1187,6 +1435,16 @@ For `list` this means the output will be based on the tree described by the
 
 Output parseable results from commands that write to standard output. For
 `npm search`, this will be tab-separated table format.
+
+
+
+#### `password`
+
+* Default: null
+* Type: null or String
+
+Password for authentication. Can be provided via command line when creating
+tokens, though it's generally safer to be prompted for it.
 
 
 
@@ -1264,7 +1522,7 @@ Set to `false` to suppress the progress bar.
 When publishing from a supported cloud CI/CD system, the package will be
 publicly linked to where it was built and published from.
 
-This config can not be used with: `provenance-file`
+This config cannot be used with: `provenance-file`
 
 #### `provenance-file`
 
@@ -1273,7 +1531,7 @@ This config can not be used with: `provenance-file`
 
 When publishing, the provenance bundle at the given path will be used.
 
-This config can not be used with: `provenance`
+This config cannot be used with: `provenance`
 
 #### `proxy`
 
@@ -1365,7 +1623,7 @@ Ignored if `--save-peer` is set, since peerDependencies cannot be bundled.
 
 Save installed packages to a package.json file as `devDependencies`.
 
-This config can not be used with: `save-optional`, `save-peer`, `save-prod`
+This config cannot be used with: `save-optional`, `save-peer`, `save-prod`
 
 #### `save-exact`
 
@@ -1384,7 +1642,7 @@ rather than using npm's default semver range operator.
 
 Save installed packages to a package.json file as `optionalDependencies`.
 
-This config can not be used with: `save-dev`, `save-peer`, `save-prod`
+This config cannot be used with: `save-dev`, `save-peer`, `save-prod`
 
 #### `save-peer`
 
@@ -1393,7 +1651,7 @@ This config can not be used with: `save-dev`, `save-peer`, `save-prod`
 
 Save installed packages to a package.json file as `peerDependencies`
 
-This config can not be used with: `save-dev`, `save-optional`, `save-prod`
+This config cannot be used with: `save-dev`, `save-optional`, `save-prod`
 
 #### `save-prefix`
 
@@ -1422,7 +1680,7 @@ you want to move it to be a non-optional production dependency.
 This is the default behavior if `--save` is true, and neither `--save-dev`
 or `--save-optional` are true.
 
-This config can not be used with: `save-dev`, `save-optional`, `save-peer`
+This config cannot be used with: `save-dev`, `save-optional`, `save-peer`
 
 #### `sbom-format`
 
@@ -1472,6 +1730,17 @@ This will also cause `npm init` to create a scoped package.
 # instead of just named "whatever"
 npm init --scope=@foo --yes
 ```
+
+
+
+#### `scopes`
+
+* Default: null
+* Type: null or String (can be set multiple times)
+
+When creating a Granular Access Token with `npm token create`, this limits
+the token access to specific scopes. Provide a scope name (with or without @
+prefix).
 
 
 
@@ -1559,6 +1828,22 @@ this to work properly.
 
 
 
+#### `strict-allow-scripts`
+
+* Default: false
+* Type: Boolean
+
+If `true`, turn the install-script policy from a warning into a hard error:
+any dependency with install scripts not covered by `allowScripts` will fail
+the install instead of running with a notice.
+
+Dependencies explicitly denied with `false` in `allowScripts` are always
+silently skipped; this setting only affects unreviewed entries.
+`--ignore-scripts` and `--dangerously-allow-all-scripts` both override this
+setting.
+
+
+
 #### `strict-peer-deps`
 
 * Default: false
@@ -1639,6 +1924,15 @@ You can quickly view it with this [json](https://npm.im/json) command line:
 
 Timing information will also be reported in the terminal. To suppress this
 while still writing the timing file, use `--silent`.
+
+
+
+#### `token-description`
+
+* Default: null
+* Type: null or String
+
+Description text for the token when using `npm token create`.
 
 
 
@@ -1866,9 +2160,9 @@ When set to `dev` or `development`, this is an alias for `--include=dev`.
 * Default: null
 * Type: null or String
 * DEPRECATED: `key` and `cert` are no longer used for most registry
-  operations. Use registry scoped `keyfile` and `cafile` instead. Example:
+  operations. Use registry scoped `keyfile` and `certfile` instead. Example:
   //other-registry.tld/:keyfile=/path/to/key.pem
-  //other-registry.tld/:cafile=/path/to/cert.crt
+  //other-registry.tld/:certfile=/path/to/cert.crt
 
 A client certificate to pass when accessing the registry. Values should be
 in PEM format (Windows calls it "Base-64 encoded X.509 (.CER)") with
@@ -1879,8 +2173,8 @@ cert="-----BEGIN CERTIFICATE-----\nXXXX\nXXXX\n-----END CERTIFICATE-----"
 ```
 
 It is _not_ the path to a certificate file, though you can set a
-registry-scoped "cafile" path like
-"//other-registry.tld/:cafile=/path/to/cert.pem".
+registry-scoped "certfile" path like
+"//other-registry.tld/:certfile=/path/to/cert.pem".
 
 
 
@@ -1971,9 +2265,9 @@ Alias for `--init-version`
 * Default: null
 * Type: null or String
 * DEPRECATED: `key` and `cert` are no longer used for most registry
-  operations. Use registry scoped `keyfile` and `cafile` instead. Example:
+  operations. Use registry scoped `keyfile` and `certfile` instead. Example:
   //other-registry.tld/:keyfile=/path/to/key.pem
-  //other-registry.tld/:cafile=/path/to/cert.crt
+  //other-registry.tld/:certfile=/path/to/cert.crt
 
 A client key to pass when accessing the registry. Values should be in PEM
 format with newlines replaced by the string "\n". For example:

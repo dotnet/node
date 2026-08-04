@@ -38,7 +38,6 @@ file a new issue.
     * [Windows Prerequisites](#windows-prerequisites)
       * [Option 1: Manual install](#option-1-manual-install)
       * [Option 2: Automated install with WinGet](#option-2-automated-install-with-winget)
-      * [Option 3: Automated install with Boxstarter](#option-3-automated-install-with-boxstarter)
     * [Building Node.js](#building-nodejs-2)
       * [Using ccache](#using-ccache)
   * [Android](#android)
@@ -98,7 +97,7 @@ and libc version. The table below lists the support tier for each supported
 combination. A list of [supported compile toolchains](#supported-toolchains) is
 also supplied for tier 1 platforms.
 
-**For production applications, run Node.js on supported platforms only.**
+**For production applications, run Node.js on supported platforms only (Tier 1 or 2).**
 
 Node.js does not support a platform version if a vendor has expired support
 for it. In other words, Node.js does not support running on End-of-Life (EoL)
@@ -115,6 +114,7 @@ platforms. This is true regardless of entries in the table below.
 | GNU/Linux        | ppc64le >=power8 | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2       | e.g. Ubuntu 20.04, RHEL 8            |
 | GNU/Linux        | s390x            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2       | e.g. RHEL 8                          |
 | GNU/Linux        | loong64          | kernel >= 5.19, glibc >= 2.36     | Experimental |                                      |
+| GNU/Linux        | riscv64          | kernel >= 5.19, glibc >= 2.36     | Experimental |                                      |
 | Windows          | x64              | >= Windows 10/Server 2016         | Tier 1       | [^2],[^3]                            |
 | Windows          | arm64            | >= Windows 10                     | Tier 2       |                                      |
 | macOS            | x64              | >= 13.5                           | Tier 1       | For notes about compilation see [^4] |
@@ -153,11 +153,11 @@ platforms. This is true regardless of entries in the table below.
 
 Depending on the host platform, the selection of toolchains may vary.
 
-| Operating System | Compiler Versions                                              |
-| ---------------- | -------------------------------------------------------------- |
-| Linux            | GCC >= 12.2                                                    |
-| Windows          | Visual Studio >= 2022 with the Windows 10 SDK on a 64-bit host |
-| macOS            | Xcode >= 16.1 (Apple LLVM >= 17)                               |
+| Operating System | Compiler Versions                                                         |
+| ---------------- | ------------------------------------------------------------------------- |
+| Linux            | GCC >= 12.2                                                               |
+| Windows          | Visual Studio 2022 or 2026 with the Windows 10 or 11 SDK on a 64-bit host |
+| macOS            | Xcode >= 16.1 (Apple LLVM >= 17)                                          |
 
 ### Official binary platforms and toolchains
 
@@ -214,12 +214,11 @@ If compiling without one of the above, use `configure` with the
 ### Previous versions of this document
 
 Supported platforms and toolchains change with each major version of Node.js.
-This document is only valid for the current major version of Node.js.
-Consult previous versions of this document for older versions of Node.js:
+This document is only valid for the current version of Node.js, and is expected
+to be valid for the entire lifetime of this release line.
 
-* [Node.js 21](https://github.com/nodejs/node/blob/v21.x/BUILDING.md)
-* [Node.js 20](https://github.com/nodejs/node/blob/v20.x/BUILDING.md)
-* [Node.js 18](https://github.com/nodejs/node/blob/v18.x/BUILDING.md)
+To consult the version of this document for another version, download its source
+tarball and/or browse the git repository checked out at the relevant tag.
 
 ## Building Node.js on supported platforms
 
@@ -323,11 +322,9 @@ If you are running tests before submitting a pull request, use:
 make -j4 test
 ```
 
-`make -j4 test` does a full check on the codebase, including running linters and
-documentation tests.
+`make -j4 test` does a full check on the codebase, including documentation tests.
 
-To run the linter without running tests, use
-`make lint`/`vcbuild lint`. It will lint JavaScript, C++, and Markdown files.
+To run the linter, use `make lint`/`vcbuild lint`. It will lint JavaScript, C++, and Markdown files.
 
 To fix auto fixable JavaScript linting errors, use `make lint-js-fix`.
 
@@ -350,6 +347,27 @@ You can also execute the tests in a test suite directory
 
 ```bash
 tools/test.py test/message
+```
+
+You can execute tests that match a specific naming pattern using the wildcard
+`*`. For example, to run all tests under `test/parallel` with a name that starts
+with `test-stream-`:
+
+```bash
+tools/test.py test/parallel/test-stream-*
+tools/test.py parallel/test-stream-*  # The test/ prefix can be omitted
+# In some shell environments, you may need to quote the pattern
+tools/test.py "test/parallel/test-stream-*"
+```
+
+The wildcard `*` can be used in any part of the path. For example, to run all tests
+with a name that starts with `test-inspector-`, regardless of the directory they are in:
+
+```bash
+# Matches test/sequential/test-inspector-*, test/parallel/test-inspector-*,
+# test/known_issues/test-inspector-*, etc.
+tools/test.py "test/*/test-inspector-*"
+tools/test.py "*/test-inspector-*"  # The test/ prefix can be omitted
 ```
 
 If you want to check the other options, please refer to the help by using
@@ -534,7 +552,7 @@ on Linux, you can try [Docker](https://www.docker.com/products/docker-desktop/)
 (using an image like `gengjiawen/node-build:2020-02-14`).
 
 The `--debug` is not necessary and will slow down build and testing, but it can
-show clear stacktrace if ASan hits an issue.
+show a clear stack trace if ASan hits an issue.
 
 ```bash
 ./configure --debug --enable-asan && make -j4
@@ -612,8 +630,8 @@ the number of parallel build tasks (`-j<n>`).
 
 #### Tips
 
-You may need disable vcpkg integration if you got link error about symbol
-redefine related to zlib.lib(zlib1.dll), even you never install it by hand,
+You may need to disable vcpkg integration if you encounter a link error about symbol
+redefinition related to zlib.lib(zlib1.dll), even if you never installed it by hand,
 as vcpkg is part of CLion and Visual Studio now.
 
 ```powershell
@@ -634,16 +652,22 @@ Refs:
 
 ##### Option 1: Manual install
 
-* The current [version of Python][Python versions] from the
-  [Microsoft Store](https://apps.microsoft.com/store/search?publisher=Python+Software+Foundation)
-* The "Desktop development with C++" workload from
-  [Visual Studio 2022 (17.6 or newer)](https://visualstudio.microsoft.com/downloads/)
-  or the "C++ build tools" workload from the
-  [Build Tools](https://aka.ms/vs/17/release/vs_buildtools.exe),
-  with the default optional components. Starting with Node.js v24, ClangCL is required to compile
-  on Windows. To enable it, two additional components are needed:
+* The current [version of Python][Python downloads] by following the instructions in
+  [Using Python on Windows][].
+* Select and download the Visual Studio Community Edition 2026 from
+  [Visual Studio Downloads](https://visualstudio.microsoft.com/downloads/) or alternatively download
+  [Build Tools for Visual Studio 2026](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026),
+  and then install.
+  The Build Tools Edition has the lowest disk space requirements of all editions.
+  Professional or Enterprise Editions can also be alternatively selected.
+* During installation of Visual Studio, select the "Desktop development with C++" workload.
+  As of Node.js 24.0.0, ClangCL is required to compile on Windows.
+  To install it, select the following two optional components:
   * C++ Clang Compiler for Windows (Microsoft.VisualStudio.Component.VC.Llvm.Clang)
-  * MSBuild support for LLVM toolset (Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset)
+  * MSBuild support for LLVM (clang-cl) toolset (Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset)
+* As an alternative to Visual Studio 2026, download Visual Studio 2022 Current channel Version 17.14 from the
+  [Evergreen bootstrappers](https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history#evergreen-bootstrappers)
+  table and install using the same workload and optional component selection as described above.
 * Basic Unix tools required for some tests,
   [Git for Windows](https://git-scm.com/download/win) includes Git Bash
   and tools which can be included in the global `PATH`.
@@ -652,86 +676,56 @@ Refs:
   to `PATH`. A build with the `openssl-no-asm` option does not need this, nor
   does a build targeting ARM64 Windows.
 
-Optional requirements to build the MSI installer package:
+After you have installed any Visual Studio Edition you can add optional components using the
+Modify / Individual Components tab of Visual Studio Installer.
 
-* The .NET SDK component from [Visual Studio 2022](https://visualstudio.microsoft.com/downloads/)
-  * This component can be installed via the Visual Studio Installer Application
+Optional component required to build the MSI installer package:
 
-Optional requirements for compiling for Windows on ARM (ARM64):
+* The .NET SDK individual component (Microsoft.NetCore.Component.SDK)
 
-* Visual Studio 17.6.0 or newer
-  > **Note:** There is [a bug](https://github.com/nodejs/build/issues/3739) in `17.10.x`
-  > preventing Node.js from compiling.
-* Visual Studio optional components
-  * Visual C++ compilers and libraries for ARM64
-  * Visual C++ ATL for ARM64
-* Windows 10 SDK 10.0.17763.0 or newer
+Optional components required to compile for Windows on ARM64:
+
+* MSVC Build Tools for ARM64/ARM64EC (Microsoft.VisualStudio.Component.VC.Tools.ARM64)
+* C++ ATL for ARM64 (Microsoft.VisualStudio.Component.VC.ATL.ARM64)
 
 NOTE: Currently we only support compiling with Clang that comes from Visual Studio.
 
-When building with ClangCL, if the output from `vcbuild.bat` shows that the components are not installed
+When building with ClangCL, if the output from `vcbuild.bat` shows that the components are not installed,
 even when the Visual Studio Installer shows that they are installed, try removing the components
-first and then reinstalling them again.
+first and then reinstalling them.
 
 ##### Option 2: Automated install with WinGet
 
-[WinGet configuration files](https://github.com/nodejs/node/tree/main/.configurations)
+[WinGet configuration files](./.configurations)
 can be used to install all the required prerequisites for Node.js development
 easily. These files will install the following
 [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/) packages:
 
 * Git for Windows with the `git` and Unix tools added to the `PATH`
-* `Python 3.12`
-* `Visual Studio 2022` (Community, Enterprise or Professional)
-* `Visual Studio 2022 Build Tools` with Visual C++ workload, Clang and ClangToolset
+* `Python 3.14`
+* `Visual Studio 2022` (Build Tools, Community, Professional or Enterprise Edition) and
+  "Desktop development with C++" workload, Clang and ClangToolset optional components
 * `NetWide Assembler`
 
-To install Node.js prerequisites from Powershell Terminal:
+The following Desired State Configuration (DSC) files are available:
+
+| Edition      | DSC Configuration                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| Build Tools  | [configuration.vsBuildTools.dsc.yaml](./.configurations/configuration.vsBuildTools.dsc.yaml)     |
+| Community    | [configuration.dsc.yaml](./.configurations/configuration.dsc.yaml)                               |
+| Professional | [configuration.vsProfessional.dsc.yaml](./.configurations/configuration.vsProfessional.dsc.yaml) |
+| Enterprise   | [configuration.vsEnterprise.dsc.yaml](./.configurations/configuration.vsEnterprise.dsc.yaml)     |
+
+Use one of the above DSC files with
+[winget configure](https://learn.microsoft.com/en-us/windows/package-manager/winget/configure#configure-subcommands)
+in a PowerShell Terminal to install Node.js prerequisites.
+For example, using the DSC file for Visual Studio Community Edition, execute the following command line:
 
 ```powershell
 winget configure .\.configurations\configuration.dsc.yaml
 ```
 
-Alternatively, you can use [Dev Home](https://learn.microsoft.com/en-us/windows/dev-home/)
-to install the prerequisites:
-
-* Switch to `Machine Configuration` tab
-* Click on `Configuration File`
-* Choose the corresponding WinGet configuration file
-* Click on `Set up as admin`
-
-##### Option 3: Automated install with Boxstarter
-
-A [Boxstarter](https://boxstarter.org/) script can be used for easy setup of
-Windows systems with all the required prerequisites for Node.js development.
-This script will install the following [Chocolatey](https://chocolatey.org/)
-packages:
-
-* [Git for Windows](https://chocolatey.org/packages/git) with the `git` and
-  Unix tools added to the `PATH`
-* [Python 3.x](https://chocolatey.org/packages/python)
-* [Visual Studio 2022 Build Tools](https://chocolatey.org/packages/visualstudio2022buildtools)
-  with [Visual C++ workload](https://chocolatey.org/packages/visualstudio2022-workload-vctools)
-* [NetWide Assembler](https://chocolatey.org/packages/nasm)
-
-To install Node.js prerequisites using
-[Boxstarter WebLauncher](https://boxstarter.org/weblauncher), visit
-<https://boxstarter.org/package/nr/url?https://raw.githubusercontent.com/nodejs/node/HEAD/tools/bootstrap/windows_boxstarter>
-with a supported browser.
-
-Alternatively, you can use PowerShell. Run those commands from
-an elevated (Administrator) PowerShell terminal:
-
-```powershell
-Set-ExecutionPolicy Unrestricted -Force
-iex ((New-Object System.Net.WebClient).DownloadString('https://boxstarter.org/bootstrapper.ps1'))
-get-boxstarter -Force
-Install-BoxstarterPackage https://raw.githubusercontent.com/nodejs/node/HEAD/tools/bootstrap/windows_boxstarter -DisableReboots
-refreshenv
-```
-
-The entire installation using Boxstarter will take up approximately 10 GB of
-disk space.
+To add optional components for MSI or ARM64 builds, refer to [Option 1: Manual install](#option-1-manual-install).
 
 #### Building Node.js
 
@@ -771,6 +765,11 @@ To test if Node.js was built correctly:
 Release\node -e "console.log('Hello from Node.js', process.version)"
 ```
 
+> \[!TIP]
+> On Windows, creating symlinks requires [Developer Mode][] to be enabled or
+> running the command as Administrator. Tests that rely on creating symlinks
+> may fail with EPERM errors if symlink creation is not permitted.
+
 ##### Using ccache:
 
 Follow <https://github.com/ccache/ccache/wiki/MS-Visual-Studio>, and you
@@ -785,7 +784,7 @@ cp c:\ccache\ccache.exe c:\ccache\cl.exe
 ```
 
 With newer version of Visual Studio, it may need the copy to be `clang-cl.exe`
-instead. If the output of `vcbuild.bat` suggestion missing `clang-cl.exe`, copy
+instead. If the output of `vcbuild.bat` suggests missing `clang-cl.exe`, copy
 it differently:
 
 ```powershell
@@ -1031,4 +1030,7 @@ by opening a pull request against the registry available at
 <https://github.com/nodejs/node/blob/HEAD/doc/abi_version_registry.json>.
 
 [AIX toolbox]: https://www.ibm.com/support/pages/aix-toolbox-open-source-software-overview
+[Developer Mode]: https://learn.microsoft.com/en-us/windows/advanced-settings/developer-mode
+[Python downloads]: https://www.python.org/downloads/
 [Python versions]: https://devguide.python.org/versions/
+[Using Python on Windows]: https://docs.python.org/3/using/windows.html

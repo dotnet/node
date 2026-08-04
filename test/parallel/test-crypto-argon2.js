@@ -95,13 +95,23 @@ const bad = [
   ['argon2id', { nonce: nonce.subarray(0, 7) }, 'parameters.nonce.byteLength'], // nonce.byteLength < 8
   ['argon2id', { tagLength: 3 }, 'parameters.tagLength'], // tagLength < 4
   ['argon2id', { tagLength: 2 ** 32 }, 'parameters.tagLength'], // tagLength > 2^(32)-1
-  ['argon2id', { passes: 0 }, 'parameters.passes'], // passes < 2
+  ['argon2id', { passes: 0 }, 'parameters.passes'], // passes < 1
   ['argon2id', { passes: 2 ** 32 }, 'parameters.passes'], // passes > 2^(32)-1
   ['argon2id', { parallelism: 0 }, 'parameters.parallelism'], // parallelism < 1
   ['argon2id', { parallelism: 2 ** 24 }, 'parameters.parallelism'], // Parallelism > 2^(24)-1
   ['argon2id', { parallelism: 4, memory: 16 }, 'parameters.memory'], // Memory < 8 * parallelism
   ['argon2id', { memory: 2 ** 32 }, 'parameters.memory'], // memory > 2^(32)-1
 ];
+
+{
+  const omitted = runArgon2('argon2id', defaults);
+  const explicitEmpty = runArgon2('argon2id', {
+    ...defaults,
+    secret: Buffer.alloc(0),
+    associatedData: Buffer.alloc(0),
+  });
+  assert.deepStrictEqual(omitted, explicitEmpty);
+}
 
 for (const [algorithm, overrides, expected] of good) {
   const parameters = { ...defaults, ...overrides };
@@ -112,7 +122,7 @@ for (const [algorithm, overrides, expected] of good) {
 for (const [algorithm, overrides, param] of bad) {
   const expected = {
     code: 'ERR_OUT_OF_RANGE',
-    message: new RegExp(`The value of "${param}" is out of range`),
+    message: new RegExp(`The value of "${RegExp.escape(param)}" is out of range`),
   };
   const parameters = { ...defaults, ...overrides };
   assert.throws(() => crypto.argon2(algorithm, parameters, () => {}), expected);
@@ -122,7 +132,7 @@ for (const [algorithm, overrides, param] of bad) {
 for (const key of Object.keys(defaults)) {
   const expected = {
     code: 'ERR_INVALID_ARG_TYPE',
-    message: new RegExp(`"parameters\\.${key}"`),
+    message: new RegExp(`"parameters\\.${RegExp.escape(key)}"`),
   };
   const parameters = { ...defaults };
   delete parameters[key];

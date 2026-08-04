@@ -72,8 +72,7 @@ void Realm::CreateProperties() {
   CHECK(primordials->IsObject());
   set_primordials(primordials.As<Object>());
 
-  Local<String> prototype_string =
-      FIXED_ONE_BYTE_STRING(isolate(), "prototype");
+  Local<String> prototype_string = env_->prototype_string();
 
 #define V(EnvPropertyName, PrimordialsPropertyName)                            \
   {                                                                            \
@@ -294,10 +293,6 @@ void Realm::VerifyNoStrongBaseObjects() {
     fflush(stderr);
     ABORT();
   });
-}
-
-v8::Local<v8::Context> Realm::context() const {
-  return PersistentToLocal::Strong(context_);
 }
 
 // Per-realm strong value accessors. The per-realm values should avoid being

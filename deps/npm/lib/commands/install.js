@@ -5,14 +5,15 @@ const runScript = require('@npmcli/run-script')
 const pacote = require('pacote')
 const checks = require('npm-install-checks')
 const reifyFinish = require('../utils/reify-finish.js')
+const resolveAllowScripts = require('../utils/resolve-allow-scripts.js')
+const strictAllowScriptsPreflight = require('../utils/strict-allow-scripts-preflight.js')
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
 
 class Install extends ArboristWorkspaceCmd {
   static description = 'Install a package'
   static name = 'install'
 
-  // These are in the order they will show up in when running "-h"
-  // If adding to this list, consider adding also to ci.js
+  // These are in the order they will show up in when running "-h" If adding to this list, consider adding also to ci.js
   static params = [
     'save',
     'save-exact',
@@ -28,8 +29,16 @@ class Install extends ArboristWorkspaceCmd {
     'package-lock-only',
     'foreground-scripts',
     'ignore-scripts',
+    'allow-directory',
+    'allow-file',
+    'allow-git',
+    'allow-remote',
+    'allow-scripts',
+    'strict-allow-scripts',
+    'dangerously-allow-all-scripts',
     'audit',
     'before',
+    'min-release-age',
     'bin-links',
     'fund',
     'dry-run',
@@ -52,10 +61,8 @@ class Install extends ArboristWorkspaceCmd {
     }
 
     if (/\//.test(partialWord)) {
-      // Complete fully to folder if there is exactly one match and it
-      // is a folder containing a package.json file.  If that is not the
-      // case we return 0 matches, which will trigger the default bash
-      // complete.
+      // Complete fully to folder if there is exactly one match and it is a folder containing a package.json file.
+      // If that is not the case we return 0 matches, which will trigger the default bash complete.
       const lastSlashIdx = partialWord.lastIndexOf('/')
       const partialName = partialWord.slice(lastSlashIdx + 1)
       const partialPath = partialWord.slice(0, lastSlashIdx) || '/'
@@ -91,9 +98,7 @@ class Install extends ArboristWorkspaceCmd {
         return [] // invalid dir: no matching
       }
     }
-    // Note: there used to be registry completion here,
-    // but it stopped making sense somewhere around
-    // 50,000 packages on the registry
+    // Note: there used to be registry completion here, but it stopped making sense somewhere around 50,000 packages on the registry
   }
 
   async exec (args) {
@@ -132,21 +137,23 @@ class Install extends ArboristWorkspaceCmd {
       args = ['.']
     }
 
-    // throw usage error if trying to install empty package
-    // name to global space, e.g: `npm i -g ""`
+    // throw usage error if trying to install empty package name to global space, e.g: `npm i -g ""`
     if (where === globalTop && !args.every(Boolean)) {
       throw this.usageError()
     }
 
     const Arborist = require('@npmcli/arborist')
+    const { policy: allowScriptsPolicy } = await resolveAllowScripts(this.npm)
     const opts = {
       ...this.npm.flatOptions,
       auditLevel: null,
       path: where,
       add: args,
       workspaces: this.workspaceNames,
+      allowScripts: allowScriptsPolicy,
     }
     const arb = new Arborist(opts)
+    await strictAllowScriptsPreflight({ arb, npm: this.npm, idealTreeOpts: opts })
     await arb.reify(opts)
 
     if (!args.length && !isGlobalInstall && !ignoreScripts) {

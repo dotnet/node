@@ -1,4 +1,4 @@
-const { log, output } = require('proc-log')
+const { log, output, META } = require('proc-log')
 const semver = require('semver')
 const pack = require('libnpmpack')
 const libpub = require('libnpmpublish').publish
@@ -9,18 +9,22 @@ const npmFetch = require('npm-registry-fetch')
 const { redactLog: replaceInfo } = require('@npmcli/redact')
 const { otplease } = require('../utils/auth.js')
 const { getContents, logTar } = require('../utils/tar.js')
-// for historical reasons, publishConfig in package.json can contain ANY config
-// keys that npm supports in .npmrc files and elsewhere.  We *may* want to
-// revisit this at some point, and have a minimal set that's a SemVer-major
-// change that ought to get a RFC written on it.
+// for historical reasons, publishConfig in package.json can contain ANY config keys that npm supports in .npmrc files and elsewhere.
+// We *may* want to revisit this at some point, and have a minimal set that's a SemVer-major change that ought to get a RFC written on it.
 const { flatten } = require('@npmcli/config/lib/definitions')
 const pkgJson = require('@npmcli/package-json')
 const BaseCommand = require('../base-cmd.js')
-const { oidc } = require('../../lib/utils/oidc.js')
+const { oidc } = require('../utils/oidc.js')
 
 class Publish extends BaseCommand {
   static description = 'Publish a package'
   static name = 'publish'
+  static stage = false
+
+  get isStage () {
+    return this.constructor.stage
+  }
+
   static params = [
     'tag',
     'access',
@@ -62,13 +66,17 @@ class Publish extends BaseCommand {
         if (err.code !== 'EPRIVATE') {
           throw err
         }
-        log.warn('publish', `Skipping workspace ${this.npm.chalk.cyan(name)}, marked as ${this.npm.chalk.bold('private')}`)
+        log.warn(this.#command, `Skipping workspace ${this.npm.chalk.cyan(name)}, marked as ${this.npm.chalk.bold('private')}`)
       }
     }
   }
 
+  get #command () {
+    return this.isStage ? 'stage' : 'publish'
+  }
+
   async #publish (args, { workspace } = {}) {
-    log.verbose('publish', replaceInfo(args))
+    log.verbose(this.#command, replaceInfo(args))
 
     const unicode = this.npm.config.get('unicode')
     const dryRun = this.npm.config.get('dry-run')
@@ -83,8 +91,7 @@ class Publish extends BaseCommand {
 
     const opts = { ...this.npm.flatOptions, progress: false }
 
-    // you can publish name@version, ./foo.tgz, etc.
-    // even though the default is the 'file:.' cwd.
+    // you can publish name@version, ./foo.tgz, etc even though the default is the 'file:.' cwd.
     const spec = npa(args[0])
     let manifest = await this.#getManifest(spec, opts)
 
@@ -111,9 +118,7 @@ class Publish extends BaseCommand {
     const pkgContents = await getContents(manifest, tarballData)
     const logPkg = () => logTar(pkgContents, { unicode, json, key: workspace })
 
-    // The purpose of re-reading the manifest is in case it changed,
-    // so that we send the latest and greatest thing to the registry
-    // note that publishConfig might have changed as well!
+    // The purpose of re-reading the manifest is in case it changed, so that we send the latest and greatest thing to the registry note that publishConfig might have changed as well!
     manifest = await this.#getManifest(spec, opts, true)
     const force = this.npm.config.get('force')
     const isDefaultTag = this.npm.config.isDefault('tag') && !manifest.publishConfig?.tag
@@ -125,8 +130,7 @@ class Publish extends BaseCommand {
       }
     }
 
-    // If we are not in JSON mode then we show the user the contents of the tarball
-    // before it is published so they can see it while their otp is pending
+    // If we are not in JSON mode then we show the user the contents of the tarball before it is published so they can see it while their otp is pending
     if (!json) {
       logPkg()
     }
@@ -144,7 +148,6 @@ class Publish extends BaseCommand {
     const noCreds = !(creds.token || creds.username || creds.certfile && creds.keyfile)
     const outputRegistry = replaceInfo(registry)
 
-    // if a workspace package is marked private then we skip it
     if (workspace && manifest.private) {
       throw Object.assign(
         new Error(`This package has been marked as private
@@ -156,7 +159,7 @@ class Publish extends BaseCommand {
     if (noCreds) {
       const msg = `This command requires you to be logged in to ${outputRegistry}`
       if (dryRun) {
-        log.warn('', `${msg} (dry-run)`)
+        log.warn(this.#command, `${msg} (dry-run)`)
       } else {
         throw Object.assign(new Error(msg), { code: 'ENEEDAUTH' })
       }
@@ -177,21 +180,36 @@ class Publish extends BaseCommand {
     }
 
     const access = opts.access === null ? 'default' : opts.access
-    let msg = `Publishing to ${outputRegistry} with tag ${defaultTag} and ${access} access`
+    const verb = this.isStage ? 'Staging' : 'Publishing'
+    let msg = `${verb} to ${outputRegistry} with tag ${defaultTag} and ${access} access`
     if (dryRun) {
       msg = `${msg} (dry-run)`
     }
 
     log.notice('', msg)
 
+    let stageId
     if (!dryRun) {
-      await otplease(this.npm, opts, o => libpub(manifest, tarballData, o))
+      if (this.isStage) {
+        // Stage intentionally bypasses otplease — 2FA is deferred to approve/reject
+        const res = await libpub(manifest, tarballData, {
+          ...opts,
+          command: this.#command,
+          stage: true,
+        })
+        stageId = res.stageId
+      } else {
+        await otplease(this.npm, opts, o => libpub(manifest, tarballData, o))
+      }
     }
 
-    // In json mode we dont log until the publish has completed as this will
-    // add it to the output only if completes successfully
+    // In json mode we don't log until the publish has completed as this will add it to the output only if completes successfully
     if (json) {
-      logPkg()
+      if (stageId) {
+        pkgContents.stageId = stageId
+      }
+      logTar(pkgContents, {
+        unicode, json, key: pkgContents.name, redact: stageId ? false : undefined })
     }
 
     if (spec.type === 'directory' && !ignoreScripts) {
@@ -211,7 +229,15 @@ class Publish extends BaseCommand {
     }
 
     if (!json && !silent) {
-      output.standard(`+ ${pkgContents.id}`)
+      if (this.isStage) {
+        const stagedMsg = stageId
+          ? `+ ${pkgContents.id} (staged with id ${stageId})`
+          : `+ ${pkgContents.id} (staged)`
+        output.standard(stagedMsg, { [META]: true, redact: false })
+        log.notice(this.#command, `package ${pkgContents.id} has been staged with tag ${defaultTag}`)
+      } else {
+        output.standard(`+ ${pkgContents.id}`)
+      }
     }
   }
 
@@ -221,6 +247,7 @@ class Publish extends BaseCommand {
         ...this.npm.flatOptions,
         preferOnline: true,
         registry,
+        _isRoot: true,
       })
       if (typeof packument?.versions === 'undefined') {
         return { versions: [], highestVersion: null }
@@ -251,8 +278,8 @@ class Publish extends BaseCommand {
       const changes = []
       const pkg = await pkgJson.fix(spec.fetchSpec, { changes })
       if (changes.length && logWarnings) {
-        log.warn('publish', 'npm auto-corrected some errors in your package.json when publishing.  Please run "npm pkg fix" to address these errors.')
-        log.warn('publish', `errors corrected:\n${changes.join('\n')}`)
+        log.warn(this.#command, 'npm auto-corrected some errors in your package.json when publishing.  Please run "npm pkg fix" to address these errors.')
+        log.warn(this.#command, `errors corrected:\n${changes.join('\n')}`)
       }
       // Prepare is the special function for publishing, different than normalize
       const { content } = await pkg.prepare()
@@ -260,14 +287,13 @@ class Publish extends BaseCommand {
     } else {
       manifest = await pacote.manifest(spec, {
         ...opts,
-        fullmetadata: true,
+        fullMetadata: true,
         fullReadJson: true,
       })
     }
     if (manifest.publishConfig) {
       const cliFlags = this.npm.config.data.get('cli').raw
-      // Filter out properties set in CLI flags to prioritize them over
-      // corresponding `publishConfig` settings
+      // Filter out properties set in CLI flags to prioritize them over corresponding `publishConfig` settings
       const filteredPublishConfig = Object.fromEntries(
         Object.entries(manifest.publishConfig).filter(([key]) => !(key in cliFlags)))
       if (logWarnings) {

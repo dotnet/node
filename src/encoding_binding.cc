@@ -1,7 +1,6 @@
 #include "encoding_binding.h"
 #include "ada.h"
 #include "env-inl.h"
-#include "node_buffer.h"
 #include "node_errors.h"
 #include "node_external_reference.h"
 #include "simdutf.h"
@@ -16,6 +15,7 @@ namespace encoding_binding {
 using v8::ArrayBuffer;
 using v8::BackingStore;
 using v8::BackingStoreInitializationMode;
+using v8::BackingStoreOnFailureMode;
 using v8::Context;
 using v8::FunctionCallbackInfo;
 using v8::HandleScope;
@@ -115,8 +115,7 @@ void BindingData::EncodeInto(const FunctionCallbackInfo<Value>& args) {
 // Encode a single string to a UTF-8 Uint8Array (not Buffer).
 // Used in TextEncoder.prototype.encode.
 void BindingData::EncodeUtf8String(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-  Isolate* isolate = env->isolate();
+  Isolate* isolate = args.GetIsolate();
   CHECK_GE(args.Length(), 1);
   CHECK(args[0]->IsString());
 
@@ -126,9 +125,15 @@ void BindingData::EncodeUtf8String(const FunctionCallbackInfo<Value>& args) {
   Local<ArrayBuffer> ab;
   {
     std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
-        isolate, length, BackingStoreInitializationMode::kUninitialized);
+        isolate,
+        length,
+        BackingStoreInitializationMode::kUninitialized,
+        BackingStoreOnFailureMode::kReturnNull);
 
-    CHECK(bs);
+    if (!bs) [[unlikely]] {
+      THROW_ERR_MEMORY_ALLOCATION_FAILED(isolate);
+      return;
+    }
 
     // We are certain that `data` is sufficiently large
     str->WriteUtf8V2(isolate,
@@ -147,13 +152,18 @@ void BindingData::DecodeUTF8(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);  // list, flags
 
   CHECK_GE(args.Length(), 1);
+  auto isShared = args[0]->IsSharedArrayBuffer();
 
-  if (!(args[0]->IsArrayBuffer() || args[0]->IsSharedArrayBuffer() ||
-        args[0]->IsArrayBufferView())) {
+  if (!(args[0]->IsArrayBuffer() || isShared || args[0]->IsArrayBufferView())) {
     return node::THROW_ERR_INVALID_ARG_TYPE(
         env->isolate(),
         "The \"list\" argument must be an instance of SharedArrayBuffer, "
         "ArrayBuffer or ArrayBufferView.");
+  }
+
+  if (args[0]->IsArrayBufferView()) {
+    Local<v8::ArrayBufferView> view = args[0].As<v8::ArrayBufferView>();
+    isShared = view->Buffer()->IsSharedArrayBuffer();
   }
 
   ArrayBufferViewContents<char> buffer(args[0]);
@@ -164,13 +174,11 @@ void BindingData::DecodeUTF8(const FunctionCallbackInfo<Value>& args) {
   const char* data = buffer.data();
   size_t length = buffer.length();
 
-  if (has_fatal) {
-    auto result = simdutf::validate_utf8_with_errors(data, length);
-
-    if (result.error) {
-      return node::THROW_ERR_ENCODING_INVALID_ENCODED_DATA(
-          env->isolate(), "The encoded data was not valid for encoding utf-8");
-    }
+  std::unique_ptr<char[]> data_copy;
+  if (isShared && length != 0) {
+    data_copy = std::make_unique_for_overwrite<char[]>(length);
+    memcpy(data_copy.get(), data, length);
+    data = data_copy.get();
   }
 
   if (!ignore_bom && length >= 3) {
@@ -180,10 +188,32 @@ void BindingData::DecodeUTF8(const FunctionCallbackInfo<Value>& args) {
     }
   }
 
+  if (has_fatal) {
+    // Are we perhaps ASCII? Then we won't have to check for UTF-8
+    if (!simdutf::validate_ascii_with_errors(data, length).error) {
+      Local<Value> ret;
+      if (StringBytes::Encode(env->isolate(), data, length, LATIN1)
+              .ToLocal(&ret)) {
+        args.GetReturnValue().Set(ret);
+      }
+      return;
+    }
+
+    auto result = simdutf::validate_utf8_with_errors(data, length);
+
+    if (result.error) {
+      return node::THROW_ERR_ENCODING_INVALID_ENCODED_DATA(
+          env->isolate(), "The encoded data was not valid for encoding utf-8");
+    }
+  }
+
   if (length == 0) return args.GetReturnValue().SetEmptyString();
 
   Local<Value> ret;
-  if (StringBytes::Encode(env->isolate(), data, length, UTF8).ToLocal(&ret)) {
+  v8::MaybeLocal<Value> encoded =
+      has_fatal ? StringBytes::EncodeValidUtf8(env->isolate(), data, length)
+                : StringBytes::Encode(env->isolate(), data, length, UTF8);
+  if (encoded.ToLocal(&ret)) {
     args.GetReturnValue().Set(ret);
   }
 }
@@ -222,7 +252,6 @@ void BindingData::CreatePerIsolateProperties(IsolateData* isolate_data,
   SetMethodNoSideEffect(isolate, target, "decodeUTF8", DecodeUTF8);
   SetMethodNoSideEffect(isolate, target, "toASCII", ToASCII);
   SetMethodNoSideEffect(isolate, target, "toUnicode", ToUnicode);
-  SetMethodNoSideEffect(isolate, target, "decodeLatin1", DecodeLatin1);
 }
 
 void BindingData::CreatePerContextProperties(Local<Object> target,
@@ -240,53 +269,6 @@ void BindingData::RegisterTimerExternalReferences(
   registry->Register(DecodeUTF8);
   registry->Register(ToASCII);
   registry->Register(ToUnicode);
-  registry->Register(DecodeLatin1);
-}
-
-void BindingData::DecodeLatin1(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-
-  CHECK_GE(args.Length(), 1);
-  if (!(args[0]->IsArrayBuffer() || args[0]->IsSharedArrayBuffer() ||
-        args[0]->IsArrayBufferView())) {
-    return node::THROW_ERR_INVALID_ARG_TYPE(
-        env->isolate(),
-        "The \"input\" argument must be an instance of ArrayBuffer, "
-        "SharedArrayBuffer, or ArrayBufferView.");
-  }
-
-  bool ignore_bom = args[1]->IsTrue();
-  bool has_fatal = args[2]->IsTrue();
-
-  ArrayBufferViewContents<uint8_t> buffer(args[0]);
-  const uint8_t* data = buffer.data();
-  size_t length = buffer.length();
-
-  if (ignore_bom && length > 0 && data[0] == 0xFF) {
-    data++;
-    length--;
-  }
-
-  if (length == 0) {
-    return args.GetReturnValue().SetEmptyString();
-  }
-
-  std::string result(length * 2, '\0');
-
-  size_t written = simdutf::convert_latin1_to_utf8(
-      reinterpret_cast<const char*>(data), length, result.data());
-
-  if (has_fatal && written == 0) {
-    return node::THROW_ERR_ENCODING_INVALID_ENCODED_DATA(
-        env->isolate(), "The encoded data was not valid for encoding latin1");
-  }
-
-  std::string_view view(result.c_str(), written);
-
-  Local<Value> ret;
-  if (ToV8Value(env->context(), view, env->isolate()).ToLocal(&ret)) {
-    args.GetReturnValue().Set(ret);
-  }
 }
 
 }  // namespace encoding_binding

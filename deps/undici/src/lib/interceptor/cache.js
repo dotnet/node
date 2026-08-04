@@ -6,8 +6,66 @@ const util = require('../core/util')
 const CacheHandler = require('../handler/cache-handler')
 const MemoryCacheStore = require('../cache/memory-cache-store')
 const CacheRevalidationHandler = require('../handler/cache-revalidation-handler')
-const { assertCacheStore, assertCacheMethods, makeCacheKey, normalizeHeaders, parseCacheControlHeader } = require('../util/cache.js')
+const { assertCacheStore, assertCacheMethods, makeCacheKey, normalizeHeaders, parseCacheControlHeader, isInvalidOrWildcardVaryHeader } = require('../util/cache.js')
 const { AbortError } = require('../core/errors.js')
+const { parseHttpDate } = require('../util/date.js')
+
+/**
+ * @param {(string | RegExp)[] | undefined} origins
+ * @param {string} name
+ */
+function assertCacheOrigins (origins, name) {
+  if (origins === undefined) return
+  if (!Array.isArray(origins)) {
+    throw new TypeError(`expected ${name} to be an array or undefined, got ${typeof origins}`)
+  }
+  for (let i = 0; i < origins.length; i++) {
+    const origin = origins[i]
+    if (typeof origin !== 'string' && !(origin instanceof RegExp)) {
+      throw new TypeError(`expected ${name}[${i}] to be a string or RegExp, got ${typeof origin}`)
+    }
+  }
+}
+
+const nop = () => {}
+
+function trimOWS (value) {
+  return value.replace(/^[\t ]+|[\t ]+$/g, '')
+}
+
+function arrayIncludes (array, value) {
+  for (let i = 0; i < array.length; i++) {
+    if (array[i] === value) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function hasPragmaNoCache (headers) {
+  const pragma = headers?.pragma
+  if (!pragma) {
+    return false
+  }
+
+  const values = Array.isArray(pragma) ? pragma : [pragma]
+  for (let i = 0; i < values.length; i++) {
+    const value = values[i]
+    if (typeof value !== 'string') {
+      continue
+    }
+
+    const directives = value.split(',')
+    for (let j = 0; j < directives.length; j++) {
+      if (trimOWS(directives[j]).toLowerCase() === 'no-cache') {
+        return true
+      }
+    }
+  }
+
+  return false
+}
 
 /**
  * @typedef {(options: import('../../types/dispatcher.d.ts').default.DispatchOptions, handler: import('../../types/dispatcher.d.ts').default.DispatchHandler) => void} DispatchFn
@@ -16,23 +74,114 @@ const { AbortError } = require('../core/errors.js')
 /**
  * @param {import('../../types/cache-interceptor.d.ts').default.GetResult} result
  * @param {import('../../types/cache-interceptor.d.ts').default.CacheControlDirectives | undefined} cacheControlDirectives
+ * @param {import('../../types/dispatcher.d.ts').default.RequestOptions} opts
  * @returns {boolean}
  */
-function needsRevalidation (result, cacheControlDirectives) {
+function needsRevalidation (result, cacheControlDirectives, { headers = {} }) {
+  // Always revalidate requests with the no-cache request directive.
   if (cacheControlDirectives?.['no-cache']) {
-    // Always revalidate requests with the no-cache request directive
     return true
   }
 
+  // Always revalidate requests with unqualified no-cache response directive.
   if (result.cacheControlDirectives?.['no-cache'] && !Array.isArray(result.cacheControlDirectives['no-cache'])) {
-    // Always revalidate requests with unqualified no-cache response directive
     return true
   }
 
+  // Always revalidate requests with conditional headers.
+  if (headers['if-modified-since'] || headers['if-none-match']) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * @param {import('../../types/cache-interceptor.d.ts').default.GetResult} result
+ * @param {import('../../types/cache-interceptor.d.ts').default.CacheOptions['type']} cacheType
+ * @returns {boolean}
+ */
+function staleResponseRequiresRevalidation (result, cacheType) {
+  return result.cacheControlDirectives?.['must-revalidate'] === true ||
+    (cacheType === 'shared' && (
+      result.cacheControlDirectives?.['proxy-revalidate'] === true ||
+      // https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.10
+      // s-maxage implies proxy-revalidate for shared caches.
+      result.cacheControlDirectives?.['s-maxage'] !== undefined
+    ))
+}
+
+/**
+ * @param {import('../../types/cache-interceptor.d.ts').default.CacheOptions['type']} cacheType
+ * @param {import('../../types/header.d.ts').IncomingHttpHeaders} headers
+ * @returns {boolean}
+ */
+function revalidationResponseDisallowsCachedReuse (cacheType, headers) {
+  if (headers.vary && isInvalidOrWildcardVaryHeader(headers.vary)) {
+    return true
+  }
+
+  const cacheControl = headers['cache-control']
+  if (!cacheControl) {
+    return false
+  }
+
+  const cacheControlDirectives = parseCacheControlHeader(cacheControl)
+  return cacheControlDirectives['no-store'] === true ||
+    (cacheType === 'shared' && cacheControlDirectives.private === true)
+}
+
+function revalidationResponseUpdatesCacheControl (headers) {
+  return headers['cache-control'] !== undefined
+}
+
+function deleteCachedValue (store, cacheKey) {
+  try {
+    store.delete(cacheKey)?.catch?.(nop)
+  } catch {
+    // Fail silently
+  }
+}
+
+function getUsableLastModified (headers) {
+  const lastModified = headers?.['last-modified']
+  if (typeof lastModified === 'string' && parseHttpDate(lastModified)) {
+    return lastModified
+  }
+}
+
+function makeRevalidationHeaders (opts, result) {
+  const headers = {
+    ...opts.headers,
+    'if-modified-since': getUsableLastModified(result.headers) ?? new Date(result.cachedAt).toUTCString()
+  }
+
+  if (result.etag) {
+    headers['if-none-match'] = result.etag
+  }
+
+  if (result.vary) {
+    for (const key in result.vary) {
+      if (result.vary[key] != null) {
+        headers[key] = result.vary[key]
+      }
+    }
+  }
+
+  return headers
+}
+
+/**
+ * @param {import('../../types/cache-interceptor.d.ts').default.GetResult} result
+ * @param {import('../../types/cache-interceptor.d.ts').default.CacheControlDirectives | undefined} cacheControlDirectives
+ * @param {import('../../types/cache-interceptor.d.ts').default.CacheOptions['type']} cacheType
+ * @returns {boolean}
+ */
+function isStale (result, cacheControlDirectives, cacheType) {
   const now = Date.now()
   if (now > result.staleAt) {
     // Response is stale
-    if (cacheControlDirectives?.['max-stale']) {
+    if (!staleResponseRequiresRevalidation(result, cacheType) && cacheControlDirectives?.['max-stale']) {
       // There's a threshold where we can serve stale responses, let's see if
       //  we're in it
       // https://www.rfc-editor.org/rfc/rfc9111.html#name-max-stale
@@ -54,6 +203,23 @@ function needsRevalidation (result, cacheControlDirectives) {
   }
 
   return false
+}
+
+/**
+ * Check if we're within the stale-while-revalidate window for a stale response
+ * @param {import('../../types/cache-interceptor.d.ts').default.GetResult} result
+ * @param {import('../../types/cache-interceptor.d.ts').default.CacheOptions['type']} cacheType
+ * @returns {boolean}
+ */
+function withinStaleWhileRevalidateWindow (result, cacheType) {
+  const staleWhileRevalidate = result.cacheControlDirectives?.['stale-while-revalidate']
+  if (!staleWhileRevalidate || staleResponseRequiresRevalidation(result, cacheType)) {
+    return false
+  }
+
+  const now = Date.now()
+  const staleWhileRevalidateExpiry = result.staleAt + (staleWhileRevalidate * 1000)
+  return now <= staleWhileRevalidateExpiry
 }
 
 /**
@@ -86,7 +252,7 @@ function handleUncachedResponse (
       }
 
       if (typeof handler.onHeaders === 'function') {
-        handler.onHeaders(504, [], () => {}, 'Gateway Timeout')
+        handler.onHeaders(504, [], nop, 'Gateway Timeout')
         if (aborted) {
           return
         }
@@ -217,41 +383,59 @@ function handleResult (
   }
 
   const age = Math.round((now - result.cachedAt) / 1000)
-  if (reqCacheControl?.['max-age'] && age >= reqCacheControl['max-age']) {
-    // Response is considered expired for this specific request
-    //  https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.1.1
-    return dispatch(opts, handler)
-  }
+  const requestMaxAgeExpired = reqCacheControl?.['max-age'] !== undefined && age >= reqCacheControl['max-age']
+
+  const stale = requestMaxAgeExpired || isStale(result, reqCacheControl, globalOpts.type)
+  const revalidate = requestMaxAgeExpired || needsRevalidation(result, reqCacheControl, opts)
 
   // Check if the response is stale
-  if (needsRevalidation(result, reqCacheControl)) {
+  if (stale || revalidate) {
     if (util.isStream(opts.body) && util.bodyLength(opts.body) !== 0) {
       // If body is a stream we can't revalidate...
       // TODO (fix): This could be less strict...
       return dispatch(opts, new CacheHandler(globalOpts, cacheKey, handler))
     }
 
+    // RFC 5861: If we're within stale-while-revalidate window, serve stale immediately
+    // and revalidate in background, unless immediate revalidation is necessary
+    if (!revalidate && withinStaleWhileRevalidateWindow(result, globalOpts.type)) {
+      // Serve stale response immediately
+      sendCachedValue(handler, opts, result, age, null, true)
+
+      // Start background revalidation (fire-and-forget)
+      queueMicrotask(() => {
+        const headers = makeRevalidationHeaders(opts, result)
+
+        // Background revalidation - update cache if we get new data
+        dispatch(
+          {
+            ...opts,
+            headers
+          },
+          new CacheHandler(globalOpts, cacheKey, {
+            // Silent handler that just updates the cache
+            onRequestStart () {},
+            onRequestUpgrade () {},
+            onResponseStart () {},
+            onResponseData () {},
+            onResponseEnd () {},
+            onResponseError () {}
+          })
+        )
+      })
+
+      return true
+    }
+
     let withinStaleIfErrorThreshold = false
-    const staleIfErrorExpiry = result.cacheControlDirectives['stale-if-error'] ?? reqCacheControl?.['stale-if-error']
-    if (staleIfErrorExpiry) {
-      withinStaleIfErrorThreshold = now < (result.staleAt + (staleIfErrorExpiry * 1000))
-    }
-
-    let headers = {
-      ...opts.headers,
-      'if-modified-since': new Date(result.cachedAt).toUTCString()
-    }
-
-    if (result.etag) {
-      headers['if-none-match'] = result.etag
-    }
-
-    if (result.vary) {
-      headers = {
-        ...headers,
-        ...result.vary
+    if (!staleResponseRequiresRevalidation(result, globalOpts.type)) {
+      const staleIfErrorExpiry = result.cacheControlDirectives['stale-if-error'] ?? reqCacheControl?.['stale-if-error']
+      if (staleIfErrorExpiry) {
+        withinStaleIfErrorThreshold = now < (result.staleAt + (staleIfErrorExpiry * 1000))
       }
     }
+
+    const headers = makeRevalidationHeaders(opts, result)
 
     // We need to revalidate the response
     return dispatch(
@@ -260,11 +444,27 @@ function handleResult (
         headers
       },
       new CacheRevalidationHandler(
-        (success, context) => {
+        (success, context, statusCode, headers) => {
           if (success) {
-            sendCachedValue(handler, opts, result, age, context, true)
+            if (statusCode === 304) {
+              if (revalidationResponseDisallowsCachedReuse(globalOpts.type, headers)) {
+                if (util.isStream(result.body)) {
+                  result.body.on('error', nop).destroy()
+                }
+
+                deleteCachedValue(globalOpts.store, cacheKey)
+                return dispatch(opts, new CacheHandler(globalOpts, cacheKey, handler))
+              }
+
+              if (revalidationResponseUpdatesCacheControl(headers)) {
+                deleteCachedValue(globalOpts.store, cacheKey)
+              }
+            }
+
+            // TODO: successful revalidation should be considered fresh (not give stale warning).
+            sendCachedValue(handler, opts, result, age, context, stale)
           } else if (util.isStream(result.body)) {
-            result.body.on('error', () => {}).destroy()
+            result.body.on('error', nop).destroy()
           }
         },
         new CacheHandler(globalOpts, cacheKey, handler),
@@ -275,7 +475,7 @@ function handleResult (
 
   // Dump request body.
   if (util.isStream(opts.body)) {
-    opts.body.on('error', () => {}).destroy()
+    opts.body.on('error', nop).destroy()
   }
 
   sendCachedValue(handler, opts, result, age, null, false)
@@ -290,7 +490,8 @@ module.exports = (opts = {}) => {
     store = new MemoryCacheStore(),
     methods = ['GET'],
     cacheByDefault = undefined,
-    type = 'shared'
+    type = 'shared',
+    origins = undefined
   } = opts
 
   if (typeof opts !== 'object' || opts === null) {
@@ -299,6 +500,7 @@ module.exports = (opts = {}) => {
 
   assertCacheStore(store, 'opts.store')
   assertCacheMethods(methods, 'opts.methods')
+  assertCacheOrigins(origins, 'opts.origins')
 
   if (typeof cacheByDefault !== 'undefined' && typeof cacheByDefault !== 'number') {
     throw new TypeError(`expected opts.cacheByDefault to be number or undefined, got ${typeof cacheByDefault}`)
@@ -315,13 +517,42 @@ module.exports = (opts = {}) => {
     type
   }
 
-  const safeMethodsToNotCache = util.safeHTTPMethods.filter(method => methods.includes(method) === false)
+  const safeMethodsToNotCache = []
+  for (let i = 0; i < util.safeHTTPMethods.length; i++) {
+    const method = util.safeHTTPMethods[i]
+    if (!arrayIncludes(methods, method)) {
+      safeMethodsToNotCache.push(method)
+    }
+  }
 
   return dispatch => {
     return (opts, handler) => {
-      if (!opts.origin || safeMethodsToNotCache.includes(opts.method)) {
+      if (!opts.origin || arrayIncludes(safeMethodsToNotCache, opts.method)) {
         // Not a method we want to cache or we don't have the origin, skip
         return dispatch(opts, handler)
+      }
+
+      // Check if origin is in whitelist
+      if (origins !== undefined) {
+        const requestOrigin = opts.origin.toString().toLowerCase()
+        let isAllowed = false
+
+        for (let i = 0; i < origins.length; i++) {
+          const allowed = origins[i]
+          if (typeof allowed === 'string') {
+            if (allowed.toLowerCase() === requestOrigin) {
+              isAllowed = true
+              break
+            }
+          } else if (allowed.test(requestOrigin)) {
+            isAllowed = true
+            break
+          }
+        }
+
+        if (!isAllowed) {
+          return dispatch(opts, handler)
+        }
       }
 
       opts = {
@@ -331,7 +562,9 @@ module.exports = (opts = {}) => {
 
       const reqCacheControl = opts.headers?.['cache-control']
         ? parseCacheControlHeader(opts.headers['cache-control'])
-        : undefined
+        : hasPragmaNoCache(opts.headers)
+          ? { 'no-cache': true }
+          : undefined
 
       if (reqCacheControl?.['no-store']) {
         return dispatch(opts, handler)
@@ -344,18 +577,17 @@ module.exports = (opts = {}) => {
       const result = store.get(cacheKey)
 
       if (result && typeof result.then === 'function') {
-        result.then(result => {
-          handleResult(dispatch,
+        return result
+          .then(result => handleResult(dispatch,
             globalOpts,
             cacheKey,
             handler,
             opts,
             reqCacheControl,
             result
-          )
-        })
+          ))
       } else {
-        handleResult(
+        return handleResult(
           dispatch,
           globalOpts,
           cacheKey,
@@ -365,8 +597,6 @@ module.exports = (opts = {}) => {
           result
         )
       }
-
-      return true
     }
   }
 }

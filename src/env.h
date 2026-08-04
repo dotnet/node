@@ -42,6 +42,7 @@
 #include "node_main_instance.h"
 #include "node_options.h"
 #include "node_perf_common.h"
+#include "node_profiling.h"
 #include "node_realm.h"
 #include "node_snapshotable.h"
 #include "permission/permission.h"
@@ -49,6 +50,7 @@
 #include "util.h"
 #include "uv.h"
 #include "v8-external-memory-accounter.h"
+#include "v8-profiler.h"
 #include "v8.h"
 
 #if HAVE_OPENSSL
@@ -58,6 +60,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <list>
 #include <memory>
@@ -253,6 +256,8 @@ class NODE_EXTERN_PRIVATE IsolateData : public MemoryRetainer {
 
 struct ContextInfo {
   explicit ContextInfo(const std::string& name) : name(name) {}
+  ContextInfo(const std::string& name, const std::string& origin)
+      : name(name), origin(origin) {}
   const std::string name;
   std::string origin;
   bool is_default = false;
@@ -323,7 +328,7 @@ class AsyncHooks : public MemoryRetainer {
   // `pop_async_context()` or `clear_async_id_stack()` are called.
   void push_async_context(double async_id,
                           double trigger_async_id,
-                          v8::Local<v8::Object> execution_async_resource);
+                          v8::Local<v8::Object>* execution_async_resource);
   bool pop_async_context(double async_id);
   void clear_async_id_stack();  // Used in fatal exceptions.
 
@@ -385,15 +390,9 @@ class AsyncHooks : public MemoryRetainer {
 
   v8::Global<v8::Array> js_execution_async_resources_;
 
-  // TODO(@jasnell): Note that this is technically illegal use of
-  // v8::Locals which should be kept on the stack. Here, the entries
-  // in this object grows and shrinks with the C stack, and entries
-  // will be in the right handle scopes, but v8::Locals are supposed
-  // to remain on the stack and not the heap. For general purposes
-  // this *should* be ok but may need to be looked at further should
-  // v8 become stricter in the future about v8::Locals being held in
-  // the stack.
-  v8::LocalVector<v8::Object> native_execution_async_resources_;
+  // We avoid storing the handles directly here, because they are already
+  // properly allocated on the stack, we just need access to them here.
+  std::deque<v8::Local<v8::Object>*> native_execution_async_resources_;
 
   // Non-empty during deserialization
   const SerializeInfo* info_ = nullptr;
@@ -885,7 +884,7 @@ class Environment final : public MemoryRetainer {
   // Get the context with an explicit realm instead when possible.
   // Deprecate soon.
   inline v8::Local<v8::Context> context() const;
-  inline Realm* principal_realm() const;
+  inline PrincipalRealm* principal_realm() const;
 
 #if HAVE_INSPECTOR
   inline inspector::Agent* inspector_agent() const {
@@ -1027,7 +1026,8 @@ class Environment final : public MemoryRetainer {
   void InitializeCompileCache();
   // Enable built-in compile cache if it has not yet been enabled.
   // The cache will be persisted to disk on exit.
-  CompileCacheEnableResult EnableCompileCache(const std::string& cache_dir);
+  CompileCacheEnableResult EnableCompileCache(const std::string& cache_dir,
+                                              EnableOption option);
   void FlushCompileCache();
 
   void RunAndClearNativeImmediates(bool only_refed = false);
@@ -1050,6 +1050,9 @@ class Environment final : public MemoryRetainer {
   inline void AddHeapSnapshotNearHeapLimitCallback();
 
   inline void RemoveHeapSnapshotNearHeapLimitCallback(size_t heap_limit);
+
+  v8::CpuProfilingResult StartCpuProfile();
+  v8::CpuProfile* StopCpuProfile(v8::ProfilerId profile_id);
 
   // Field identifiers for exit_info_
   enum ExitInfoField {
@@ -1248,6 +1251,9 @@ class Environment final : public MemoryRetainer {
   // track of the BackingStore for a given pointer.
   std::unordered_map<char*, std::unique_ptr<v8::BackingStore>>
       released_allocated_buffers_;
+
+  v8::CpuProfiler* cpu_profiler_ = nullptr;
+  std::vector<v8::ProfilerId> pending_profiles_;
 };
 
 }  // namespace node

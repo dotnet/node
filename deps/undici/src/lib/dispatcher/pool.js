@@ -51,8 +51,6 @@ class Pool extends PoolBase {
       throw new InvalidArgumentError('connect must be a function or an object')
     }
 
-    super()
-
     if (typeof connect !== 'function') {
       connect = buildConnector({
         ...tls,
@@ -65,9 +63,11 @@ class Pool extends PoolBase {
       })
     }
 
+    super(options)
+
     this[kConnections] = connections || null
     this[kUrl] = util.parseOrigin(origin)
-    this[kOptions] = { ...util.deepClone(options), connect, allowH2, clientTtl }
+    this[kOptions] = { ...util.deepClone(options), connect, allowH2, clientTtl, socketPath }
     this[kOptions].interceptors = options.interceptors
       ? { ...options.interceptors }
       : undefined

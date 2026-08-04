@@ -128,12 +128,24 @@ Maybe<void> RsaKeyGenTraits::AdditionalConfig(
       static_cast<RSAKeyVariant>(args[*offset].As<Uint32>()->Value());
 
   CHECK_IMPLIES(params->params.variant != kKeyVariantRSA_PSS,
-                args.Length() == 10);
+                static_cast<unsigned int>(args.Length()) >= *offset + 3);
   CHECK_IMPLIES(params->params.variant == kKeyVariantRSA_PSS,
-                args.Length() == 13);
+                static_cast<unsigned int>(args.Length()) >= *offset + 6);
 
   params->params.modulus_bits = args[*offset + 1].As<Uint32>()->Value();
   params->params.exponent = args[*offset + 2].As<Uint32>()->Value();
+
+#ifdef OPENSSL_IS_BORINGSSL
+  // BoringSSL hangs indefinitely generating an RSA key with e=1, and for
+  // other invalid exponents (e=0, even values) reports the misleading error
+  // RSA_R_TOO_MANY_ITERATIONS only after running the full keygen loop. Reject
+  // those up-front with a clear error. The constraint here (odd integer >= 3)
+  // matches BoringSSL's own rsa_check_public_key validation.
+  if (params->params.exponent < 3 || (params->params.exponent & 1) == 0) {
+    THROW_ERR_OUT_OF_RANGE(env, "publicExponent is invalid");
+    return Nothing<void>();
+  }
+#endif
 
   *offset += 3;
 
@@ -143,7 +155,7 @@ Maybe<void> RsaKeyGenTraits::AdditionalConfig(
       Utf8Value digest(env->isolate(), args[*offset]);
       params->params.md = Digest::FromName(*digest);
       if (!params->params.md) {
-        THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", *digest);
+        THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", digest);
         return Nothing<void>();
       }
     }
@@ -153,8 +165,7 @@ Maybe<void> RsaKeyGenTraits::AdditionalConfig(
       Utf8Value digest(env->isolate(), args[*offset + 1]);
       params->params.mgf1_md = Digest::FromName(*digest);
       if (!params->params.mgf1_md) {
-        THROW_ERR_CRYPTO_INVALID_DIGEST(
-            env, "Invalid MGF1 digest: %s", *digest);
+        THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid MGF1 digest: %s", digest);
         return Nothing<void>();
       }
     }
@@ -254,7 +265,7 @@ RSACipherConfig::RSACipherConfig(RSACipherConfig&& other) noexcept
       digest(other.digest) {}
 
 void RSACipherConfig::MemoryInfo(MemoryTracker* tracker) const {
-  if (mode == kCryptoJobAsync)
+  if (IsCryptoJobAsync(mode))
     tracker->TrackFieldWithSize("label", label.size());
 }
 
@@ -279,7 +290,7 @@ Maybe<void> RSACipherTraits::AdditionalConfig(
       Utf8Value digest(env->isolate(), args[offset + 1]);
       params->digest = Digest::FromName(*digest);
       if (!params->digest) {
-        THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", *digest);
+        THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", digest);
         return Nothing<void>();
       }
 
@@ -326,8 +337,10 @@ bool ExportJWKRsaKey(Environment* env,
 
   const ncrypto::Rsa rsa = m_pkey;
   if (!rsa ||
-      target->Set(env->context(), env->jwk_kty_string(), env->jwk_rsa_string())
-          .IsNothing()) {
+      !target
+           ->DefineOwnProperty(
+               env->context(), env->jwk_kty_string(), env->jwk_rsa_string())
+           .FromMaybe(false)) {
     return false;
   }
 
@@ -361,10 +374,7 @@ bool ExportJWKRsaKey(Environment* env,
   return true;
 }
 
-KeyObjectData ImportJWKRsaKey(Environment* env,
-                              Local<Object> jwk,
-                              const FunctionCallbackInfo<Value>& args,
-                              unsigned int offset) {
+KeyObjectData ImportJWKRsaKey(Environment* env, Local<Object> jwk) {
   Local<Value> n_value;
   Local<Value> e_value;
   Local<Value> d_value;
@@ -386,6 +396,11 @@ KeyObjectData ImportJWKRsaKey(Environment* env,
   KeyType type = d_value->IsString() ? kKeyTypePrivate : kKeyTypePublic;
 
   RSAPointer rsa(RSA_new());
+  if (!rsa) {
+    THROW_ERR_CRYPTO_OPERATION_FAILED(env, "Unable to create RSA pointer");
+    return {};
+  }
+
   ncrypto::Rsa rsa_view(rsa.get());
 
   ByteSource n = ByteSource::FromEncodedString(env, n_value.As<String>());
@@ -436,7 +451,10 @@ KeyObjectData ImportJWKRsaKey(Environment* env,
   }
 
   auto pkey = EVPKeyPointer::NewRSA(std::move(rsa));
-  if (!pkey) return {};
+  if (!pkey) {
+    THROW_ERR_CRYPTO_OPERATION_FAILED(env, "Unable to create key pointer");
+    return {};
+  }
 
   return KeyObjectData::CreateAsymmetric(type, std::move(pkey));
 }

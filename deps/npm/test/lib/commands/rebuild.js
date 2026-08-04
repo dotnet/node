@@ -205,3 +205,79 @@ t.test('global prefix', async t => {
     'should output success msg'
   )
 })
+
+t.test('completion', async t => {
+  const { rebuild } = await setupMockNpm(t, {
+    command: 'rebuild',
+    prefixDir: {
+      node_modules: {
+        foo: {
+          'package.json': JSON.stringify({ name: 'foo', version: '1.0.0' }),
+        },
+      },
+      'package.json': JSON.stringify({ name: 'project', version: '1.0.0' }),
+    },
+  })
+  const res = await rebuild.completion({ conf: { argv: { remain: ['npm', 'rebuild'] } } })
+  t.type(res, Array)
+})
+
+t.test('emits Phase 1 advisory warning for unreviewed install scripts', async t => {
+  const { npm, logs } = await setupMockNpm(t, {
+    prefixDir: {
+      'package.json': JSON.stringify({ name: 'host', version: '1.0.0' }),
+      node_modules: {
+        canvas: {
+          'package.json': JSON.stringify({
+            name: 'canvas',
+            version: '1.0.0',
+            scripts: { install: 'echo install' },
+          }),
+        },
+      },
+    },
+  })
+  await npm.exec('rebuild', [])
+  t.match(
+    logs.warn.byTitle('rebuild'),
+    [/install scripts not yet covered by allowScripts/]
+  )
+})
+
+t.test('no advisory warning when allowScripts covers the package', async t => {
+  const { npm, logs } = await setupMockNpm(t, {
+    prefixDir: {
+      'package.json': JSON.stringify({
+        name: 'host',
+        version: '1.0.0',
+        dependencies: { canvas: '1.0.0' },
+        allowScripts: { canvas: true },
+      }),
+      'package-lock.json': JSON.stringify({
+        name: 'host',
+        version: '1.0.0',
+        lockfileVersion: 3,
+        requires: true,
+        packages: {
+          '': { name: 'host', version: '1.0.0', dependencies: { canvas: '1.0.0' } },
+          'node_modules/canvas': {
+            version: '1.0.0',
+            resolved: 'https://registry.npmjs.org/canvas/-/canvas-1.0.0.tgz',
+            hasInstallScript: true,
+          },
+        },
+      }),
+      node_modules: {
+        canvas: {
+          'package.json': JSON.stringify({
+            name: 'canvas',
+            version: '1.0.0',
+            scripts: { install: 'echo install' },
+          }),
+        },
+      },
+    },
+  })
+  await npm.exec('rebuild', [])
+  t.strictSame(logs.warn.byTitle('rebuild'), [])
+})

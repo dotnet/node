@@ -342,7 +342,10 @@ TrustStatus IsTrustDictionaryTrustedForPolicy(CFDictionaryRef trust_dict,
     CFStringRef policy_oid = reinterpret_cast<CFStringRef>(
         const_cast<void*>(CFDictionaryGetValue(policy_dict, kSecPolicyOid)));
 
-    if (!CFEqual(policy_oid, kSecPolicyAppleSSL)) {
+    bool matches_ssl = CFEqual(policy_oid, kSecPolicyAppleSSL);
+    CFRelease(policy_dict);
+
+    if (!matches_ssl) {
       return TrustStatus::UNSPECIFIED;
     }
   }
@@ -359,35 +362,44 @@ TrustStatus IsTrustDictionaryTrustedForPolicy(CFDictionaryRef trust_dict,
                           &trust_settings_result)) {
       return TrustStatus::UNSPECIFIED;
     }
+  }
 
-    if (trust_settings_result == kSecTrustSettingsResultDeny) {
-      return TrustStatus::DISTRUSTED;
-    }
+  // When kSecTrustSettingsResult is absent from the trust dict,
+  // Apple docs specify kSecTrustSettingsResultTrustRoot as the default.
+  // Refs
+  // https://github.com/apple-oss-distributions/Security/blob/db15acbe6a7f257a859ad9a3bb86097bfe0679d9/trust/headers/SecTrustSettings.h#L119-L122
+  // This is also enforced at write time for self-signed certs get TrustRoot,
+  // and non-self-signed certs cannot have an empty settings,
+  // Refs
+  // https://github.com/apple-oss-distributions/Security/blob/db15acbe6a7f257a859ad9a3bb86097bfe0679d9/OSX/sec/Security/SecTrustStore.c#L196-L207
 
-    // This is a bit of a hack: if the cert is self-issued allow either
-    // kSecTrustSettingsResultTrustRoot or kSecTrustSettingsResultTrustAsRoot on
-    // the basis that SecTrustSetTrustSettings should not allow creating an
-    // invalid trust record in the first place. (The spec is that
-    // kSecTrustSettingsResultTrustRoot can only be applied to root(self-signed)
-    // certs and kSecTrustSettingsResultTrustAsRoot is used for other certs.)
-    // This hack avoids having to check the signature on the cert which is slow
-    // if using the platform APIs, and may require supporting MD5 signature
-    // algorithms on some older OSX versions or locally added roots, which is
-    // undesirable in the built-in signature verifier.
-    if (is_self_issued) {
-      return trust_settings_result == kSecTrustSettingsResultTrustRoot ||
-                     trust_settings_result == kSecTrustSettingsResultTrustAsRoot
-                 ? TrustStatus::TRUSTED
-                 : TrustStatus::UNSPECIFIED;
-    }
+  if (trust_settings_result == kSecTrustSettingsResultDeny) {
+    return TrustStatus::DISTRUSTED;
+  }
 
-    // kSecTrustSettingsResultTrustAsRoot can only be applied to non-root certs.
-    return (trust_settings_result == kSecTrustSettingsResultTrustAsRoot)
+  // From
+  // https://source.chromium.org/chromium/chromium/src/+/main:net/cert/internal/trust_store_mac.cc;l=144-146
+  // This is a bit of a hack: if the cert is self-issued allow either
+  // kSecTrustSettingsResultTrustRoot or kSecTrustSettingsResultTrustAsRoot on
+  // the basis that SecTrustSetTrustSettings should not allow creating an
+  // invalid trust record in the first place. (The spec is that
+  // kSecTrustSettingsResultTrustRoot can only be applied to root(self-signed)
+  // certs and kSecTrustSettingsResultTrustAsRoot is used for other certs.)
+  // This hack avoids having to check the signature on the cert which is slow
+  // if using the platform APIs, and may require supporting MD5 signature
+  // algorithms on some older OSX versions or locally added roots, which is
+  // undesirable in the built-in signature verifier.
+  if (is_self_issued) {
+    return (trust_settings_result == kSecTrustSettingsResultTrustRoot ||
+            trust_settings_result == kSecTrustSettingsResultTrustAsRoot)
                ? TrustStatus::TRUSTED
                : TrustStatus::UNSPECIFIED;
   }
 
-  return TrustStatus::UNSPECIFIED;
+  // kSecTrustSettingsResultTrustAsRoot can only be applied to non-root certs.
+  return (trust_settings_result == kSecTrustSettingsResultTrustAsRoot)
+             ? TrustStatus::TRUSTED
+             : TrustStatus::UNSPECIFIED;
 }
 
 TrustStatus IsTrustSettingsTrustedForPolicy(CFArrayRef trust_settings,
@@ -420,6 +432,17 @@ bool IsCertificateTrustValid(SecCertificateRef ref) {
       CFArrayCreateMutable(nullptr, 1, &kCFTypeArrayCallBacks);
   CFArraySetValueAtIndex(subj_certs, 0, ref);
 
+  // SecTrustEvaluateWithError is used to check whether an individual
+  // certificate is trusted by the system — not to validate it for a
+  // specific role (server, intermediate, etc.). We just need a minimal
+  // policy that guarantees the certificate can be chained to a known
+  // trust anchor while filtering out irrelevant certificates.
+  //
+  // Refs
+  // https://github.com/apple-oss-distributions/Security/blob/db15acbe6a7f257a859ad9a3bb86097bfe0679d9/OSX/sec/Security/SecPolicy.c#L1855-L1890
+  // SecPolicyCreateSSL (both mark EKU optional):
+  //   server=true  -> BasicX509 + serverAuth + anyExtendedKeyUsage + SGC
+  //   server=false -> BasicX509 + clientAuth + anyExtendedKeyUsage
   SecPolicyRef policy = SecPolicyCreateSSL(false, nullptr);
   OSStatus ortn =
       SecTrustCreateWithCertificates(subj_certs, policy, &sec_trust);
@@ -489,6 +512,21 @@ bool IsCertificateTrustedForPolicy(X509* cert, SecCertificateRef ref) {
   return false;
 }
 
+// Checks if a certificate has expired.
+// Returns true if the certificate's notAfter date is in the past.
+static bool IsCertificateExpired(X509* cert) {
+  // X509_cmp_current_time returns:
+  // -1 if the time is in the past (expired)
+  //  0 if there was an error
+  //  1 if the time is in the future (not yet expired)
+  ASN1_TIME* not_after = X509_get_notAfter(cert);
+  if (not_after == nullptr) {
+    return false;
+  }
+  int cmp = X509_cmp_current_time(not_after);
+  return cmp < 0;
+}
+
 void ReadMacOSKeychainCertificates(
     std::vector<X509*>* system_root_certificates_X509) {
   CFTypeRef search_keys[] = {kSecClass, kSecMatchLimit, kSecReturnRef};
@@ -507,10 +545,18 @@ void ReadMacOSKeychainCertificates(
   CFRelease(search);
 
   if (ortn) {
-    fprintf(stderr, "ERROR: SecItemCopyMatching failed %d\n", ortn);
+    per_process::Debug(DebugCategory::CRYPTO,
+                       "Cannot read certificates from system because "
+                       "SecItemCopyMatching failed %d\n",
+                       ortn);
+    return;
   }
 
   CFIndex count = CFArrayGetCount(curr_anchors);
+
+  // Track seen certificates to detect duplicates (same cert in multiple
+  // keychains).
+  std::set<X509*, X509Less> seen_certs;
 
   for (int i = 0; i < count; ++i) {
     SecCertificateRef cert_ref = reinterpret_cast<SecCertificateRef>(
@@ -518,7 +564,9 @@ void ReadMacOSKeychainCertificates(
 
     CFDataRef der_data = SecCertificateCopyData(cert_ref);
     if (!der_data) {
-      fprintf(stderr, "ERROR: SecCertificateCopyData failed\n");
+      per_process::Debug(DebugCategory::CRYPTO,
+                         "Skipping read of a system certificate "
+                         "because SecCertificateCopyData failed\n");
       continue;
     }
     auto data_buffer_pointer = CFDataGetBytePtr(der_data);
@@ -526,10 +574,37 @@ void ReadMacOSKeychainCertificates(
     X509* cert =
         d2i_X509(nullptr, &data_buffer_pointer, CFDataGetLength(der_data));
     CFRelease(der_data);
-    bool is_valid = IsCertificateTrustedForPolicy(cert, cert_ref);
-    if (is_valid) {
-      system_root_certificates_X509->emplace_back(cert);
+
+    if (cert == nullptr) {
+      per_process::Debug(DebugCategory::CRYPTO,
+                         "Skipping read of a system certificate "
+                         "because decoding failed\n");
+      continue;
     }
+
+    bool is_valid = IsCertificateTrustedForPolicy(cert, cert_ref);
+    if (!is_valid) {
+      X509_free(cert);
+      continue;
+    }
+
+    // Skip duplicate certificates.
+    auto [it, inserted] = seen_certs.insert(cert);
+    if (!inserted) {
+      X509_free(cert);
+      continue;
+    }
+
+    // Skip expired certificates.
+    if (IsCertificateExpired(cert)) {
+      per_process::Debug(DebugCategory::CRYPTO,
+                         "Skipping expired system certificate\n");
+      seen_certs.erase(it);
+      X509_free(cert);
+      continue;
+    }
+
+    system_root_certificates_X509->emplace_back(cert);
   }
   CFRelease(curr_anchors);
 }
@@ -638,7 +713,14 @@ void GatherCertsForLocation(std::vector<X509*>* vector,
         reinterpret_cast<const unsigned char*>(cert_from_store->pbCertEncoded);
     const size_t cert_size = cert_from_store->cbCertEncoded;
 
-    vector->emplace_back(d2i_X509(nullptr, &cert_data, cert_size));
+    X509* x509 = d2i_X509(nullptr, &cert_data, cert_size);
+    if (x509 == nullptr) {
+      per_process::Debug(DebugCategory::CRYPTO,
+                         "Skipping read of a system certificate "
+                         "because decoding failed\n");
+    } else {
+      vector->emplace_back(x509);
+    }
   }
 }
 
@@ -814,23 +896,6 @@ static std::vector<X509*>& GetSystemStoreCACertificates() {
   return system_store_certs;
 }
 
-static void LoadSystemCACertificates(void* data) {
-  GetSystemStoreCACertificates();
-}
-
-static uv_thread_t system_ca_thread;
-static bool system_ca_thread_started = false;
-int LoadSystemCACertificatesOffThread() {
-  // This is only run once during the initialization of the process, so
-  // it is safe to use a static thread here.
-  int r =
-      uv_thread_create(&system_ca_thread, LoadSystemCACertificates, nullptr);
-  if (r == 0) {
-    system_ca_thread_started = true;
-  }
-  return r;
-}
-
 static std::vector<X509*> InitializeExtraCACertificates() {
   std::vector<X509*> extra_certs;
   unsigned long err = LoadCertsFromFile(  // NOLINT(runtime/int)
@@ -852,6 +917,73 @@ static std::vector<X509*>& GetExtraCACertificates() {
   static std::vector<X509*> extra_certs = InitializeExtraCACertificates();
   has_cached_extra_root_certs.store(true);
   return extra_certs;
+}
+
+static void LoadCACertificates(void* data) {
+  per_process::Debug(DebugCategory::CRYPTO,
+                     "Started loading bundled root certificates off-thread\n");
+  GetBundledRootCertificates();
+
+  if (!extra_root_certs_file.empty()) {
+    per_process::Debug(DebugCategory::CRYPTO,
+                       "Started loading extra root certificates off-thread\n");
+    GetExtraCACertificates();
+  }
+
+  {
+    Mutex::ScopedLock cli_lock(node::per_process::cli_options_mutex);
+    if (!per_process::cli_options->use_system_ca) {
+      return;
+    }
+  }
+
+  per_process::Debug(DebugCategory::CRYPTO,
+                     "Started loading system root certificates off-thread\n");
+  GetSystemStoreCACertificates();
+}
+
+static std::atomic<bool> tried_cert_loading_off_thread = false;
+static std::atomic<bool> cert_loading_thread_started = false;
+static Mutex start_cert_loading_thread_mutex;
+static uv_thread_t cert_loading_thread;
+
+void StartLoadingCertificatesOffThread(
+    const FunctionCallbackInfo<Value>& args) {
+  // Load the CA certificates eagerly off the main thread to avoid
+  // blocking the main thread when the first TLS connection is made. We
+  // don't need to wait for the thread to finish with code here, as
+  // Get*CACertificates() functions has a function-local static and any
+  // actual user of it will wait for that to complete initialization.
+
+  // --use-openssl-ca is mutually exclusive with --use-bundled-ca and
+  // --use-system-ca. If it's set, no need to optimize with off-thread
+  // loading.
+  {
+    Mutex::ScopedLock cli_lock(node::per_process::cli_options_mutex);
+    if (per_process::cli_options->ssl_openssl_cert_store) {
+      return;
+    }
+  }
+
+  // Only try to start the thread once. If it ever fails, we won't try again.
+  if (tried_cert_loading_off_thread.load()) {
+    return;
+  }
+  {
+    Mutex::ScopedLock lock(start_cert_loading_thread_mutex);
+    // Re-check under the lock.
+    if (tried_cert_loading_off_thread.load()) {
+      return;
+    }
+    tried_cert_loading_off_thread.store(true);
+    int r = uv_thread_create(&cert_loading_thread, LoadCACertificates, nullptr);
+    cert_loading_thread_started.store(r == 0);
+    if (r != 0) {
+      FPrintF(stderr,
+              "Warning: Failed to load CA certificates off thread: %s\n",
+              uv_strerror(r));
+    }
+  }
 }
 
 // Due to historical reasons the various options of CA certificates
@@ -942,9 +1074,12 @@ void CleanupCachedRootCertificates() {
       X509_free(cert);
     }
   }
-  if (system_ca_thread_started) {
-    uv_thread_join(&system_ca_thread);
-    system_ca_thread_started = false;
+
+  // Serialize with starter to avoid the race window.
+  Mutex::ScopedLock lock(start_cert_loading_thread_mutex);
+  if (tried_cert_loading_off_thread.load() &&
+      cert_loading_thread_started.load()) {
+    uv_thread_join(&cert_loading_thread);
   }
 }
 
@@ -1233,6 +1368,10 @@ void SecureContext::Initialize(Environment* env, Local<Object> target) {
   SetMethod(context, target, "resetRootCertStore", ResetRootCertStore);
   SetMethodNoSideEffect(
       context, target, "getUserRootCertificates", GetUserRootCertificates);
+  SetMethod(context,
+            target,
+            "startLoadingCertificatesOffThread",
+            StartLoadingCertificatesOffThread);
 }
 
 void SecureContext::RegisterExternalReferences(
@@ -1277,6 +1416,7 @@ void SecureContext::RegisterExternalReferences(
   registry->Register(GetExtraCACertificates);
   registry->Register(ResetRootCertStore);
   registry->Register(GetUserRootCertificates);
+  registry->Register(StartLoadingCertificatesOffThread);
 }
 
 SecureContext* SecureContext::Create(Environment* env) {
@@ -1293,7 +1433,6 @@ SecureContext* SecureContext::Create(Environment* env) {
 SecureContext::SecureContext(Environment* env, Local<Object> wrap)
     : BaseObject(env, wrap) {
   MakeWeak();
-  env->external_memory_accounter()->Increase(env->isolate(), kExternalSize);
 }
 
 inline void SecureContext::Reset() {
@@ -1402,7 +1541,7 @@ void SecureContext::Init(const FunctionCallbackInfo<Value>& args) {
       method = TLS_client_method();
     } else {
       THROW_ERR_TLS_INVALID_PROTOCOL_METHOD(
-          env, "Unknown method: %s", *sslmethod);
+          env, "Unknown method: %s", sslmethod);
       return;
     }
   }
@@ -1411,6 +1550,8 @@ void SecureContext::Init(const FunctionCallbackInfo<Value>& args) {
   if (!sc->ctx_) {
     return ThrowCryptoError(env, ERR_get_error(), "SSL_CTX_new");
   }
+
+  env->external_memory_accounter()->Increase(env->isolate(), kExternalSize);
   SSL_CTX_set_app_data(sc->ctx_.get(), sc);
 
   // Disable SSLv2 in the case when method == TLS_method() and the
@@ -1774,8 +1915,13 @@ void SecureContext::SetDHParam(const FunctionCallbackInfo<Value>& args) {
   // true to this function instead of the original string. Any other string
   // value will be interpreted as custom DH parameters below.
   if (args[0]->IsTrue()) {
+#ifdef SSL_CTX_set_dh_auto
     CHECK(SSL_CTX_set_dh_auto(sc->ctx_.get(), true));
     return;
+#else
+    return THROW_ERR_CRYPTO_UNSUPPORTED_OPERATION(
+        env, "Automatic DH parameter selection is not supported");
+#endif
   }
 
   DHPointer dh;
@@ -2284,9 +2430,40 @@ void SecureContext::GetCertificate(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(buff);
 }
 
+void SecureContext::MemoryInfo(MemoryTracker* tracker) const {
+  tracker->TrackFieldWithSize("ctx", ctx_ ? kSizeOf_SSL_CTX : 0);
+  tracker->TrackFieldWithSize("cert", cert_ ? kSizeOf_X509 : 0);
+  tracker->TrackFieldWithSize("issuer", issuer_ ? kSizeOf_X509 : 0);
+}
+
 // UseExtraCaCerts is called only once at the start of the Node.js process.
 void UseExtraCaCerts(std::string_view file) {
   extra_root_certs_file = file;
+}
+
+NODE_EXTERN SSL_CTX* GetSSLCtx(Local<Context> context, Local<Value> value) {
+  Environment* env = Environment::GetCurrent(context);
+  if (env == nullptr) return nullptr;
+
+  // TryCatchto swallow any exceptions from Get() (e.g. failing getters)
+  v8::TryCatch try_catch(env->isolate());
+
+  // Unwrap the .context property from the JS SecureContext wrapper
+  // (as returned by tls.createSecureContext()).
+  if (value->IsObject()) {
+    Local<Value> inner;
+    if (!value.As<v8::Object>()
+             ->Get(context, FIXED_ONE_BYTE_STRING(env->isolate(), "context"))
+             .ToLocal(&inner)) {
+      return nullptr;
+    }
+    value = inner;
+  }
+
+  if (!SecureContext::HasInstance(env, value)) return nullptr;
+  SecureContext* sc = BaseObject::FromJSObject<SecureContext>(value);
+  if (sc == nullptr) return nullptr;
+  return sc->ctx().get();
 }
 
 }  // namespace crypto

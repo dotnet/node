@@ -221,7 +221,10 @@ executable, users can retrieve the assets using the [`sea.getAsset()`][] and
 The single-executable application can access the assets as follows:
 
 ```cjs
-const { getAsset, getAssetAsBlob, getRawAsset } = require('node:sea');
+const { getAsset, getAssetAsBlob, getRawAsset, getAssetKeys } = require('node:sea');
+// Get all asset keys.
+const keys = getAssetKeys();
+console.log(keys); // ['a.jpg', 'b.txt']
 // Returns a copy of the data in an ArrayBuffer.
 const image = getAsset('a.jpg');
 // Returns a string decoded from the asset as UTF8.
@@ -232,17 +235,17 @@ const blob = getAssetAsBlob('a.jpg');
 const raw = getRawAsset('a.jpg');
 ```
 
-See documentation of the [`sea.getAsset()`][], [`sea.getAssetAsBlob()`][] and [`sea.getRawAsset()`][]
-APIs for more information.
+See documentation of the [`sea.getAsset()`][], [`sea.getAssetAsBlob()`][],
+[`sea.getRawAsset()`][] and [`sea.getAssetKeys()`][] APIs for more information.
 
 ### Startup snapshot support
 
 The `useSnapshot` field can be used to enable startup snapshot support. In this
-case the `main` script would not be when the final executable is launched.
+case, the `main` script would not be executed when the final executable is launched.
 Instead, it would be run when the single executable application preparation
 blob is generated on the building machine. The generated preparation blob would
 then include a snapshot capturing the states initialized by the `main` script.
-The final executable with the preparation blob injected would deserialize
+The final executable, with the preparation blob injected, would deserialize
 the snapshot at run time.
 
 When `useSnapshot` is true, the main script must invoke the
@@ -429,6 +432,19 @@ writes to the returned array buffer is likely to result in a crash.
   `assets` field in the single-executable application configuration.
 * Returns: {ArrayBuffer}
 
+### `sea.getAssetKeys()`
+
+<!-- YAML
+added: v24.8.0
+-->
+
+* Returns {string\[]} An array containing all the keys of the assets
+  embedded in the executable. If no assets are embedded, returns an empty array.
+
+This method can be used to retrieve an array of all the keys of assets
+embedded into the single-executable application.
+An error is thrown when not running inside a single-executable application.
+
 ### `require(id)` in the injected main script is not file based
 
 `require()` in the injected main script is not the same as the [`require()`][]
@@ -442,6 +458,8 @@ application into a standalone JavaScript file to inject into the executable.
 This also ensures a more deterministic dependency graph.
 
 However, if a file based `require()` is still needed, that can also be achieved:
+
+<!-- eslint-disable no-global-assign -->
 
 ```js
 const { createRequire } = require('node:module');
@@ -457,6 +475,43 @@ are equal to [`process.execPath`][].
 
 The value of `__dirname` in the injected main script is equal to the directory
 name of [`process.execPath`][].
+
+### Using native addons in the injected main script
+
+Native addons can be bundled as assets into the single-executable application
+by specifying them in the `assets` field of the configuration file used to
+generate the single-executable application preparation blob.
+The addon can then be loaded in the injected main script by writing the asset
+to a temporary file and loading it with `process.dlopen()`.
+
+```json
+{
+  "main": "/path/to/bundled/script.js",
+  "output": "/path/to/write/the/generated/blob.blob",
+  "assets": {
+    "myaddon.node": "/path/to/myaddon/build/Release/myaddon.node"
+  }
+}
+```
+
+```js
+// script.js
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { getRawAsset } = require('node:sea');
+const addonPath = path.join(os.tmpdir(), 'myaddon.node');
+fs.writeFileSync(addonPath, new Uint8Array(getRawAsset('myaddon.node')));
+const myaddon = { exports: {} };
+process.dlopen(myaddon, addonPath);
+console.log(myaddon.exports);
+fs.rmSync(addonPath);
+```
+
+Known caveat: if the single-executable application is produced by postject running on a Linux arm64 docker container,
+[the produced ELF binary does not have the correct hash table to load the addons][postject-linux-arm64-issue] and
+will crash on `process.dlopen()`. Build the single-executable application on other platforms, or at least on
+a non-container Linux arm64 environment to work around this issue.
 
 ## Notes
 
@@ -481,7 +536,8 @@ Single-executable support is tested regularly on CI only on the following
 platforms:
 
 * Windows
-* macOS
+* macOS (arm64 only; x64 is not currently supported and is skipped in the
+  tests)
 * Linux (all distributions [supported by Node.js][] except Alpine and all
   architectures [supported by Node.js][] except s390x)
 
@@ -503,12 +559,14 @@ to help us document them.
 [`require.main`]: modules.md#accessing-the-main-module
 [`sea.getAsset()`]: #seagetassetkey-encoding
 [`sea.getAssetAsBlob()`]: #seagetassetasblobkey-options
+[`sea.getAssetKeys()`]: #seagetassetkeys
 [`sea.getRawAsset()`]: #seagetrawassetkey
 [`v8.startupSnapshot.setDeserializeMainFunction()`]: v8.md#v8startupsnapshotsetdeserializemainfunctioncallback-data
 [`v8.startupSnapshot` API]: v8.md#startup-snapshot-api
 [documentation about startup snapshot support in Node.js]: cli.md#--build-snapshot
 [fuse]: https://www.electronjs.org/docs/latest/tutorial/fuses
 [postject]: https://github.com/nodejs/postject
+[postject-linux-arm64-issue]: https://github.com/nodejs/postject/issues/105
 [signtool]: https://learn.microsoft.com/en-us/windows/win32/seccrypto/signtool
 [single executable applications]: https://github.com/nodejs/single-executable
 [supported by Node.js]: https://github.com/nodejs/node/blob/main/BUILDING.md#platform-list

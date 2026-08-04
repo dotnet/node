@@ -251,7 +251,7 @@ size_t Http2Settings::Init(
     for (uint32_t i = 0; i < numAddSettings; i++) {
       uint32_t key = buffer[offset + i * 2 + 0];
       uint32_t val = buffer[offset + i * 2 + 1];
-      entries[count++] = nghttp2_settings_entry{(int32_t)key, val};
+      entries[count++] = nghttp2_settings_entry{static_cast<int32_t>(key), val};
     }
   }
 
@@ -331,8 +331,8 @@ void Http2Settings::Update(Http2Session* session, get_setting fn, bool local) {
   for (size_t i = 0; i < imax; i++) {
     // We flag unset the settings with a bit above the allowed range
     if (!(custom_settings.entries[i].settings_id & (~0xffff))) {
-      uint32_t settings_id =
-          (uint32_t)(custom_settings.entries[i].settings_id & 0xffff);
+      uint32_t settings_id = static_cast<uint32_t>(
+          custom_settings.entries[i].settings_id & 0xffff);
       size_t j = 0;
       while (j < count) {
         if ((buffer[IDX_SETTINGS_COUNT + 1 + j * 2 + 1] & 0xffff) ==
@@ -483,13 +483,10 @@ Origins::Origins(
 
   CHECK_LE(origin_contents + origin_string_len,
            static_cast<char*>(bs_->Data()) + bs_->ByteLength());
-  CHECK_EQ(origin_string->WriteOneByte(
-               env->isolate(),
-               reinterpret_cast<uint8_t*>(origin_contents),
-               0,
-               origin_string_len,
-               String::NO_NULL_TERMINATION),
-           origin_string_len);
+  origin_string->WriteOneByteV2(env->isolate(),
+                                0,
+                                origin_string_len,
+                                reinterpret_cast<uint8_t*>(origin_contents));
 
   size_t n = 0;
   char* p;
@@ -650,7 +647,7 @@ void Http2Session::FetchAllowedRemoteCustomSettings() {
           (buffer[offset + i * 2 + 0] & 0xffff) |
           (1
            << 16);  // setting the bit 16 indicates, that no values has been set
-      entries[count++] = nghttp2_settings_entry{(int32_t)key, 0};
+      entries[count++] = nghttp2_settings_entry{static_cast<int32_t>(key), 0};
     }
     remote_custom_settings_.number = count;
   }
@@ -905,6 +902,14 @@ BaseObjectPtr<Http2Stream> Http2Session::RemoveStream(int32_t id) {
   stream = FindStream(id);
   if (stream) {
     streams_.erase(id);
+    if (stream->current_headers_length_ > 0) {
+      DecrementCurrentSessionMemory(stream->current_headers_length_);
+      stream->current_headers_length_ = 0;
+    }
+    if (stream->retained_headers_length_ > 0) {
+      DecrementCurrentSessionMemory(stream->retained_headers_length_);
+      stream->retained_headers_length_ = 0;
+    }
     DecrementCurrentSessionMemory(sizeof(*stream));
   }
   return stream;
@@ -1157,8 +1162,14 @@ int Http2Session::OnInvalidFrame(nghttp2_session* handle,
   // The GOAWAY frame includes an error code that indicates the type of error"
   // The GOAWAY frame is already sent by nghttp2. We emit the error
   // to liberate the Http2Session to destroy.
+  //
+  // ERR_FLOW_CONTROL: A WINDOW_UPDATE on stream 0 pushed the connection-level
+  // flow control window past 2^31-1. nghttp2 sends GOAWAY internally but
+  // without propagating this error the Http2Session would never be destroyed,
+  // causing a memory leak.
   if (nghttp2_is_fatal(lib_error_code) ||
       lib_error_code == NGHTTP2_ERR_STREAM_CLOSED ||
+      lib_error_code == NGHTTP2_ERR_FLOW_CONTROL ||
       lib_error_code == NGHTTP2_ERR_PROTO) {
     Environment* env = session->env();
     Isolate* isolate = env->isolate();
@@ -1262,6 +1273,24 @@ int Http2Session::OnFrameSent(nghttp2_session* handle,
                               void* user_data) {
   Http2Session* session = static_cast<Http2Session*>(user_data);
   session->statistics_.frame_sent += 1;
+
+  // If nghttp2 has internally terminated the session (e.g. due to a protocol
+  // error like oversized frames, padding errors, or HPACK compression
+  // failures), it calls nghttp2_session_terminate_session() directly which
+  // queues a GOAWAY but does not invoke any application-level callback.
+  // Detect that case here: a GOAWAY was sent but we never initiated it
+  // (no Close(), no session.close(), no session.goaway()).
+  //
+  // We set a flag here, and then throw the error at the end of
+  // SendPendingData, to wait until the GOAWAY is written before the session
+  // is torn down.
+  if (frame->hd.type == NGHTTP2_GOAWAY && !session->is_closing() &&
+      !session->is_destroyed() && !session->IsGracefulCloseInitiated() &&
+      !session->goaway_initiated_) {
+    Debug(session, "nghttp2 session terminated internally");
+    session->internal_goaway_sent_ = true;
+  }
+
   return 0;
 }
 
@@ -1527,7 +1556,10 @@ void Http2Session::HandleHeadersFrame(const nghttp2_frame* frame) {
   });
   CHECK_EQ(stream->headers_count(), 0);
 
-  DecrementCurrentSessionMemory(stream->current_headers_length_);
+  // Keep the header block charged against maxSessionMemory while the
+  // corresponding JS objects can still keep it alive for the lifetime of
+  // the stream.
+  stream->retained_headers_length_ += stream->current_headers_length_;
   stream->current_headers_length_ = 0;
 
   Local<Value> args[] = {
@@ -1995,6 +2027,18 @@ uint8_t Http2Session::SendPendingData() {
   }
 
   MaybeStopReading();
+
+  // If nghttp2 has internally torn down the session (detected in OnFrameSent)
+  // during the nghttp2_session_mem_send loop above, at this point we error:
+  if (internal_goaway_sent_) {
+    internal_goaway_sent_ = false;
+    if (!is_closing() && !is_destroyed()) {
+      Isolate* isolate = env()->isolate();
+      HandleScope scope(isolate);
+      Local<Value> arg = Integer::New(isolate, NGHTTP2_ERR_PROTO);
+      MakeCallback(env()->http2session_on_error_function(), 1, &arg);
+    }
+  }
 
   return 0;
 }
@@ -2486,10 +2530,18 @@ void Http2Stream::SubmitRstStream(const uint32_t code) {
   // if RST_STREAM received is not in scope and added to the list
   // causing endpoint to hang.
   if (session_->is_in_scope() && is_stream_cancel(code)) {
-      session_->AddPendingRstStream(id_);
-      return;
+    session_->AddPendingRstStream(id_);
+    return;
   }
 
+  // If RST_STREAM is submitted while nghttp2 is processing callbacks for
+  // a refused stream, don't force purge pending data. Sending pending data
+  // here can re-enter nghttp2 and close streams that are still being used
+  // by the active receive operation.
+  if (session_->is_in_scope() && code == NGHTTP2_REFUSED_STREAM) {
+    FlushRstStream();
+    return;
+  }
 
   // If possible, force a purge of any currently pending data here to make sure
   // it is sent before closing the stream. If it returns non-zero then we need
@@ -2937,6 +2989,7 @@ void Http2Session::Goaway(uint32_t code,
   if (is_destroyed())
     return;
 
+  goaway_initiated_ = true;
   Http2Scope h2scope(this);
   // the last proc stream id is the most recently created Http2Stream.
   if (lastStreamID <= 0)
@@ -3186,8 +3239,8 @@ void Http2Session::AltSvc(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  size_t origin_len = origin_str->Length();
-  size_t value_len = value_str->Length();
+  int origin_len = origin_str->Length();
+  int value_len = value_str->Length();
 
   CHECK_LE(origin_len + value_len, 16382);  // Max permitted for ALTSVC
   // Verify that origin len != 0 if stream id == 0, or
@@ -3196,8 +3249,13 @@ void Http2Session::AltSvc(const FunctionCallbackInfo<Value>& args) {
 
   MaybeStackBuffer<uint8_t> origin(origin_len);
   MaybeStackBuffer<uint8_t> value(value_len);
-  origin_str->WriteOneByte(env->isolate(), *origin);
-  value_str->WriteOneByte(env->isolate(), *value);
+  origin_str->WriteOneByteV2(env->isolate(),
+                             0,
+                             origin_len,
+                             *origin,
+                             String::WriteFlags::kNullTerminate);
+  value_str->WriteOneByteV2(
+      env->isolate(), 0, value_len, *value, String::WriteFlags::kNullTerminate);
 
   session->AltSvc(id, *origin, origin_len, *value, value_len);
 }
@@ -3474,7 +3532,7 @@ void Initialize(Local<Object> target,
   Local<FunctionTemplate> setting = FunctionTemplate::New(env->isolate());
   setting->Inherit(AsyncWrap::GetConstructorTemplate(env));
   Local<ObjectTemplate> settingt = setting->InstanceTemplate();
-  settingt->SetInternalFieldCount(AsyncWrap::kInternalFieldCount);
+  settingt->SetInternalFieldCount(Http2Settings::kInternalFieldCount);
   env->set_http2settings_constructor_template(settingt);
 
   Local<FunctionTemplate> stream = FunctionTemplate::New(env->isolate());
@@ -3490,7 +3548,7 @@ void Initialize(Local<Object> target,
   stream->Inherit(AsyncWrap::GetConstructorTemplate(env));
   StreamBase::AddMethods(env, stream);
   Local<ObjectTemplate> streamt = stream->InstanceTemplate();
-  streamt->SetInternalFieldCount(StreamBase::kInternalFieldCount);
+  streamt->SetInternalFieldCount(Http2Stream::kInternalFieldCount);
   env->set_http2stream_constructor_template(streamt);
   SetConstructorFunction(context, target, "Http2Stream", stream);
 

@@ -13,17 +13,34 @@ const {
   isBuffer,
   isFormDataLike,
   isIterable,
+  hasSafeIterator,
   isBlobLike,
   serializePathWithQuery,
   assertRequestHandler,
   getServerName,
-  normalizedMethodRecords
+  normalizedMethodRecords,
+  getProtocolFromUrlString
 } = require('./util')
 const { channels } = require('./diagnostics.js')
 const { headerNameLowerCasedRecord } = require('./constants')
 
 // Verifies that a given path is valid does not contain control chars \x00 to \x20
 const invalidPathRegex = /[^\u0021-\u00ff]/
+
+function isValidContentLengthHeaderValue (val) {
+  if (typeof val !== 'string' || val.length === 0) {
+    return false
+  }
+
+  for (let i = 0; i < val.length; i++) {
+    const charCode = val.charCodeAt(i)
+    if (charCode < 48 || charCode > 57) {
+      return false
+    }
+  }
+
+  return true
+}
 
 const kHandler = Symbol('handler')
 
@@ -43,7 +60,8 @@ class Request {
     expectContinue,
     servername,
     throwOnError,
-    maxRedirections
+    maxRedirections,
+    typeOfService
   }, handler) {
     if (typeof path !== 'string') {
       throw new InvalidArgumentError('path must be a string')
@@ -65,6 +83,10 @@ class Request {
 
     if (upgrade && typeof upgrade !== 'string') {
       throw new InvalidArgumentError('upgrade must be a string')
+    }
+
+    if (upgrade && !isValidHeaderValue(upgrade)) {
+      throw new InvalidArgumentError('invalid upgrade header')
     }
 
     if (headersTimeout != null && (!Number.isFinite(headersTimeout) || headersTimeout < 0)) {
@@ -91,11 +113,17 @@ class Request {
       throw new InvalidArgumentError('maxRedirections is not supported, use the redirect interceptor')
     }
 
+    if (typeOfService != null && (!Number.isInteger(typeOfService) || typeOfService < 0 || typeOfService > 255)) {
+      throw new InvalidArgumentError('typeOfService must be an integer between 0 and 255')
+    }
+
     this.headersTimeout = headersTimeout
 
     this.bodyTimeout = bodyTimeout
 
     this.method = method
+
+    this.typeOfService = typeOfService ?? 0
 
     this.abort = null
 
@@ -141,7 +169,10 @@ class Request {
 
     this.path = query ? serializePathWithQuery(path, query) : path
 
+    // TODO: shall we maybe standardize it to an URL object?
     this.origin = origin
+
+    this.protocol = getProtocolFromUrlString(origin)
 
     this.idempotent = idempotent == null
       ? method === 'HEAD' || method === 'GET'
@@ -170,7 +201,7 @@ class Request {
         processHeader(this, headers[i], headers[i + 1])
       }
     } else if (headers && typeof headers === 'object') {
-      if (headers[Symbol.iterator]) {
+      if (hasSafeIterator(headers)) {
         for (const header of headers) {
           if (!Array.isArray(header) || header.length !== 2) {
             throw new InvalidArgumentError('headers must be in key-value pair format')
@@ -359,7 +390,13 @@ function processHeader (request, key, val) {
       } else if (typeof val[i] === 'object') {
         throw new InvalidArgumentError(`invalid ${key} header`)
       } else {
-        arr.push(`${val[i]}`)
+        // Coerce primitives (and reject unsafe coercions such as functions
+        // with a crafted toString/Symbol.toPrimitive).
+        const str = `${val[i]}`
+        if (!isValidHeaderValue(str)) {
+          throw new InvalidArgumentError(`invalid ${key} header`)
+        }
+        arr.push(str)
       }
     }
     val = arr
@@ -370,33 +407,52 @@ function processHeader (request, key, val) {
   } else if (val === null) {
     val = ''
   } else {
+    // Coerce primitives (and reject unsafe coercions such as functions
+    // with a crafted toString/Symbol.toPrimitive).
     val = `${val}`
+    if (!isValidHeaderValue(val)) {
+      throw new InvalidArgumentError(`invalid ${key} header`)
+    }
   }
 
-  if (request.host === null && headerName === 'host') {
+  if (headerName === 'host') {
+    if (request.host !== null) {
+      throw new InvalidArgumentError('duplicate host header')
+    }
     if (typeof val !== 'string') {
       throw new InvalidArgumentError('invalid host header')
     }
     // Consumed by Client
     request.host = val
-  } else if (request.contentLength === null && headerName === 'content-length') {
-    request.contentLength = parseInt(val, 10)
-    if (!Number.isFinite(request.contentLength)) {
+  } else if (headerName === 'content-length') {
+    if (request.contentLength !== null) {
+      throw new InvalidArgumentError('duplicate content-length header')
+    }
+    if (!isValidContentLengthHeaderValue(val)) {
       throw new InvalidArgumentError('invalid content-length header')
     }
+    request.contentLength = parseInt(val, 10)
   } else if (request.contentType === null && headerName === 'content-type') {
     request.contentType = val
     request.headers.push(key, val)
   } else if (headerName === 'transfer-encoding' || headerName === 'keep-alive' || headerName === 'upgrade') {
     throw new InvalidArgumentError(`invalid ${headerName} header`)
   } else if (headerName === 'connection') {
-    const value = typeof val === 'string' ? val.toLowerCase() : null
-    if (value !== 'close' && value !== 'keep-alive') {
+    // Per RFC 7230 Section 6.1, Connection header can contain
+    // a comma-separated list of connection option tokens (header names)
+    const value = typeof val === 'string' ? val : null
+    if (value === null) {
       throw new InvalidArgumentError('invalid connection header')
     }
 
-    if (value === 'close') {
-      request.reset = true
+    for (const token of value.toLowerCase().split(',')) {
+      const trimmed = token.trim()
+      if (!isValidHTTPToken(trimmed)) {
+        throw new InvalidArgumentError('invalid connection header')
+      }
+      if (trimmed === 'close') {
+        request.reset = true
+      }
     }
   } else if (headerName === 'expect') {
     throw new NotSupportedError('expect header not supported')

@@ -158,6 +158,22 @@ assert.throws(() => new Blob({}), {
 }
 
 {
+  const b = new Blob(['hello']);
+
+  assert.throws(() => b.slice(1n), {
+    name: 'TypeError',
+    code: 'ERR_INVALID_ARG_TYPE',
+    message: 'start is a BigInt and cannot be converted to a number.',
+  });
+
+  assert.throws(() => b.slice(0, Symbol()), {
+    name: 'TypeError',
+    code: 'ERR_INVALID_ARG_TYPE',
+    message: 'end is a Symbol and cannot be converted to a number.',
+  });
+}
+
+{
   const b = new Blob([Buffer.from('hello'), Buffer.from('world')]);
   const mc = new MessageChannel();
   mc.port1.onmessage = common.mustCall(({ data }) => {
@@ -336,11 +352,11 @@ assert.throws(() => new Blob({}), {
   const { value, done } = await reader.read();
   assert.strictEqual(value.byteLength, 5);
   assert(!done);
-  setTimeout(() => {
+  setTimeout(common.mustCall(() => {
     // The blob stream is now a byte stream hence after the first read,
     // it should pull in the next 'hello' which is 5 bytes hence -5.
     assert.strictEqual(stream[kState].controller.desiredSize, 0);
-  }, 0);
+  }), 0);
 })().then(common.mustCall());
 
 (async () => {
@@ -365,9 +381,9 @@ assert.throws(() => new Blob({}), {
   const { value, done } = await reader.read(new Uint8Array(100));
   assert.strictEqual(value.byteLength, 5);
   assert(!done);
-  setTimeout(() => {
+  setTimeout(common.mustCall(() => {
     assert.strictEqual(stream[kState].controller.desiredSize, 0);
-  }, 0);
+  }), 0);
 })().then(common.mustCall());
 
 (async () => {
@@ -378,9 +394,9 @@ assert.throws(() => new Blob({}), {
   const { value, done } = await reader.read(new Uint8Array(2));
   assert.strictEqual(value.byteLength, 2);
   assert(!done);
-  setTimeout(() => {
+  setTimeout(common.mustCall(() => {
     assert.strictEqual(stream[kState].controller.desiredSize, -3);
-  }, 0);
+  }), 0);
 })().then(common.mustCall());
 
 {

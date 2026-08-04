@@ -205,14 +205,12 @@ Returns an array of IP address strings, formatted according to [RFC 5952][],
 that are currently configured for DNS resolution. A string will include a port
 section if a custom port is used.
 
-<!-- eslint-disable @stylistic/js/semi-->
-
-```js
+```json
 [
-  '8.8.8.8',
-  '2001:4860:4860::8888',
-  '8.8.8.8:1053',
-  '[2001:4860:4860::8888]:1053',
+  "8.8.8.8",
+  "2001:4860:4860::8888",
+  "8.8.8.8:1053",
+  "[2001:4860:4860::8888]:1053",
 ]
 ```
 
@@ -259,7 +257,7 @@ changes:
     flags may be passed by bitwise `OR`ing their values.
   * `all` {boolean} When `true`, the callback returns all resolved addresses in
     an array. Otherwise, returns a single address. **Default:** `false`.
-  * `order` {string} When `verbatim`, the resolved addresses are return
+  * `order` {string} When `verbatim`, the resolved addresses are returned
     unsorted. When `ipv4first`, the resolved addresses are sorted by placing
     IPv4 addresses before IPv6 addresses. When `ipv6first`, the resolved
     addresses are sorted by placing IPv6 addresses before IPv4 addresses.
@@ -277,9 +275,15 @@ changes:
 * `callback` {Function}
   * `err` {Error}
   * `address` {string} A string representation of an IPv4 or IPv6 address.
+    Not provided when `options.all` is `true`.
   * `family` {integer} `4` or `6`, denoting the family of `address`, or `0` if
     the address is not an IPv4 or IPv6 address. `0` is a likely indicator of a
     bug in the name resolution service used by the operating system.
+    Not provided when `options.all` is `true`.
+  * `addresses` {Object\[]} An array of address objects when `options.all` is
+    `true`. Each object has the following properties:
+    * `address` {string} A string representation of an IPv4 or IPv6 address.
+    * `family` {integer} `4` or `6`, denoting the family of `address`.
 
 Resolves a host name (e.g. `'nodejs.org'`) into the first found A (IPv4) or
 AAAA (IPv6) record. All `option` properties are optional. If `options` is an
@@ -540,6 +544,7 @@ will be present on the object:
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `'A'`     | `address`/`ttl`                                                                                                                                  |
 | `'AAAA'`  | `address`/`ttl`                                                                                                                                  |
+| `'CAA'`   | Refer to [`dns.resolveCaa()`][]                                                                                                                  |
 | `'CNAME'` | `value`                                                                                                                                          |
 | `'MX'`    | Refer to [`dns.resolveMx()`][]                                                                                                                   |
 | `'NAPTR'` | Refer to [`dns.resolveNaptr()`][]                                                                                                                |
@@ -551,8 +556,6 @@ will be present on the object:
 | `'TXT'`   | This type of record contains an array property called `entries` which refers to [`dns.resolveTxt()`][], e.g. `{ entries: ['...'], type: 'TXT' }` |
 
 Here is an example of the `ret` object passed to the callback:
-
-<!-- eslint-disable @stylistic/js/semi -->
 
 ```js
 [ { type: 'A', address: '127.0.0.1', ttl: 299 },
@@ -567,7 +570,7 @@ Here is an example of the `ret` object passed to the callback:
     refresh: 900,
     retry: 900,
     expire: 1800,
-    minttl: 60 } ]
+    minttl: 60 } ];
 ```
 
 DNS server operators may choose not to respond to `ANY`
@@ -671,17 +674,15 @@ function will contain an array of objects with the following properties:
 * `order`
 * `preference`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   flags: 's',
   service: 'SIP+D2U',
   regexp: '',
   replacement: '_sip._udp.example.com',
   order: 30,
-  preference: 100
-}
+  preference: 100,
+});
 ```
 
 ## `dns.resolveNs(hostname, callback)`
@@ -756,18 +757,16 @@ be an object with the following properties:
 * `expire`
 * `minttl`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   nsname: 'ns.example.com',
   hostmaster: 'root.example.com',
   serial: 2013101809,
   refresh: 10000,
   retry: 2400,
   expire: 604800,
-  minttl: 3600
-}
+  minttl: 3600,
+});
 ```
 
 ## `dns.resolveSrv(hostname, callback)`
@@ -796,15 +795,13 @@ be an array of objects with the following properties:
 * `port`
 * `name`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   priority: 10,
   weight: 5,
   port: 21223,
-  name: 'service.example.com'
-}
+  name: 'service.example.com',
+});
 ```
 
 ## `dns.resolveTlsa(hostname, callback)`
@@ -833,15 +830,13 @@ array of objects with these properties:
 * `match`
 * `data`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   certUsage: 3,
   selector: 1,
   match: 1,
-  data: [ArrayBuffer]
-}
+  data: [ArrayBuffer],
+});
 ```
 
 ## `dns.resolveTxt(hostname, callback)`
@@ -1074,14 +1069,12 @@ Returns an array of IP address strings, formatted according to [RFC 5952][],
 that are currently configured for DNS resolution. A string will include a port
 section if a custom port is used.
 
-<!-- eslint-disable @stylistic/js/semi-->
-
-```js
+```json
 [
-  '8.8.8.8',
-  '2001:4860:4860::8888',
-  '8.8.8.8:1053',
-  '[2001:4860:4860::8888]:1053',
+  "8.8.8.8",
+  "2001:4860:4860::8888",
+  "8.8.8.8:1053",
+  "[2001:4860:4860::8888]:1053"
 ]
 ```
 
@@ -1309,6 +1302,7 @@ present on the object:
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `'A'`     | `address`/`ttl`                                                                                                                                          |
 | `'AAAA'`  | `address`/`ttl`                                                                                                                                          |
+| `'CAA'`   | Refer to [`dnsPromises.resolveCaa()`][]                                                                                                                  |
 | `'CNAME'` | `value`                                                                                                                                                  |
 | `'MX'`    | Refer to [`dnsPromises.resolveMx()`][]                                                                                                                   |
 | `'NAPTR'` | Refer to [`dnsPromises.resolveNaptr()`][]                                                                                                                |
@@ -1320,8 +1314,6 @@ present on the object:
 | `'TXT'`   | This type of record contains an array property called `entries` which refers to [`dnsPromises.resolveTxt()`][], e.g. `{ entries: ['...'], type: 'TXT' }` |
 
 Here is an example of the result object:
-
-<!-- eslint-disable @stylistic/js/semi -->
 
 ```js
 [ { type: 'A', address: '127.0.0.1', ttl: 299 },
@@ -1336,7 +1328,7 @@ Here is an example of the result object:
     refresh: 900,
     retry: 900,
     expire: 1800,
-    minttl: 60 } ]
+    minttl: 60 } ];
 ```
 
 ### `dnsPromises.resolveCaa(hostname)`
@@ -1399,17 +1391,15 @@ of objects with the following properties:
 * `order`
 * `preference`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   flags: 's',
   service: 'SIP+D2U',
   regexp: '',
   replacement: '_sip._udp.example.com',
   order: 30,
-  preference: 100
-}
+  preference: 100,
+});
 ```
 
 ### `dnsPromises.resolveNs(hostname)`
@@ -1457,18 +1447,16 @@ following properties:
 * `expire`
 * `minttl`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   nsname: 'ns.example.com',
   hostmaster: 'root.example.com',
   serial: 2013101809,
   refresh: 10000,
   retry: 2400,
   expire: 604800,
-  minttl: 3600
-}
+  minttl: 3600,
+});
 ```
 
 ### `dnsPromises.resolveSrv(hostname)`
@@ -1488,15 +1476,13 @@ the following properties:
 * `port`
 * `name`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   priority: 10,
   weight: 5,
   port: 21223,
-  name: 'service.example.com'
-}
+  name: 'service.example.com',
+});
 ```
 
 ### `dnsPromises.resolveTlsa(hostname)`
@@ -1518,15 +1504,13 @@ with these properties:
 * `match`
 * `data`
 
-<!-- eslint-skip -->
-
 ```js
-{
+({
   certUsage: 3,
   selector: 1,
   match: 1,
-  data: [ArrayBuffer]
-}
+  data: [ArrayBuffer],
+});
 ```
 
 ### `dnsPromises.resolveTxt(hostname)`

@@ -328,6 +328,7 @@ class SerializerDelegate : public ValueSerializer::Delegate {
     if (JSTransferable::IsJSTransferable(env_, context_, object)) {
       BaseObjectPtr<JSTransferable> js_transferable =
           JSTransferable::Wrap(env_, object);
+      if (!js_transferable) return Nothing<bool>();
       return WriteHostObject(js_transferable);
     }
 
@@ -414,10 +415,15 @@ class SerializerDelegate : public ValueSerializer::Delegate {
       if (!host_objects_[i]->NestedTransferables().To(&nested_transferables))
         return Nothing<bool>();
       for (auto& nested_transferable : nested_transferables) {
-        if (std::ranges::find(host_objects_, nested_transferable) ==
+        if (std::ranges::find(host_objects_, nested_transferable) !=
             host_objects_.end()) {
-          AddHostObject(nested_transferable);
+          ThrowDataCloneException(
+              context_,
+              FIXED_ONE_BYTE_STRING(env_->isolate(),
+                                    "The transfer list is invalid."));
+          return Nothing<bool>();
         }
+        AddHostObject(nested_transferable);
       }
     }
     return Just(true);
@@ -550,6 +556,7 @@ Maybe<bool> Message::Serialize(Environment* env,
         return Nothing<bool>();
       }
       host_object = JSTransferable::Wrap(env, entry);
+      if (!host_object) return Nothing<bool>();
     }
 
     if (env->message_port_constructor_template()->HasInstance(entry) &&
@@ -1245,27 +1252,38 @@ Local<FunctionTemplate> GetMessagePortConstructorTemplate(
 BaseObjectPtr<JSTransferable> JSTransferable::Wrap(Environment* env,
                                                    Local<Object> target) {
   Local<Context> context = env->context();
-  Local<Value> wrapper_val =
-      target->GetPrivate(context, env->js_transferable_wrapper_private_symbol())
-          .ToLocalChecked();
+  Local<Value> wrapper_val;
+  if (!target
+           ->GetPrivate(context, env->js_transferable_wrapper_private_symbol())
+           .ToLocal(&wrapper_val)) {
+    return {};
+  }
   DCHECK(wrapper_val->IsObject() || wrapper_val->IsUndefined());
   BaseObjectPtr<JSTransferable> wrapper;
   if (wrapper_val->IsObject()) {
     wrapper =
         BaseObjectPtr<JSTransferable>{Unwrap<JSTransferable>(wrapper_val)};
   } else {
-    Local<Object> wrapper_obj = env->js_transferable_constructor_template()
-                                    ->GetFunction(context)
-                                    .ToLocalChecked()
-                                    ->NewInstance(context)
-                                    .ToLocalChecked();
+    Local<Function> ctor;
+    if (!env->js_transferable_constructor_template()
+             ->GetFunction(context)
+             .ToLocal(&ctor)) {
+      return {};
+    }
+    Local<Object> wrapper_obj;
+    if (!ctor->NewInstance(context).ToLocal(&wrapper_obj)) {
+      return {};
+    }
     // Make sure the JSTransferable wrapper object is not garbage collected
     // until the strong BaseObjectPtr's reference count is decreased to 0.
     wrapper = MakeDetachedBaseObject<JSTransferable>(env, wrapper_obj, target);
-    target
-        ->SetPrivate(
-            context, env->js_transferable_wrapper_private_symbol(), wrapper_obj)
-        .ToChecked();
+    if (target
+            ->SetPrivate(context,
+                         env->js_transferable_wrapper_private_symbol(),
+                         wrapper_obj)
+            .IsNothing()) {
+      return {};
+    }
   }
   return wrapper;
 }
@@ -1355,7 +1373,7 @@ std::unique_ptr<TransferData> JSTransferable::TransferOrClone() const {
   }
   Utf8Value deserialize_info_str(env()->isolate(), deserialize_info);
   if (*deserialize_info_str == nullptr) return {};
-  return std::make_unique<Data>(*deserialize_info_str,
+  return std::make_unique<Data>(deserialize_info_str.ToString(),
                                 Global<Value>(env()->isolate(), data));
 }
 
@@ -1396,7 +1414,9 @@ Maybe<BaseObjectPtrList> JSTransferable::NestedTransferables() const {
     if (!JSTransferable::IsJSTransferable(env(), context, obj)) {
       continue;
     }
-    ret.emplace_back(JSTransferable::Wrap(env(), obj));
+    auto wrapped = JSTransferable::Wrap(env(), obj);
+    if (!wrapped) return Nothing<BaseObjectPtrList>();
+    ret.emplace_back(wrapped);
   }
   return Just(ret);
 }
@@ -1604,11 +1624,11 @@ static void StructuredClone(const FunctionCallbackInfo<Value>& args) {
     }
   }
 
-  std::shared_ptr<Message> msg = std::make_shared<Message>();
+  Message msg;
   Local<Value> result;
-  if (msg->Serialize(env, context, value, transfer_list, Local<Object>())
+  if (msg.Serialize(env, context, value, transfer_list, Local<Object>())
           .IsNothing() ||
-      !msg->Deserialize(env, context, nullptr).ToLocal(&result)) {
+      !msg.Deserialize(env, context, nullptr).ToLocal(&result)) {
     return;
   }
   args.GetReturnValue().Set(result);

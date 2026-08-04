@@ -6,6 +6,7 @@
 // Example:
 // $ git log upstream/vXX.x...upstream/vX.X.X-proposal \
 //     --reverse --format='{"prURL":"%(trailers:key=PR-URL,valueonly,separator=)","title":"%s","smallSha":"%h"}' \
+//     --abbrev=10 \
 //   | sed 's/,"title":"Revert "\([^"]\+\)""/,"title":"Revert \\"\1\\""/g' \
 //   | ./lint-release-proposal-commit-list.mjs "path/to/CHANGELOG.md" "$(git rev-parse upstream/vX.X.X-proposal)"
 
@@ -23,12 +24,17 @@ const commitListingStart = changelog.indexOf('\n### Commits\n');
 let commitList;
 if (commitListingStart === -1) {
   // We're preparing a semver-major release.
-  commitList = changelog.replace(/(^.+\n### Semver-Major|\n### Semver-(Minor|Patch)) Commits\n/gs, '')
-    .replaceAll('**(SEMVER-MAJOR)** ', '');
+  assert.match(changelog, /\n### Semver-Major Commits\n/);
+  // The proposal should contain only the release commit.
+  commitList = '';
 } else {
-  const commitListingEnd = changelog.indexOf('\n\n<a', commitListingStart);
-  assert.notStrictEqual(commitListingEnd, -1);
-  commitList = changelog.slice(commitListingStart, commitListingEnd + 1);
+  // We can't assume the Commits section is the one for this release in case of
+  // a release to transition to LTS (i.e. with no commits).
+  const releaseStart = /\n<a id="(\d+\.\d+\.\d+)"><\/a>\n\n## \d+-\d+-\d+, Version \1/.exec(changelog);
+  assert.ok(releaseStart, 'Could not determine the start of the release section');
+  const releaseEnd = changelog.indexOf('\n\n<a', releaseStart.index);
+  assert.notStrictEqual(releaseEnd, -1, 'Could not determine the end of the release section');
+  commitList = changelog.slice(commitListingStart, releaseEnd + 1);
 }
 
 // Normalize for consistent comparison

@@ -12,7 +12,7 @@ const assert = require('assert');
 const tls = require('tls');
 const fixtures = require('../common/fixtures');
 
-const clientConfigs = [
+let clientConfigs = [
   {
     secureProtocol: 'TLSv1_method',
     version: 'TLSv1',
@@ -27,6 +27,14 @@ const clientConfigs = [
   },
 ];
 
+if (process.features.openssl_is_boringssl) {
+  // Remove the TLSv1 and TLSv1.1 cases. BoringSSL does not negotiate those
+  // legacy protocols in this configuration; keep TLSv1.2 to cover getProtocol()
+  // on a successful BoringSSL TLS handshake.
+  common.printSkipMessage('BoringSSL: skipping TLSv1/TLSv1.1 getProtocol cases');
+  clientConfigs = clientConfigs.filter(({ version }) => version === 'TLSv1.2');
+}
+
 const serverConfig = {
   secureProtocol: 'TLS_method',
   key: fixtures.readKey('agent2-key.pem'),
@@ -38,7 +46,7 @@ if (!process.features.openssl_is_boringssl) {
 }
 
 const server = tls.createServer(serverConfig, common.mustCall(clientConfigs.length))
-.listen(0, common.localhostIPv4, function() {
+.listen(0, common.localhostIPv4, common.mustCall(function() {
   let connected = 0;
   for (const v of clientConfigs) {
     tls.connect({
@@ -57,4 +65,4 @@ const server = tls.createServer(serverConfig, common.mustCall(clientConfigs.leng
         server.close();
     }));
   }
-});
+}));

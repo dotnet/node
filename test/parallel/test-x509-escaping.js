@@ -130,10 +130,10 @@ const { hasOpenSSL3 } = require('../common/crypto');
       tls.connect(port, {
         ca: pem,
         servername: 'example.com',
-        checkServerIdentity: (hostname, peerCert) => {
+        checkServerIdentity: common.mustCall((hostname, peerCert) => {
           assert.strictEqual(hostname, 'example.com');
           assert.strictEqual(peerCert.subjectaltname, expectedSANs[i]);
-        },
+        }),
       }, common.mustCall());
     }));
   }
@@ -237,7 +237,7 @@ const { hasOpenSSL3 } = require('../common/crypto');
       tls.connect(port, {
         ca: pem,
         servername: 'example.com',
-        checkServerIdentity: (hostname, peerCert) => {
+        checkServerIdentity: common.mustCall((hostname, peerCert) => {
           assert.strictEqual(hostname, 'example.com');
           assert.deepStrictEqual(peerCert.infoAccess,
                                  Object.assign({ __proto__: null },
@@ -251,7 +251,7 @@ const { hasOpenSSL3 } = require('../common/crypto');
           assert.strictEqual(obj.issuerCertificate, undefined);
           obj.issuerCertificate = obj;
           assert.deepStrictEqual(peerCert, obj);
-        },
+        }),
       }, common.mustCall());
     }));
   }
@@ -351,7 +351,7 @@ const { hasOpenSSL3 } = require('../common/crypto');
       tls.connect(port, {
         ca: pem,
         servername: 'example.com',
-        checkServerIdentity: (hostname, peerCert) => {
+        checkServerIdentity: common.mustCall((hostname, peerCert) => {
           assert.strictEqual(hostname, 'example.com');
           const expectedObject = Object.assign({ __proto__: null },
                                                expected.legacy);
@@ -369,7 +369,7 @@ const { hasOpenSSL3 } = require('../common/crypto');
           assert.strictEqual(obj.issuerCertificate, undefined);
           obj.issuerCertificate = obj;
           assert.deepStrictEqual(peerCert, obj);
-        },
+        }),
       }, common.mustCall());
     }));
   }
@@ -439,6 +439,8 @@ const { hasOpenSSL3 } = require('../common/crypto');
 
   // The hostname is the CN, but not a SAN entry.
   const servername = 'good.example.com';
+  const cnFallback = process.features.openssl_is_boringssl ? undefined :
+    servername;
   const certX509 = new X509Certificate(cert);
   assert.strictEqual(certX509.subject, `CN=${servername}`);
   assert.strictEqual(certX509.subjectAltName, 'DNS:evil.example.com');
@@ -448,7 +450,7 @@ const { hasOpenSSL3 } = require('../common/crypto');
   assert.strictEqual(certX509.checkHost(servername, { subject: 'default' }),
                      undefined);
   assert.strictEqual(certX509.checkHost(servername, { subject: 'always' }),
-                     servername);
+                     cnFallback);
   assert.strictEqual(certX509.checkHost(servername, { subject: 'never' }),
                      undefined);
 
@@ -483,11 +485,13 @@ const { hasOpenSSL3 } = require('../common/crypto');
   assert.strictEqual(certX509.subjectAltName, 'IP Address:1.2.3.4');
 
   // The newer X509Certificate API allows customizing this behavior:
-  assert.strictEqual(certX509.checkHost(servername), servername);
+  const cnFallback = process.features.openssl_is_boringssl ? undefined :
+    servername;
+  assert.strictEqual(certX509.checkHost(servername), cnFallback);
   assert.strictEqual(certX509.checkHost(servername, { subject: 'default' }),
-                     servername);
+                     cnFallback);
   assert.strictEqual(certX509.checkHost(servername, { subject: 'always' }),
-                     servername);
+                     cnFallback);
   assert.strictEqual(certX509.checkHost(servername, { subject: 'never' }),
                      undefined);
 
