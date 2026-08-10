@@ -1,71 +1,76 @@
+# Create this pipeline in `dnceng/internal` against the GitHub repository
+# `dotnet/node` so GitHub-attributed CodeQL snapshots stay separate from the
+# existing ADO-mirror pipeline in `eng/azure-pipelines.yml`.
+
 trigger:
-  none
+  batch: true
+  branches:
+    include:
+    - dotnet/main
+
+pr: none
 
 schedules:
-  - cron: 0 0 */7 * *
-    displayName: Periodic GitHub CodeQL run
-    branches:
-      include:
-      - dotnet/main
-    always: true
+- cron: 0 0 * * 0
+  displayName: Weekly CodeQL refresh
+  branches:
+    include:
+    - dotnet/main
+  always: true
 
 variables:
-  - template: /eng/common-variables.yml
-  - template: /eng/common/templates/variables/pool-providers.yml
-  - name: Codeql.Enabled
-    value: True
-  - name: Codeql.Language
-    value: cpp,javascript
-  - name: Codeql.Cadence
-    value: 72
-  - name: Codeql.BuildIdentifier
-    value: github_linux_x64
-  - name: Codeql.ADO.Build.Repository.Provider
-    value: override
-  - name: Codeql.ADO.Build.Repository.Uri
-    value: https://github.com/dotnet/node
-  - name: PIP_INDEX_URL
-    value: https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public-pypi/pypi/simple/
+- template: /eng/common-variables.yml@self
+- template: /eng/common/templates-official/variables/pool-providers.yml@self
+- name: PIP_INDEX_URL
+  value: https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public-pypi/pypi/simple/
 
-stages:
-- stage: Build
-  jobs:
-  - template: /eng/common/templates/jobs/jobs.yml
-    parameters:
+resources:
+  repositories:
+  - repository: 1ESPipelineTemplates
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1ESPipelineTemplates
+  parameters:
+    sdl:
+      codeql:
+        compiled:
+          enabled: true
+        runSourceLanguagesInSourceAnalysis: true
+        sourceLanguages: javascript
+        binaryLanguages: cpp
+      sourceAnalysisPool:
+        name: $(DncEngInternalBuildPool)
+        image: 1es-windows-2022
+        os: windows
+    containers:
+      linux_x64:
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64
+    stages:
+    - stage: build
+      displayName: CodeQL
       jobs:
-      - job: Build_Linux_GitHub
-        displayName: GitHub Linux
-        timeoutInMinutes: 720
-        variables:
-        - _BuildConfig: Release
-        pool:
-          name: NetCore1ESPool-Internal-XL
-          demands: ImageOverride -equals build.azurelinux.3.amd64
-        container:
-          image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net11.0-cross-amd64
-        steps:
-        - bash: |
-            set -ex
-            git clean -ffdx
-            git reset --hard HEAD
-          displayName: Clean up working directory
+      - template: /eng/common/templates-official/jobs/jobs.yml@self
+        parameters:
+          jobs:
+          - job: Build_Linux_x64
+            displayName: Linux x64
+            timeoutInMinutes: 600
+            pool:
+              name: $(DncEngInternalBuildPool)
+              image: build.azurelinux.3.amd64
+              os: linux
+            container: linux_x64
+            steps:
+            - script: |
+                git clean -ffdx
+                git reset --hard HEAD
+              displayName: Clean up working directory
 
-        - bash: |
-            mkdir which-shim
-            echo '#!/bin/sh' > which-shim/which
-            echo 'command -v "$@"' >> which-shim/which
-            chmod +x which-shim/which
-            echo "##vso[task.prependpath]$PWD/which-shim"
-          displayName: Add a which shim for CodeQL
-
-        - task: CodeQL3000Init@0
-          displayName: Initialize GitHub CodeQL (manually-injected)
-
-        - bash: |
-            ./build.sh --ci --restore --build --pack --arch x64 --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/ /p:RestoreUsingNuGetTargets=false
-          displayName: Build and package
-          env:
-            ROOTFS_DIR: /crossrootfs/x64
-
-        - task: CodeQL3000Finalize@0
-          displayName: Finalize GitHub CodeQL (manually-injected)
+            - bash: |
+                ./build.sh --ci --restore --build --pack --arch x64 --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:ClangBinDir=/usr/local/bin/ /p:RestoreUsingNuGetTargets=false
+              displayName: Build and package
+              env:
+                ROOTFS_DIR: /crossrootfs/x64
