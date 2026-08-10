@@ -15,7 +15,7 @@ variables:
   - name: Codeql.Enabled
     value: True
   - name: Codeql.Language
-    value: cpp,javascript,python
+    value: cpp,javascript
   - name: Codeql.Cadence
     value: 72
   - name: Codeql.BuildIdentifier
