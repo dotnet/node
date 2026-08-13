@@ -219,12 +219,12 @@ On Windows PowerShell, you can add functions using the `$PROFILE` automatic
 variable:
 
 ```powershell
-echo "function yarn { corepack yarn `$args }" >> $PROFILE
-echo "function yarnpkg { corepack yarnpkg `$args }" >> $PROFILE
-echo "function pnpm { corepack pnpm `$args }" >> $PROFILE
-echo "function pnpx { corepack pnpx `$args }" >> $PROFILE
-echo "function npm { corepack npm `$args }" >> $PROFILE
-echo "function npx { corepack npx `$args }" >> $PROFILE
+echo 'function yarn { corepack yarn @args }'    >> $PROFILE
+echo 'function yarnpkg { corepack yarnpkg @args }' >> $PROFILE
+echo 'function pnpm { corepack pnpm @args }'    >> $PROFILE
+echo 'function pnpx { corepack pnpx @args }'    >> $PROFILE
+echo 'function npm { corepack npm @args }'      >> $PROFILE
+echo 'function npx { corepack npx @args }'      >> $PROFILE
 ```
 
 ### `corepack disable [... name]`
@@ -328,8 +328,6 @@ same major line. Should you need to upgrade to a new major, use an explicit
   Only keys that start with `COREPACK_` and are not in the exception list
   (`COREPACK_ENABLE_DOWNLOAD_PROMPT` and `COREPACK_ENV_FILE` are ignored)
   will be taken into account.
-  For Node.js 18.x users, this setting has no effect as that version doesn't
-  support parsing of `.env` files.
 
 - `COREPACK_HOME` can be set in order to define where Corepack should install
   the package managers. By default it is set to `%LOCALAPPDATA%\node\corepack`
@@ -352,7 +350,7 @@ same major line. Should you need to upgrade to a new major, use an explicit
   empty password, explicitly set `COREPACK_NPM_PASSWORD` to an empty string.
 
 - `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` are supported through
-  [`proxy-from-env`](https://github.com/Rob--W/proxy-from-env).
+  [`NODE_USE_ENV_PROXY=1`](https://nodejs.org/api/cli.html#node_use_env_proxy1).
 
 - `COREPACK_INTEGRITY_KEYS` can be set to an empty string or `0` to
   instruct Corepack to skip integrity checks, or to a JSON string containing

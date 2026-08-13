@@ -13,6 +13,7 @@
 
 #if HAVE_OPENSSL
 #include "openssl/opensslv.h"
+#include "quic/guard.h"
 #endif
 
 namespace node {
@@ -111,6 +112,10 @@ class DebugOptions : public Options {
                     std::vector<std::string>* argv) override;
 };
 
+#ifndef EXPERIMENTALS_DEFAULT_VALUE
+#define EXPERIMENTALS_DEFAULT_VALUE false
+#endif
+
 class EnvironmentOptions : public Options {
  public:
   bool abort_on_uncaught_exception = false;
@@ -121,30 +126,30 @@ class EnvironmentOptions : public Options {
   bool require_module = true;
   std::string dns_result_order;
   bool enable_source_maps = false;
-  bool experimental_addon_modules = false;
-  bool experimental_eventsource = false;
-  bool experimental_fetch = true;
+  bool experimental_addon_modules = EXPERIMENTALS_DEFAULT_VALUE;
+  bool experimental_eventsource = EXPERIMENTALS_DEFAULT_VALUE;
   bool experimental_websocket = true;
-  bool experimental_sqlite = true;
+  bool experimental_sqlite = HAVE_SQLITE;
   bool experimental_webstorage = false;
-#ifdef NODE_OPENSSL_HAS_QUIC
-  bool experimental_quic = false;
+#ifndef OPENSSL_NO_QUIC
+  bool experimental_quic = EXPERIMENTALS_DEFAULT_VALUE;
 #endif
   std::string localstorage_file;
   bool experimental_global_navigator = true;
   bool experimental_global_web_crypto = true;
-  bool experimental_import_meta_resolve = false;
+  bool experimental_import_meta_resolve = EXPERIMENTALS_DEFAULT_VALUE;
   std::string input_type;  // Value of --input-type
   bool entry_is_url = false;
   bool permission = false;
   std::vector<std::string> allow_fs_read;
   std::vector<std::string> allow_fs_write;
   bool allow_addons = false;
+  bool allow_inspector = false;
   bool allow_child_process = false;
   bool allow_wasi = false;
   bool allow_worker_threads = false;
   bool experimental_repl_await = true;
-  bool experimental_vm_modules = false;
+  bool experimental_vm_modules = EXPERIMENTALS_DEFAULT_VALUE;
   bool async_context_frame = true;
   bool expose_internals = false;
   bool force_node_api_uncaught_exceptions_policy = false;
@@ -171,9 +176,10 @@ class EnvironmentOptions : public Options {
   uint64_t cpu_prof_interval = kDefaultCpuProfInterval;
   std::string cpu_prof_name;
   bool cpu_prof = false;
-  bool experimental_network_inspection = false;
-  bool experimental_worker_inspection = false;
-  bool experimental_inspector_network_resource = false;
+  bool experimental_network_inspection = EXPERIMENTALS_DEFAULT_VALUE;
+  bool experimental_worker_inspection = EXPERIMENTALS_DEFAULT_VALUE;
+  bool experimental_storage_inspection = EXPERIMENTALS_DEFAULT_VALUE;
+  bool experimental_inspector_network_resource = EXPERIMENTALS_DEFAULT_VALUE;
   std::string heap_prof_dir;
   std::string heap_prof_name;
   static const uint64_t kDefaultHeapProfInterval = 512 * 1024;
@@ -182,8 +188,8 @@ class EnvironmentOptions : public Options {
 #endif  // HAVE_INSPECTOR
   std::string redirect_warnings;
   std::string diagnostic_dir;
-  std::string env_file;
-  std::string optional_env_file;
+  std::vector<std::string> env_file;
+  std::vector<std::string> optional_env_file;
   bool has_env_file_string = false;
   bool test_runner = false;
   uint64_t test_runner_concurrency = 0;
@@ -200,6 +206,9 @@ class EnvironmentOptions : public Options {
   std::string test_rerun_failures_path;
   std::vector<std::string> test_reporter_destination;
   std::string test_global_setup_path;
+  bool test_randomize = false;
+  bool has_test_random_seed = false;
+  uint64_t test_random_seed = 0;
   bool test_only = false;
   bool test_udp_no_try_send = false;
   std::string test_isolation = "process";
@@ -256,7 +265,7 @@ class EnvironmentOptions : public Options {
 
   std::vector<std::string> preload_esm_modules;
 
-  bool experimental_strip_types = true;
+  bool strip_types = HAVE_AMARO;
   bool experimental_transform_types = false;
 
   std::vector<std::string> user_argv;
@@ -401,18 +410,26 @@ enum OptionType {
   kHostPort,
   kStringList,
 };
-std::unordered_map<std::string, OptionType> MapEnvOptionsFlagInputType();
-std::unordered_map<std::string, OptionType> MapOptionsByNamespace(
+struct OptionMappingDetails {
+  OptionType type;
+  std::string help_text;
+};
+std::unordered_map<std::string, OptionMappingDetails>
+MapEnvOptionsFlagInputType();
+std::unordered_map<std::string, OptionMappingDetails> MapOptionsByNamespace(
     std::string namespace_name);
-std::unordered_map<std::string,
-                   std::unordered_map<std::string, options_parser::OptionType>>
+std::unordered_map<
+    std::string,
+    std::unordered_map<std::string, options_parser::OptionMappingDetails>>
 MapNamespaceOptionsAssociations();
 std::vector<std::string> MapAvailableNamespaces();
 
 // Define all namespace entries
 #define OPTION_NAMESPACE_LIST(V)                                               \
   V(kNoNamespace, "")                                                          \
-  V(kTestRunnerNamespace, "testRunner")
+  V(kTestRunnerNamespace, "testRunner")                                        \
+  V(kWatchNamespace, "watch")                                                  \
+  V(kPermissionNamespace, "permission")
 
 enum class OptionNamespaces {
 #define V(name, _) name,
@@ -642,10 +659,10 @@ class OptionsParser {
   friend void GetCLIOptionsInfo(
       const v8::FunctionCallbackInfo<v8::Value>& args);
   friend std::string GetBashCompletion();
-  friend std::unordered_map<std::string, OptionType>
+  friend std::unordered_map<std::string, OptionMappingDetails>
   MapEnvOptionsFlagInputType();
-  friend std::unordered_map<std::string, OptionType> MapOptionsByNamespace(
-      std::string namespace_name);
+  friend std::unordered_map<std::string, OptionMappingDetails>
+  MapOptionsByNamespace(std::string namespace_name);
   friend std::vector<std::string> MapAvailableNamespaces();
   friend void GetEnvOptionsInputType(
       const v8::FunctionCallbackInfo<v8::Value>& args);

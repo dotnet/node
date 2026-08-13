@@ -379,12 +379,16 @@ The location information will be one of:
   represents a call in a user program (using ES module system), or
   its dependencies.
 
-The string representing the stack trace is lazily generated when the
-`error.stack` property is **accessed**.
-
 The number of frames captured by the stack trace is bounded by the smaller of
 `Error.stackTraceLimit` or the number of available frames on the current event
 loop tick.
+
+`error.stack` is a getter/setter for a hidden internal property which is only
+present on builtin `Error` objects (those for which [`Error.isError`][] returns
+true). If `error` is not a builtin error object, then the `error.stack` getter
+will always return `undefined`, and the setter will do nothing. This can occur
+if the accessor is manually invoked with a `this` value that is not a builtin
+error object, such as a {Proxy}.
 
 ## Class: `AssertionError`
 
@@ -703,6 +707,13 @@ by the `node:assert` module.
 An attempt was made to register something that is not a function as an
 `AsyncHooks` callback.
 
+<a id="ERR_ASYNC_LOADER_REQUEST_NEVER_SETTLED"></a>
+
+### `ERR_ASYNC_LOADER_REQUEST_NEVER_SETTLED`
+
+An operation related to module loading is customized by an asynchronous loader
+hook that never settled the promise before the loader thread exits.
+
 <a id="ERR_ASYNC_TYPE"></a>
 
 ### `ERR_ASYNC_TYPE`
@@ -825,6 +836,36 @@ The vm context passed into the API is not yet initialized. This could happen
 when an error occurs (and is caught) during the creation of the
 context, for example, when the allocation fails or the maximum call stack
 size is reached when the context is created.
+
+<a id="ERR_CPU_PROFILE_ALREADY_STARTED"></a>
+
+### `ERR_CPU_PROFILE_ALREADY_STARTED`
+
+<!-- YAML
+added: v24.8.0
+-->
+
+The CPU profile with the given name is already started.
+
+<a id="ERR_CPU_PROFILE_NOT_STARTED"></a>
+
+### `ERR_CPU_PROFILE_NOT_STARTED`
+
+<!-- YAML
+added: v24.8.0
+-->
+
+The CPU profile with the given name is not started.
+
+<a id="ERR_CPU_PROFILE_TOO_MANY"></a>
+
+### `ERR_CPU_PROFILE_TOO_MANY`
+
+<!-- YAML
+added: v24.8.0
+-->
+
+There are too many CPU profiles being collected.
 
 <a id="ERR_CRYPTO_ARGON2_NOT_SUPPORTED"></a>
 
@@ -1691,6 +1732,17 @@ added: v15.14.0
 The limit of acceptable invalid HTTP/2 protocol frames sent by the peer,
 as specified through the `maxSessionInvalidFrames` option, has been exceeded.
 
+<a id="ERR_HTTP2_TOO_MANY_ORIGINS"></a>
+
+### `ERR_HTTP2_TOO_MANY_ORIGINS`
+
+<!-- YAML
+added: v24.17.0
+-->
+
+The number of uniq origin sent by the server has exceeded the value defined in
+`options.maxOriginSetSize`.
+
 <a id="ERR_HTTP2_TRAILERS_ALREADY_SENT"></a>
 
 ### `ERR_HTTP2_TRAILERS_ALREADY_SENT`
@@ -1966,6 +2018,9 @@ A Node.js API that consumes `file:` URLs (such as certain functions in the
 [`fs`][] module) encountered a file URL with an incompatible path. The exact
 semantics for determining whether a path can be used is platform-dependent.
 
+The thrown error object includes an `input` property that contains the URL object
+of the invalid `file:` URL.
+
 <a id="ERR_INVALID_HANDLE_TYPE"></a>
 
 ### `ERR_INVALID_HANDLE_TYPE`
@@ -2153,8 +2208,8 @@ contains the URL that failed to parse.
 
 ### `ERR_INVALID_URL_PATTERN`
 
-An invalid URLPattern was passed to the [WHATWG][WHATWG URL API] \[`URLPattern`
-constructor]\[`new URLPattern(input)`] to be parsed.
+An invalid URLPattern was passed to the [WHATWG][WHATWG URL API]
+[`URLPattern` constructor][`new URLPattern(input)`] to be parsed.
 
 <a id="ERR_INVALID_URL_SCHEME"></a>
 
@@ -2284,6 +2339,13 @@ An attempt was made to read an encrypted key without specifying a passphrase.
 The V8 platform used by this instance of Node.js does not support creating
 Workers. This is caused by lack of embedder support for Workers. In particular,
 this error will not occur with standard builds of Node.js.
+
+<a id="ERR_MODULE_LINK_MISMATCH"></a>
+
+### `ERR_MODULE_LINK_MISMATCH`
+
+A module can not be linked because the same module requests in it are not
+resolved to the same module.
 
 <a id="ERR_MODULE_NOT_FOUND"></a>
 
@@ -2606,8 +2668,6 @@ A QUIC session failed because version negotiation is required.
 
 ### `ERR_REQUIRE_ASYNC_MODULE`
 
-> Stability: 1 - Experimental
-
 When trying to `require()` a [ES Module][], the module turns out to be asynchronous.
 That is, it contains top-level await.
 
@@ -2618,8 +2678,6 @@ before looking for the top-level awaits).
 <a id="ERR_REQUIRE_CYCLE_MODULE"></a>
 
 ### `ERR_REQUIRE_CYCLE_MODULE`
-
-> Stability: 1 - Experimental
 
 When trying to `require()` a [ES Module][], a CommonJS to ESM or ESM to CommonJS edge
 participates in an immediate cycle.
@@ -2651,6 +2709,19 @@ An attempt was made to `require()` an [ES Module][].
 This error has been deprecated since `require()` now supports loading synchronous
 ES modules. When `require()` encounters an ES module that contains top-level
 `await`, it will throw [`ERR_REQUIRE_ASYNC_MODULE`][] instead.
+
+<a id="ERR_REQUIRE_ESM_RACE_CONDITION"></a>
+
+### `ERR_REQUIRE_ESM_RACE_CONDITION`
+
+<!-- YAML
+added: v24.16.0
+-->
+
+> Stability: 1 - Experimental.
+
+An attempt was made to `require()` an [ES Module][] while another `import()` call
+was already in progress to load it asynchronously.
 
 <a id="ERR_SCRIPT_EXECUTION_INTERRUPTED"></a>
 
@@ -2971,7 +3042,7 @@ The context must be a `SecureContext`.
 
 ### `ERR_TLS_INVALID_PROTOCOL_METHOD`
 
-The specified  `secureProtocol` method is invalid. It is  either unknown, or
+The specified `secureProtocol` method is invalid. It is either unknown, or
 disabled because it is insecure.
 
 <a id="ERR_TLS_INVALID_PROTOCOL_VERSION"></a>
@@ -3012,6 +3083,13 @@ Failed to set PSK identity hint. Hint may be too long.
 
 An attempt was made to renegotiate TLS on a socket instance with renegotiation
 disabled.
+
+<a id="ERR_TLS_RENEGOTIATION_UNSUPPORTED"></a>
+
+### `ERR_TLS_RENEGOTIATION_UNSUPPORTED`
+
+An attempt was made to renegotiate TLS, but the TLS implementation does not
+support caller-initiated renegotiation.
 
 <a id="ERR_TLS_REQUIRED_SERVER_NAME"></a>
 
@@ -3294,6 +3372,14 @@ The WASI instance has already started.
 ### `ERR_WASI_NOT_STARTED`
 
 The WASI instance has not been started.
+
+<a id="ERR_WEBASSEMBLY_NOT_SUPPORTED"></a>
+
+### `ERR_WEBASSEMBLY_NOT_SUPPORTED`
+
+A feature requiring WebAssembly was used, but WebAssembly is not supported or
+has been disabled in the current environment (for example, when running with
+`--jitless`).
 
 <a id="ERR_WEBASSEMBLY_RESPONSE"></a>
 
@@ -3805,7 +3891,7 @@ removed: v15.0.0
 -->
 
 This error code was replaced by [`ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`][]
-in Node.js v15.0.0, because it is no longer accurate as other types of
+in Node.js 15.0.0, because it is no longer accurate as other types of
 transferable objects also exist now.
 
 <a id="ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST"></a>
@@ -4330,6 +4416,7 @@ An error occurred trying to allocate memory. This should never happen.
 [`ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`]: #err_missing_message_port_in_transfer_list
 [`ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`]: #err_missing_transferable_in_transfer_list
 [`ERR_REQUIRE_ASYNC_MODULE`]: #err_require_async_module
+[`Error.isError`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/isError
 [`EventEmitter`]: events.md#class-eventemitter
 [`MessagePort`]: worker_threads.md#class-messageport
 [`Object.getPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getPrototypeOf
@@ -4367,10 +4454,11 @@ An error occurred trying to allocate memory. This should never happen.
 [`net.Socket.write()`]: net.md#socketwritedata-encoding-callback
 [`net`]: net.md
 [`new URL(input)`]: url.md#new-urlinput-base
+[`new URLPattern(input)`]: url.md#new-urlpatternstring-baseurl-options
 [`new URLSearchParams(iterable)`]: url.md#new-urlsearchparamsiterable
 [`package.json`]: packages.md#nodejs-packagejson-field-definitions
 [`postMessage()`]: worker_threads.md#portpostmessagevalue-transferlist
-[`postMessageToThread()`]: worker_threads.md#workerpostmessagetothreadthreadid-value-transferlist-timeout
+[`postMessageToThread()`]: worker_threads.md#worker_threadspostmessagetothreadthreadid-value-transferlist-timeout
 [`process.on('exit')`]: process.md#event-exit
 [`process.send()`]: process.md#processsendmessage-sendhandle-options-callback
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#processsetuncaughtexceptioncapturecallbackfn

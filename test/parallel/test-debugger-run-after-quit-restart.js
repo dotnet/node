@@ -15,11 +15,6 @@ const path = require('path');
   const script = path.relative(process.cwd(), scriptFullPath);
   const cli = startCLI([script]);
 
-  function onFatal(error) {
-    cli.quit();
-    throw error;
-  }
-
   cli.waitForInitialBreak()
     .then(() => cli.waitForPrompt())
     .then(() => cli.stepCommand('n'))
@@ -46,7 +41,8 @@ const path = require('path');
     .then(() => {
       assert.match(cli.output, /Use `run` to start the app again/);
     })
-    .then(() => cli.stepCommand('run'))
+    .then(() => cli.command('run'))
+    .then(() => cli.waitFor(/ ok\n/))
     .then(() => cli.waitForInitialBreak())
     .then(() => cli.waitForPrompt())
     .then(() => {
@@ -62,8 +58,10 @@ const path = require('path');
         { filename: script, line: 2 },
       );
     })
-    .then(() => cli.stepCommand('restart'))
+    .then(() => cli.command('restart'))
+    .then(() => cli.waitFor(/ ok\n/))
     .then(() => cli.waitForInitialBreak())
+    .then(() => cli.waitForPrompt())
     .then(() => {
       assert.deepStrictEqual(
         cli.breakInfo,
@@ -76,7 +74,8 @@ const path = require('path');
     .then(() => {
       assert.match(cli.output, /Use `run` to start the app again/);
     })
-    .then(() => cli.stepCommand('run'))
+    .then(() => cli.command('run'))
+    .then(() => cli.waitFor(/ ok\n/))
     .then(() => cli.waitForInitialBreak())
     .then(() => cli.waitForPrompt())
     .then(() => {
@@ -85,6 +84,6 @@ const path = require('path');
         { filename: script, line: 1 },
       );
     })
-    .then(() => cli.quit())
-    .then(null, onFatal);
+    .finally(() => cli.quit())
+    .then(common.mustCall());
 }

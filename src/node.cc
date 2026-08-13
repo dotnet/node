@@ -73,7 +73,7 @@
 #endif
 
 #ifdef NODE_ENABLE_VTUNE_PROFILING
-#include "../deps/v8/src/third_party/vtune/v8-vtune.h"
+#include "../deps/v8/third_party/vtune/v8-vtune.h"
 #endif
 
 #include "large_pages/node_large_page.h"
@@ -255,37 +255,33 @@ MaybeLocal<Value> StartExecution(Environment* env, const char* main_script_id) {
 }
 
 // Convert the result returned by an intermediate main script into
-// StartExecutionCallbackInfo. Currently the result is an array containing
-// [process, requireFunction, cjsRunner]
-std::optional<StartExecutionCallbackInfo> CallbackInfoFromArray(
-    Local<Context> context, Local<Value> result) {
+// StartExecutionCallbackInfoWithModule. Currently the result is an array
+// containing [process, requireFunction, runModule].
+std::optional<StartExecutionCallbackInfoWithModule> CallbackInfoFromArray(
+    Environment* env, Local<Value> result) {
   CHECK(result->IsArray());
   Local<Array> args = result.As<Array>();
   CHECK_EQ(args->Length(), 3);
-  Local<Value> process_obj, require_fn, runcjs_fn;
+  Local<Value> process_obj, require_fn, run_module;
+  Local<Context> context = env->context();
   if (!args->Get(context, 0).ToLocal(&process_obj) ||
       !args->Get(context, 1).ToLocal(&require_fn) ||
-      !args->Get(context, 2).ToLocal(&runcjs_fn)) {
+      !args->Get(context, 2).ToLocal(&run_module)) {
     return std::nullopt;
   }
   CHECK(process_obj->IsObject());
   CHECK(require_fn->IsFunction());
-  CHECK(runcjs_fn->IsFunction());
-  // TODO(joyeecheung): some support for running ESM as an entrypoint
-  // is needed. The simplest API would be to add a run_esm to
-  // StartExecutionCallbackInfo which compiles, links (to builtins)
-  // and evaluates a SourceTextModule.
-  // TODO(joyeecheung): the env pointer should be part of
-  // StartExecutionCallbackInfo, otherwise embedders are forced to use
-  // lambdas to pass it into the callback, which can make the code
-  // difficult to read.
-  node::StartExecutionCallbackInfo info{process_obj.As<Object>(),
-                                        require_fn.As<Function>(),
-                                        runcjs_fn.As<Function>()};
+  CHECK(run_module->IsFunction());
+  StartExecutionCallbackInfoWithModule info;
+  info.set_env(env);
+  info.set_process_object(process_obj.As<Object>());
+  info.set_native_require(require_fn.As<Function>());
+  info.set_run_module(run_module.As<Function>());
   return info;
 }
 
-MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
+MaybeLocal<Value> StartExecution(Environment* env,
+                                 StartExecutionCallbackWithModule cb) {
   InternalCallbackScope callback_scope(
       env,
       Object::New(env->isolate()),
@@ -294,7 +290,7 @@ MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
 
   // Only snapshot builder or embedder applications set the
   // callback.
-  if (cb != nullptr) {
+  if (cb) {
     EscapableHandleScope scope(env->isolate());
 
     Local<Value> result;
@@ -308,9 +304,9 @@ MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
       }
     }
 
-    auto info = CallbackInfoFromArray(env->context(), result);
+    auto info = CallbackInfoFromArray(env, result);
     if (!info.has_value()) {
-      MaybeLocal<Value>();
+      return MaybeLocal<Value>();
     }
 #if HAVE_INSPECTOR
     if (env->options()->debug_options().break_first_line) {
@@ -780,7 +776,10 @@ static ExitCode ProcessGlobalArgsInternal(std::vector<std::string>* args,
     env_opts->abort_on_uncaught_exception = true;
   }
 
-  v8_args.emplace_back("--js-source-phase-imports");
+  if (std::ranges::find(v8_args, "--no-js-source-phase-imports") ==
+      v8_args.end()) {
+    v8_args.emplace_back("--js-source-phase-imports");
+  }
 
 #ifdef __POSIX__
   // Block SIGPROF signals when sleeping in epoll_wait/kevent/etc.  Avoids the
@@ -880,6 +879,7 @@ static ExitCode InitializeNodeWithArgsInternal(
   HandleEnvOptions(per_process::cli_options->per_isolate->per_env);
 
   std::string node_options;
+  std::string node_options_from_dotenv;
   auto env_files = node::Dotenv::GetDataFromArgs(*argv);
 
   if (!env_files.empty()) {
@@ -906,7 +906,8 @@ static ExitCode InitializeNodeWithArgsInternal(
       }
     }
 
-    per_process::dotenv_file.AssignNodeOptionsIfAvailable(&node_options);
+    per_process::dotenv_file.AssignNodeOptionsIfAvailable(
+        &node_options_from_dotenv);
   }
 
   std::string node_options_from_config;
@@ -936,8 +937,9 @@ static ExitCode InitializeNodeWithArgsInternal(
       errors->emplace_back("The number of NODE_OPTIONS doesn't match "
                            "the number of flags in the config file");
     }
-    node_options += node_options_from_config;
   }
+
+  node_options = node_options_from_config + node_options_from_dotenv;
 
 #if !defined(NODE_WITHOUT_NODE_OPTIONS)
   bool should_parse_node_options =
@@ -1218,20 +1220,6 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
       return result;
     }
 
-    if (per_process::cli_options->use_system_ca) {
-      // Load the system CA certificates eagerly off the main thread to avoid
-      // blocking the main thread when the first TLS connection is made. We
-      // don't need to wait for the thread to finish with code here, as
-      // GetSystemStoreCACertificates() has a function-local static and any
-      // actual user of it will wait for that to complete initialization.
-      int r = crypto::LoadSystemCACertificatesOffThread();
-      if (r != 0) {
-        FPrintF(
-            stderr,
-            "Warning: Failed to load system CA certificates off thread: %s\n",
-            uv_strerror(r));
-      }
-    }
     // Ensure CSPRNG is properly seeded.
     CHECK(ncrypto::CSPRNG(nullptr, 0));
 
@@ -1393,6 +1381,21 @@ ExitCode GenerateAndWriteSnapshotData(const SnapshotData** snapshot_data_ptr,
   DCHECK(snapshot_config.builder_script_path.has_value());
   const std::string& builder_script =
       snapshot_config.builder_script_path.value();
+
+  // For the special builder node:generate_default_snapshot_source, generate
+  // the snapshot as C++ source and write it to snapshot.cc (for testing).
+  if (builder_script == "node:generate_default_snapshot_source") {
+    // Reset to empty to generate from scratch.
+    snapshot_config.builder_script_path = {};
+    exit_code =
+        node::SnapshotBuilder::GenerateAsSource("snapshot.cc",
+                                                args_maybe_patched,
+                                                result->exec_args(),
+                                                snapshot_config,
+                                                true /* use_array_literals */);
+    return exit_code;
+  }
+
   // node:embedded_snapshot_main indicates that we are using the
   // embedded snapshot and we are not supposed to clean it up.
   if (builder_script == "node:embedded_snapshot_main") {

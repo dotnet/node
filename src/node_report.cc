@@ -455,8 +455,7 @@ static Maybe<std::string> ErrorToString(Isolate* isolate,
   if (!maybe_str.ToLocal(&js_str)) {
     return Nothing<std::string>();
   }
-  String::Utf8Value sv(isolate, js_str);
-  return Just<>(std::string(*sv, sv.length()));
+  return Just(Utf8Value(isolate, js_str).ToString());
 }
 
 static void PrintEmptyJavaScriptStack(JSONWriter* writer) {
@@ -475,7 +474,8 @@ static void PrintJavaScriptStack(JSONWriter* writer,
                                  const char* trigger) {
   HandleScope scope(isolate);
   Local<v8::StackTrace> stack;
-  if (!GetCurrentStackTrace(isolate, MAX_FRAME_COUNT).ToLocal(&stack)) {
+  if (!GetCurrentStackTrace(isolate, MAX_FRAME_COUNT).ToLocal(&stack) ||
+      stack->GetFrameCount() == 0) {
     PrintEmptyJavaScriptStack(writer);
     return;
   }
@@ -501,7 +501,7 @@ static void PrintJavaScriptStack(JSONWriter* writer,
     const int column = frame->GetColumn();
 
     std::string stack_line = SPrintF(
-        "at %s (%s:%d:%d)", *function_name, *script_name, line_number, column);
+        "at %s (%s:%d:%d)", function_name, script_name, line_number, column);
     writer->json_element(stack_line);
   }
   writer->json_arrayend();
@@ -757,7 +757,6 @@ static void PrintSystemInformation(JSONWriter* writer) {
 
   writer->json_objectstart("userLimits");
   struct rlimit limit;
-  std::string soft, hard;
 
   for (size_t i = 0; i < arraysize(rlimit_strings); i++) {
     if (getrlimit(rlimit_strings[i].id, &limit) == 0) {
@@ -793,8 +792,6 @@ static void PrintLoadedLibraries(JSONWriter* writer) {
 
 // Obtain and report the node and subcomponent version strings.
 static void PrintComponentVersions(JSONWriter* writer) {
-  std::stringstream buf;
-
   writer->json_objectstart("componentVersions");
 
   for (const auto& version : per_process::metadata.versions.pairs()) {
@@ -858,13 +855,6 @@ std::string TriggerNodeReport(Isolate* isolate,
       filename = *DiagnosticFilename(
           env != nullptr ? env->thread_id() : 0, "report", "json");
     }
-    if (env != nullptr) {
-      THROW_IF_INSUFFICIENT_PERMISSIONS(
-          env,
-          permission::PermissionScope::kFileSystemWrite,
-          std::string_view(Environment::GetCwd(env->exec_path())),
-          filename);
-    }
   }
 
   // Open the report file stream for writing. Supports stdout/err,
@@ -882,12 +872,21 @@ std::string TriggerNodeReport(Isolate* isolate,
       report_directory = per_process::cli_options->report_directory;
     }
     // Regular file. Append filename to directory path if one was specified
+    std::string pathname;
     if (report_directory.length() > 0) {
-      std::string pathname = report_directory + kPathSeparator + filename;
-      outfile.open(pathname, std::ios::out | std::ios::binary);
+      pathname = report_directory + kPathSeparator + filename;
     } else {
-      outfile.open(filename, std::ios::out | std::ios::binary);
+      pathname = filename;
     }
+
+    // We may not always be in a great state when generating a node report.
+    // Allow for the case where we don't have an env.
+    if (env != nullptr) {
+      THROW_IF_INSUFFICIENT_PERMISSIONS(
+          env, permission::PermissionScope::kFileSystemWrite, pathname, "");
+    }
+
+    outfile.open(pathname, std::ios::out | std::ios::binary);
     // Check for errors on the file open
     if (!outfile.is_open()) {
       std::cerr << "\nFailed to open Node.js report file: " << filename;

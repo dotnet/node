@@ -47,7 +47,7 @@ const { SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION } =
 const tls = require('tls');
 const fixtures = require('../common/fixtures');
 
-const testCases =
+let testCases =
   [{ title: 'Do not request certs. Everyone is unauthorized.',
      requestCert: false,
      rejectUnauthorized: false,
@@ -124,6 +124,15 @@ const testCases =
        { name: 'nocert', shouldReject: true },
      ] },
   ];
+
+if (process.features.openssl_is_boringssl) {
+  // Remove the delayed client-certificate verification case. It depends on TLS
+  // renegotiation to request a client certificate after the initial handshake,
+  // but BoringSSL does not support caller-initiated renegotiation.
+  common.printSkipMessage(
+    'BoringSSL: skipping renegotiated client certificate verification case');
+  testCases = testCases.filter((tcase) => !tcase.renegotiate);
+}
 
 function filenamePEM(n) {
   return fixtures.path('keys', `${n}.pem`);
@@ -221,7 +230,7 @@ function runClient(prefix, port, options, cb) {
     }
   });
 
-  client.on('exit', function(code) {
+  client.on('exit', common.mustCall((code) => {
     if (options.shouldReject) {
       assert.strictEqual(
         rejected, true,
@@ -237,7 +246,7 @@ function runClient(prefix, port, options, cb) {
     }
 
     cb();
-  });
+  }));
 }
 
 
@@ -273,7 +282,7 @@ function runTest(port, testIndex) {
   }
 
   let renegotiated = false;
-  const server = tls.Server(serverOptions, function handleConnection(c) {
+  const server = tls.Server(serverOptions, common.mustCallAtLeast(function handleConnection(c) {
     c.on('error', function(e) {
       // child.kill() leads ECONNRESET error in the TLS connection of
       // openssl s_client via spawn(). A test result is already
@@ -282,18 +291,17 @@ function runTest(port, testIndex) {
     });
     if (tcase.renegotiate && !renegotiated) {
       renegotiated = true;
-      setTimeout(function() {
+      setTimeout(common.mustCall(() => {
         console.error(`${prefix}- connected, renegotiating`);
         c.write('\n_renegotiating\n');
         return c.renegotiate({
           requestCert: true,
           rejectUnauthorized: false
-        }, function(err) {
-          assert.ifError(err);
+        }, common.mustSucceed(() => {
           c.write('\n_renegotiated\n');
           handleConnection(c);
-        });
-      }, 200);
+        }));
+      }), 200);
       return;
     }
 
@@ -305,7 +313,7 @@ function runTest(port, testIndex) {
       console.error(`${prefix}- unauthed connection: %s`, c.authorizationError);
       c.write('\n_unauthed\n');
     }
-  });
+  }));
 
   function runNextClient(clientIndex) {
     const options = tcase.clients[clientIndex];

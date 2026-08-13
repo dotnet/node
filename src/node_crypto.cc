@@ -48,6 +48,7 @@ namespace crypto {
   V(Hmac)                                                                      \
   V(Keygen)                                                                    \
   V(Keys)                                                                      \
+  V(NativeCryptoKey)                                                           \
   V(NativeKeyObject)                                                           \
   V(PBKDF2Job)                                                                 \
   V(Random)                                                                    \
@@ -60,18 +61,25 @@ namespace crypto {
   V(Verify)                                                                    \
   V(X509Certificate)
 
-#if !defined(OPENSSL_NO_ARGON2) && OPENSSL_VERSION_NUMBER >= 0x30200000L
+#if OPENSSL_WITH_ARGON2
 #define ARGON2_NAMESPACE_LIST(V) V(Argon2)
 #else
 #define ARGON2_NAMESPACE_LIST(V)
-#endif  // !OPENSSL_NO_ARGON2 && OpenSSL >= 3.2
+#endif  // OPENSSL_WITH_ARGON2
 
-// KEM functionality requires OpenSSL 3.0.0 or later
-#if OPENSSL_VERSION_MAJOR >= 3
+#if OPENSSL_WITH_KEM
 #define KEM_NAMESPACE_LIST(V) V(KEM)
 #else
 #define KEM_NAMESPACE_LIST(V)
 #endif
+
+#if OPENSSL_WITH_KMAC
+#define KMAC_NAMESPACE_LIST(V) V(Kmac)
+#else
+#define KMAC_NAMESPACE_LIST(V)
+#endif  // OPENSSL_WITH_KMAC
+
+#define TURBOSHAKE_NAMESPACE_LIST(V) V(TurboShake)
 
 #ifdef OPENSSL_NO_SCRYPT
 #define SCRYPT_NAMESPACE_LIST(V)
@@ -83,7 +91,9 @@ namespace crypto {
   CRYPTO_NAMESPACE_LIST_BASE(V)                                                \
   ARGON2_NAMESPACE_LIST(V)                                                     \
   KEM_NAMESPACE_LIST(V)                                                        \
-  SCRYPT_NAMESPACE_LIST(V)
+  KMAC_NAMESPACE_LIST(V)                                                       \
+  SCRYPT_NAMESPACE_LIST(V)                                                     \
+  TURBOSHAKE_NAMESPACE_LIST(V)
 
 void Initialize(Local<Object> target,
                 Local<Value> unused,

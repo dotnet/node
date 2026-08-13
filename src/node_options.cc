@@ -10,6 +10,7 @@
 #include "uv.h"
 #if HAVE_OPENSSL
 #include "openssl/opensslv.h"
+#include "quic/guard.h"
 #endif
 
 #include <algorithm>
@@ -127,7 +128,15 @@ void PerIsolateOptions::HandleMaxOldSpaceSizePercentage(
   }
 
   // Get available memory in bytes
+#ifdef V8_COMPRESS_POINTERS
+  // When pointer compression is enabled, V8 uses a 4 GiB heap limit.
+  // We'll use the smaller of that or the total system memory as
+  // reported by uv.
+  uint64_t total_memory =
+      std::min(uv_get_total_memory(), kMaxPointerCompressionHeap);  // 4 GiB
+#else
   uint64_t total_memory = uv_get_total_memory();
+#endif
   uint64_t constrained_memory = uv_get_constrained_memory();
 
   // Use constrained memory if available, otherwise use total memory
@@ -241,7 +250,7 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     } else if (test_runner_force_exit) {
       errors->push_back("either --watch or --test-force-exit "
                         "can be used, not both");
-    } else if (!test_runner && (argv->size() < 1 || (*argv)[1].empty())) {
+    } else if (!test_runner && watch_mode_paths.empty() && argv->size() < 1) {
       errors->push_back("--watch requires specifying a file");
     }
 
@@ -295,13 +304,13 @@ namespace options_parser {
 
 // Helper function to convert option types to their string representation
 // and add them to a V8 Map
-static bool AddOptionTypeToMap(Isolate* isolate,
-                               Local<Context> context,
-                               Local<Map> map,
-                               const std::string& option_name,
-                               const OptionType& option_type) {
+static bool AddOptionTypeToObject(Isolate* isolate,
+                                  Local<Context> context,
+                                  Local<Object> object,
+                                  const std::string& option_name,
+                                  const OptionMappingDetails& option_details) {
   std::string type;
-  switch (static_cast<int>(option_type)) {
+  switch (static_cast<int>(option_details.type)) {
     case 0:   // No-op
     case 1:   // V8 flags
       break;  // V8 and NoOp flags are not supported
@@ -344,7 +353,26 @@ static bool AddOptionTypeToMap(Isolate* isolate,
     return true;  // Skip this entry but continue processing
   }
 
-  if (map->Set(context, option_key, type_value).IsEmpty()) {
+  Local<String> help_text;
+  if (!String::NewFromUtf8(isolate,
+                           option_details.help_text.data(),
+                           v8::NewStringType::kNormal,
+                           option_details.help_text.size())
+           .ToLocal(&help_text)) {
+    return true;  // Skip this entry but continue processing
+  }
+
+  // Create an object with type and help_text properties
+  Local<Value> null_value = Null(isolate);
+  constexpr size_t kOptionInfoLength = 2;
+  std::array<Local<Name>, kOptionInfoLength> names = {
+      String::NewFromUtf8Literal(isolate, "type"),
+      String::NewFromUtf8Literal(isolate, "description")};
+  std::array<Local<Value>, kOptionInfoLength> values = {type_value, help_text};
+  Local<Object> option_info = Object::New(
+      isolate, null_value, names.data(), values.data(), kOptionInfoLength);
+
+  if (object->Set(context, option_key, option_info).IsNothing()) {
     return false;  // Error occurred, stop processing
   }
 
@@ -422,10 +450,6 @@ void Parse(
 // TODO(addaleax): Make that unnecessary.
 
 DebugOptionsParser::DebugOptionsParser() {
-#ifndef DISABLE_SINGLE_EXECUTABLE_APPLICATION
-  if (sea::IsSingleExecutable()) return;
-#endif
-
   AddOption("--inspect-port",
             "set host:port for inspector",
             &DebugOptions::host_port,
@@ -482,17 +506,23 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             kAllowedInEnvvar,
             true);
   AddOption("--experimental-print-required-tla",
-            "Print pending top-level await. If --experimental-require-module "
+            "Print pending top-level await. If --require-module "
             "is true, evaluate asynchronous graphs loaded by `require()` but "
             "do not run the microtasks, in order to to find and print "
             "top-level await in the graph",
             &EnvironmentOptions::print_required_tla,
             kAllowedInEnvvar);
-  AddOption("--experimental-require-module",
+  AddOption("--require-module",
             "Allow loading synchronous ES Modules in require().",
             &EnvironmentOptions::require_module,
             kAllowedInEnvvar,
             true);
+  AddOption("--experimental-require-module",
+            "Legacy alias for --require-module",
+            &EnvironmentOptions::require_module,
+            kAllowedInEnvvar,
+            true);
+  Implies("--experimental-require-module", "--require-module");
   AddOption("--diagnostic-dir",
             "set dir for all output files"
             " (default: current working directory)",
@@ -552,14 +582,13 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "experimental node:sqlite module",
             &EnvironmentOptions::experimental_sqlite,
             kAllowedInEnvvar,
-            true);
+            HAVE_SQLITE);
   AddOption("--experimental-quic",
-            "" /* undocumented until its development */,
-#ifdef NODE_OPENSSL_HAS_QUIC
+#ifndef OPENSSL_NO_QUIC
+            "experimental QUIC support",
             &EnvironmentOptions::experimental_quic,
 #else
-            // Option is a no-op if the NODE_OPENSSL_HAS_QUIC
-            // compile flag is not enabled
+            "" /* undocumented when no-op */,
             NoOp{},
 #endif
             kAllowedInEnvvar);
@@ -597,27 +626,43 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--allow-fs-read",
             "allow permissions to read the filesystem",
             &EnvironmentOptions::allow_fs_read,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            OptionNamespaces::kPermissionNamespace);
   AddOption("--allow-fs-write",
             "allow permissions to write in the filesystem",
             &EnvironmentOptions::allow_fs_write,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            OptionNamespaces::kPermissionNamespace);
   AddOption("--allow-addons",
             "allow use of addons when any permissions are set",
             &EnvironmentOptions::allow_addons,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kPermissionNamespace);
   AddOption("--allow-child-process",
             "allow use of child process when any permissions are set",
             &EnvironmentOptions::allow_child_process,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kPermissionNamespace);
+  AddOption("--allow-inspector",
+            "allow use of inspector when any permissions are set",
+            &EnvironmentOptions::allow_inspector,
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kPermissionNamespace);
   AddOption("--allow-wasi",
             "allow wasi when any permissions are set",
             &EnvironmentOptions::allow_wasi,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kPermissionNamespace);
   AddOption("--allow-worker",
             "allow worker threads when any permissions are set",
             &EnvironmentOptions::allow_worker_threads,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kPermissionNamespace);
   AddOption("--experimental-repl-await",
             "experimental await keyword support in REPL",
             &EnvironmentOptions::experimental_repl_await,
@@ -755,6 +800,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--experimental-network-inspection",
             "experimental network inspection support",
             &EnvironmentOptions::experimental_network_inspection);
+  AddOption("--experimental-storage-inspection",
+            "experimental storage inspection support",
+            &EnvironmentOptions::experimental_storage_inspection);
   AddOption("--experimental-worker-inspection",
             "experimental worker inspection support",
             &EnvironmentOptions::experimental_worker_inspection);
@@ -811,7 +859,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--test",
             "launch test runner on startup",
             &EnvironmentOptions::test_runner,
-            kDisallowedInEnvvar);
+            kDisallowedInEnvvar,
+            false,
+            OptionNamespaces::kTestRunnerNamespace);
   AddOption("--test-concurrency",
             "specify test runner concurrency",
             &EnvironmentOptions::test_runner_concurrency,
@@ -919,6 +969,20 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::test_global_setup_path,
             kAllowedInEnvvar,
             OptionNamespaces::kTestRunnerNamespace);
+  AddOption("--test-randomize",
+            "run tests in a random order",
+            &EnvironmentOptions::test_randomize,
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kTestRunnerNamespace);
+  AddOption(
+      "[has_test_random_seed]", "", &EnvironmentOptions::has_test_random_seed);
+  AddOption("--test-random-seed",
+            "seed used to randomize test execution order",
+            &EnvironmentOptions::test_random_seed,
+            kAllowedInEnvvar,
+            OptionNamespaces::kTestRunnerNamespace);
+  Implies("--test-random-seed", "[has_test_random_seed]");
   AddOption("--test-rerun-failures",
             "specifies the path to the rerun state file",
             &EnvironmentOptions::test_rerun_failures_path,
@@ -1007,20 +1071,26 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--watch",
             "run in watch mode",
             &EnvironmentOptions::watch_mode,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kWatchNamespace);
   AddOption("--watch-path",
             "path to watch",
             &EnvironmentOptions::watch_mode_paths,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            OptionNamespaces::kWatchNamespace);
   AddOption("--watch-kill-signal",
             "kill signal to send to the process on watch mode restarts"
             "(default: SIGTERM)",
             &EnvironmentOptions::watch_mode_kill_signal,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            OptionNamespaces::kWatchNamespace);
   AddOption("--watch-preserve-output",
             "preserve outputs on watch mode restart",
             &EnvironmentOptions::watch_mode_preserve_output,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kWatchNamespace);
   Implies("--watch-path", "--watch");
   AddOption("--check",
             "syntax check script without executing",
@@ -1051,17 +1121,18 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "ES module to preload (option can be repeated)",
             &EnvironmentOptions::preload_esm_modules,
             kAllowedInEnvvar);
-  AddOption("--experimental-strip-types",
-            "Experimental type-stripping for TypeScript files.",
-            &EnvironmentOptions::experimental_strip_types,
+  AddOption("--strip-types",
+            "Type-stripping for TypeScript files.",
+            &EnvironmentOptions::strip_types,
             kAllowedInEnvvar,
-            true);
+            HAVE_AMARO);
+  AddAlias("--experimental-strip-types", "--strip-types");
   AddOption("--experimental-transform-types",
             "enable transformation of TypeScript-only"
             "syntax into JavaScript code",
             &EnvironmentOptions::experimental_transform_types,
             kAllowedInEnvvar);
-  Implies("--experimental-transform-types", "--experimental-strip-types");
+  Implies("--experimental-transform-types", "--strip-types");
   Implies("--experimental-transform-types", "--enable-source-maps");
   AddOption("--interactive",
             "always enter the REPL even if stdin does not appear "
@@ -1134,6 +1205,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             "help system profilers to translate JavaScript interpreted frames",
             V8Option{},
             kAllowedInEnvvar);
+  AddOption("--max-heap-size", "", V8Option{}, kAllowedInEnvvar);
   AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
   AddOption("--max-old-space-size-percentage",
             "set V8's max old space size as a percentage of available memory "
@@ -1484,14 +1556,19 @@ std::string GetBashCompletion() {
   return out.str();
 }
 
-std::unordered_map<std::string, options_parser::OptionType>
+std::unordered_map<std::string, options_parser::OptionMappingDetails>
 MapEnvOptionsFlagInputType() {
-  std::unordered_map<std::string, options_parser::OptionType> type_map;
+  std::unordered_map<std::string, options_parser::OptionMappingDetails>
+      type_map;
   const auto& parser = _ppop_instance;
   for (const auto& item : parser.options_) {
     if (!item.first.empty() && !item.first.starts_with('[') &&
         item.second.env_setting == kAllowedInEnvvar) {
-      type_map[item.first] = item.second.type;
+      const auto mapping_details = options_parser::OptionMappingDetails{
+          item.second.type,
+          item.second.help_text,
+      };
+      type_map[item.first] = mapping_details;
     }
   }
   return type_map;
@@ -1511,27 +1588,33 @@ std::vector<std::string> MapAvailableNamespaces() {
   return namespaceNames;
 }
 
-std::unordered_map<std::string, options_parser::OptionType>
+std::unordered_map<std::string, options_parser::OptionMappingDetails>
 MapOptionsByNamespace(std::string namespace_name) {
-  std::unordered_map<std::string, options_parser::OptionType> type_map;
+  std::unordered_map<std::string, options_parser::OptionMappingDetails>
+      type_map;
   const auto& parser = _ppop_instance;
   for (const auto& item : parser.options_) {
     if (!item.first.empty() && !item.first.starts_with('[') &&
         item.second.namespace_id == namespace_name) {
-      type_map[item.first] = item.second.type;
+      const auto mapping_details = options_parser::OptionMappingDetails{
+          item.second.type,
+          item.second.help_text,
+      };
+      type_map[item.first] = mapping_details;
     }
   }
   return type_map;
 }
 
-std::unordered_map<std::string,
-                   std::unordered_map<std::string, options_parser::OptionType>>
+std::unordered_map<
+    std::string,
+    std::unordered_map<std::string, options_parser::OptionMappingDetails>>
 MapNamespaceOptionsAssociations() {
   std::vector<std::string> available_namespaces =
       options_parser::MapAvailableNamespaces();
   std::unordered_map<
       std::string,
-      std::unordered_map<std::string, options_parser::OptionType>>
+      std::unordered_map<std::string, options_parser::OptionMappingDetails>>
       namespace_option_mapping;
   for (const std::string& available_namespace : available_namespaces) {
     namespace_option_mapping[available_namespace] =
@@ -1784,9 +1867,10 @@ void GetEmbedderOptions(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(ret);
 }
 
-// This function returns a map containing all the options available
-// as NODE_OPTIONS and their input type
-// Example --experimental-transform types: kBoolean
+// This function returns an object containing all the options available
+// as NODE_OPTIONS and their metadata (input type and help text)
+// Example --experimental-transform metadata:
+// { type: kBoolean, help_text: "..." }
 // This is used to determine the type of the input for each option
 // to generate the config file json schema
 void GetEnvOptionsInputType(const FunctionCallbackInfo<Value>& args) {
@@ -1802,23 +1886,31 @@ void GetEnvOptionsInputType(const FunctionCallbackInfo<Value>& args) {
 
   Mutex::ScopedLock lock(per_process::cli_options_mutex);
 
-  Local<Map> flags_map = Map::New(isolate);
+  Local<Object> options_metadata = Object::New(isolate);
 
   for (const auto& item : _ppop_instance.options_) {
     if (!item.first.empty() && !item.first.starts_with('[') &&
         item.second.env_setting == kAllowedInEnvvar) {
-      if (!AddOptionTypeToMap(
-              isolate, context, flags_map, item.first, item.second.type)) {
+      const auto mapping_details = options_parser::OptionMappingDetails{
+          item.second.type,
+          item.second.help_text,
+      };
+      if (!AddOptionTypeToObject(isolate,
+                                 context,
+                                 options_metadata,
+                                 item.first,
+                                 mapping_details)) {
         return;
       }
     }
   }
-  args.GetReturnValue().Set(flags_map);
+  args.GetReturnValue().Set(options_metadata);
 }
 
-// This function returns a two-level nested map containing all the available
-// options grouped by their namespaces along with their input types. This is
-// used for config file JSON schema generation
+// This function returns a two-level nested map where:
+// - Keys are namespace names (e.g., "testRunner")
+// - Values are objects mapping option names to their metadata
+// This is used for config file JSON schema generation
 void GetNamespaceOptionsInputType(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
   Local<Context> context = isolate->GetCurrentContext();
@@ -1832,29 +1924,33 @@ void GetNamespaceOptionsInputType(const FunctionCallbackInfo<Value>& args) {
 
   Mutex::ScopedLock lock(per_process::cli_options_mutex);
 
-  Local<Map> namespaces_map = Map::New(isolate);
+  Local<Map> namespaces_metadata = Map::New(isolate);
 
-  // Get the mapping of namespaces to their options and types
+  // Get the mapping of namespaces to their options and metadata
   auto namespace_options = options_parser::MapNamespaceOptionsAssociations();
 
   for (const auto& ns_entry : namespace_options) {
     const std::string& namespace_name = ns_entry.first;
     const auto& options_map = ns_entry.second;
 
-    Local<Map> options_type_map = Map::New(isolate);
+    Local<Object> options_metadata = Object::New(isolate);
 
     for (const auto& opt_entry : options_map) {
       const std::string& option_name = opt_entry.first;
-      const options_parser::OptionType& option_type = opt_entry.second;
+      const options_parser::OptionMappingDetails& option_details =
+          opt_entry.second;
 
-      if (!AddOptionTypeToMap(
-              isolate, context, options_type_map, option_name, option_type)) {
+      if (!AddOptionTypeToObject(isolate,
+                                 context,
+                                 options_metadata,
+                                 option_name,
+                                 option_details)) {
         return;
       }
     }
 
     // Only add namespaces that have options
-    if (options_type_map->Size() > 0) {
+    if (!options_metadata.IsEmpty()) {
       Local<String> namespace_key;
       if (!String::NewFromUtf8(isolate,
                                namespace_name.data(),
@@ -1864,14 +1960,14 @@ void GetNamespaceOptionsInputType(const FunctionCallbackInfo<Value>& args) {
         continue;
       }
 
-      if (namespaces_map->Set(context, namespace_key, options_type_map)
+      if (namespaces_metadata->Set(context, namespace_key, options_metadata)
               .IsEmpty()) {
         return;
       }
     }
   }
 
-  args.GetReturnValue().Set(namespaces_map);
+  args.GetReturnValue().Set(namespaces_metadata);
 }
 
 // Return an array containing all currently active options as flag

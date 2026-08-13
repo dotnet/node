@@ -22,22 +22,103 @@
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif  // !OPENSSL_NO_ENGINE
+
+#ifndef OPENSSL_VERSION_PREREQ
+#define OPENSSL_VERSION_PREREQ(maj, min)                                       \
+  (OPENSSL_VERSION_NUMBER >= (((maj) << 28) | ((min) << 20)))
+#endif
+
+// BoringSSL declares the EVP_*_do_all* APIs, but their implementation may
+// live in libdecrepit. This matches standalone ncrypto's build flag.
+#ifndef NCRYPTO_BSSL_LIBDECREPIT_MISSING
+#define NCRYPTO_BSSL_LIBDECREPIT_MISSING 0
+#endif
+
+#if defined(OPENSSL_IS_BORINGSSL) && NCRYPTO_BSSL_LIBDECREPIT_MISSING
+#define NCRYPTO_USE_BORINGSSL_EVP_DO_ALL_FALLBACK 1
+#else
+#define NCRYPTO_USE_BORINGSSL_EVP_DO_ALL_FALLBACK 0
+#endif
+
 // The FIPS-related functions are only available
 // when the OpenSSL itself was compiled with FIPS support.
-#if defined(OPENSSL_FIPS) && OPENSSL_VERSION_MAJOR < 3
+#if defined(OPENSSL_FIPS) && !OPENSSL_VERSION_PREREQ(3, 0)
 #include <openssl/fips.h>
 #endif  // OPENSSL_FIPS
 
-// Define OPENSSL_WITH_PQC for post-quantum cryptography support
-#if OPENSSL_VERSION_NUMBER >= 0x30500000L
-#define OPENSSL_WITH_PQC 1
+#if OPENSSL_VERSION_PREREQ(3, 0)
+#define OPENSSL_WITH_AES_OCB 1
+#else
+#define OPENSSL_WITH_AES_OCB 0
+#endif
+
+#if !defined(OPENSSL_NO_ARGON2) && OPENSSL_VERSION_PREREQ(3, 2)
+#define OPENSSL_WITH_ARGON2 1
+#else
+#define OPENSSL_WITH_ARGON2 0
+#endif
+
+#if OPENSSL_VERSION_PREREQ(3, 0) || defined(OPENSSL_IS_BORINGSSL)
+#define OPENSSL_WITH_KEM 1
+#else
+#define OPENSSL_WITH_KEM 0
+#endif
+
+#if OPENSSL_VERSION_PREREQ(3, 0)
+#define OPENSSL_WITH_KMAC 1
+#else
+#define OPENSSL_WITH_KMAC 0
+#endif
+
+#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_PREREQ(3, 2)
+#define OPENSSL_WITH_SIGNATURE_CONTEXT_STRING 1
+#else
+#define OPENSSL_WITH_SIGNATURE_CONTEXT_STRING 0
+#endif
+
+#if !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_PREREQ(3, 2)
+#define OPENSSL_WITH_OPENSSL_DHKEM 1
+#else
+#define OPENSSL_WITH_OPENSSL_DHKEM 0
+#endif
+
+#if OPENSSL_WITH_KEM && !defined(OPENSSL_IS_BORINGSSL) &&                      \
+    !OPENSSL_VERSION_PREREQ(3, 5)
+#define OPENSSL_WITH_KEM_OPERATION_PARAM 1
+#else
+#define OPENSSL_WITH_KEM_OPERATION_PARAM 0
+#endif
+
+// Post-quantum cryptography support. Keep these explicit so code can
+// distinguish provider API shape from the available algorithm set.
+#if !defined(OPENSSL_IS_BORINGSSL) && OPENSSL_VERSION_PREREQ(3, 5)
+#define OPENSSL_WITH_OPENSSL_PQC 1
+#else
+#define OPENSSL_WITH_OPENSSL_PQC 0
+#endif
+
+#ifdef OPENSSL_IS_BORINGSSL
+#define OPENSSL_WITH_BORINGSSL_PQC 1
+#else
+#define OPENSSL_WITH_BORINGSSL_PQC 0
+#endif
+
+#define OPENSSL_WITH_PQC                                                       \
+  (OPENSSL_WITH_OPENSSL_PQC || OPENSSL_WITH_BORINGSSL_PQC)
+#define OPENSSL_WITH_PQC_ML_KEM_512 OPENSSL_WITH_OPENSSL_PQC
+#define OPENSSL_WITH_PQC_SLH_DSA OPENSSL_WITH_OPENSSL_PQC
+
+#if OPENSSL_WITH_OPENSSL_PQC
 #define EVP_PKEY_ML_KEM_512 NID_ML_KEM_512
 #define EVP_PKEY_ML_KEM_768 NID_ML_KEM_768
 #define EVP_PKEY_ML_KEM_1024 NID_ML_KEM_1024
 #include <openssl/core_names.h>
+#elif OPENSSL_WITH_BORINGSSL_PQC
+#define EVP_PKEY_ML_KEM_768 NID_ML_KEM_768
+#define EVP_PKEY_ML_KEM_1024 NID_ML_KEM_1024
 #endif
 
-#if OPENSSL_VERSION_MAJOR >= 3
+#if OPENSSL_VERSION_PREREQ(3, 0)
 #define OSSL3_CONST const
 #else
 #define OSSL3_CONST
@@ -66,7 +147,10 @@ namespace ncrypto {
 #define NCRYPTO_STR(x) #x
 #define NCRYPTO_REQUIRE(EXPR)                                                  \
   {                                                                            \
-    if (!(EXPR) { abort(); }) }
+    if (!(EXPR)) {                                                             \
+      abort();                                                                 \
+    }                                                                          \
+  }
 
 #define NCRYPTO_FAIL(MESSAGE)                                                  \
   do {                                                                         \
@@ -229,6 +313,8 @@ class DataPointer;
 class DHPointer;
 class ECKeyPointer;
 class EVPKeyPointer;
+class EVPMacCtxPointer;
+class EVPMacPointer;
 class EVPMDCtxPointer;
 class SSLCtxPointer;
 class SSLPointer;
@@ -304,9 +390,12 @@ class Cipher final {
 #else
   static constexpr size_t MAX_AUTH_TAG_LENGTH = 16;
 #endif
-  static_assert(EVP_GCM_TLS_TAG_LEN <= MAX_AUTH_TAG_LENGTH &&
-                EVP_CCM_TLS_TAG_LEN <= MAX_AUTH_TAG_LENGTH &&
-                EVP_CHACHAPOLY_TLS_TAG_LEN <= MAX_AUTH_TAG_LENGTH);
+  static_assert(EVP_GCM_TLS_TAG_LEN <= MAX_AUTH_TAG_LENGTH
+#ifndef OPENSSL_IS_BORINGSSL
+                && EVP_CCM_TLS_TAG_LEN <= MAX_AUTH_TAG_LENGTH &&
+                EVP_CHACHAPOLY_TLS_TAG_LEN <= MAX_AUTH_TAG_LENGTH
+#endif
+  );  // NOLINT(whitespace/parens)
 
   Cipher() = default;
   Cipher(const EVP_CIPHER* cipher) : cipher_(cipher) {}
@@ -853,6 +942,9 @@ class EVPKeyPointer final {
     DER,
     PEM,
     JWK,
+    RAW_PUBLIC,
+    RAW_PRIVATE,
+    RAW_SEED,
   };
 
   enum class PKParseError { NOT_RECOGNIZED, NEED_PASSPHRASE, FAILED };
@@ -862,6 +954,7 @@ class EVPKeyPointer final {
     bool output_key_object = false;
     PKFormatType format = PKFormatType::DER;
     PKEncodingType type = PKEncodingType::PKCS8;
+    int ec_point_form = POINT_CONVERSION_UNCOMPRESSED;
     AsymmetricKeyEncodingConfig() = default;
     AsymmetricKeyEncodingConfig(bool output_key_object,
                                 PKFormatType format,
@@ -1189,6 +1282,8 @@ class X509View final {
   BIOPointer getInfoAccess() const;
   BIOPointer getValidFrom() const;
   BIOPointer getValidTo() const;
+  std::optional<std::string_view> getSignatureAlgorithm() const;
+  std::optional<std::string> getSignatureAlgorithmOID() const;
   int64_t getValidFromTime() const;
   int64_t getValidToTime() const;
   DataPointer getSerialNumber() const;
@@ -1407,6 +1502,15 @@ class EVPMDCtxPointer final {
   std::optional<EVP_PKEY_CTX*> verifyInit(const EVPKeyPointer& key,
                                           const Digest& digest);
 
+  std::optional<EVP_PKEY_CTX*> signInitWithContext(
+      const EVPKeyPointer& key,
+      const Digest& digest,
+      const Buffer<const unsigned char>& context_string);
+  std::optional<EVP_PKEY_CTX*> verifyInitWithContext(
+      const EVPKeyPointer& key,
+      const Digest& digest,
+      const Buffer<const unsigned char>& context_string);
+
   DataPointer signOneShot(const Buffer<const unsigned char>& buf) const;
   DataPointer sign(const Buffer<const unsigned char>& buf) const;
   bool verify(const Buffer<const unsigned char>& buf,
@@ -1450,6 +1554,56 @@ class HMACCtxPointer final {
  private:
   DeleteFnPtr<HMAC_CTX, HMAC_CTX_free> ctx_;
 };
+
+#if OPENSSL_WITH_KMAC
+class EVPMacPointer final {
+ public:
+  EVPMacPointer() = default;
+  explicit EVPMacPointer(EVP_MAC* mac);
+  EVPMacPointer(EVPMacPointer&& other) noexcept;
+  EVPMacPointer& operator=(EVPMacPointer&& other) noexcept;
+  NCRYPTO_DISALLOW_COPY(EVPMacPointer)
+  ~EVPMacPointer();
+
+  inline bool operator==(std::nullptr_t) noexcept { return mac_ == nullptr; }
+  inline operator bool() const { return mac_ != nullptr; }
+  inline EVP_MAC* get() const { return mac_.get(); }
+  inline operator EVP_MAC*() const { return mac_.get(); }
+  void reset(EVP_MAC* mac = nullptr);
+  EVP_MAC* release();
+
+  static EVPMacPointer Fetch(const char* algorithm);
+
+ private:
+  DeleteFnPtr<EVP_MAC, EVP_MAC_free> mac_;
+};
+
+class EVPMacCtxPointer final {
+ public:
+  EVPMacCtxPointer() = default;
+  explicit EVPMacCtxPointer(EVP_MAC_CTX* ctx);
+  EVPMacCtxPointer(EVPMacCtxPointer&& other) noexcept;
+  EVPMacCtxPointer& operator=(EVPMacCtxPointer&& other) noexcept;
+  NCRYPTO_DISALLOW_COPY(EVPMacCtxPointer)
+  ~EVPMacCtxPointer();
+
+  inline bool operator==(std::nullptr_t) noexcept { return ctx_ == nullptr; }
+  inline operator bool() const { return ctx_ != nullptr; }
+  inline EVP_MAC_CTX* get() const { return ctx_.get(); }
+  inline operator EVP_MAC_CTX*() const { return ctx_.get(); }
+  void reset(EVP_MAC_CTX* ctx = nullptr);
+  EVP_MAC_CTX* release();
+
+  bool init(const Buffer<const void>& key, const OSSL_PARAM* params = nullptr);
+  bool update(const Buffer<const void>& data);
+  DataPointer final(size_t length);
+
+  static EVPMacCtxPointer New(EVP_MAC* mac);
+
+ private:
+  DeleteFnPtr<EVP_MAC_CTX, EVP_MAC_CTX_free> ctx_;
+};
+#endif  // OPENSSL_WITH_KMAC
 
 #ifndef OPENSSL_NO_ENGINE
 class EnginePointer final {
@@ -1512,8 +1666,9 @@ int NoPasswordCallback(char* buf, int size, int rwflag, void* u);
 
 int PasswordCallback(char* buf, int size, int rwflag, void* u);
 
-bool SafeX509SubjectAltNamePrint(const BIOPointer& out, X509_EXTENSION* ext);
-bool SafeX509InfoAccessPrint(const BIOPointer& out, X509_EXTENSION* ext);
+bool SafeX509SubjectAltNamePrint(const BIOPointer& out,
+                                 const X509_EXTENSION* ext);
+bool SafeX509InfoAccessPrint(const BIOPointer& out, const X509_EXTENSION* ext);
 
 // ============================================================================
 // SPKAC
@@ -1561,8 +1716,7 @@ DataPointer pbkdf2(const Digest& md,
                    uint32_t iterations,
                    size_t length);
 
-#if OPENSSL_VERSION_NUMBER >= 0x30200000L
-#ifndef OPENSSL_NO_ARGON2
+#if OPENSSL_WITH_ARGON2
 enum class Argon2Type { ARGON2D, ARGON2I, ARGON2ID };
 
 DataPointer argon2(const Buffer<const char>& pass,
@@ -1576,11 +1730,10 @@ DataPointer argon2(const Buffer<const char>& pass,
                    const Buffer<const unsigned char>& ad,
                    Argon2Type type);
 #endif
-#endif
 
 // ============================================================================
 // KEM (Key Encapsulation Mechanism)
-#if OPENSSL_VERSION_MAJOR >= 3
+#if OPENSSL_WITH_KEM
 
 class KEM final {
  public:
@@ -1604,13 +1757,13 @@ class KEM final {
                                  const Buffer<const void>& ciphertext);
 
  private:
-#if !OPENSSL_VERSION_PREREQ(3, 5)
+#if OPENSSL_WITH_KEM_OPERATION_PARAM
   static bool SetOperationParameter(EVP_PKEY_CTX* ctx,
                                     const EVPKeyPointer& key);
 #endif
 };
 
-#endif  // OPENSSL_VERSION_MAJOR >= 3
+#endif  // OPENSSL_WITH_KEM
 
 // ============================================================================
 // Version metadata

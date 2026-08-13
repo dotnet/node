@@ -22,6 +22,7 @@ using v8::ArrayBuffer;
 using v8::ArrayBufferView;
 using v8::BackingStore;
 using v8::BackingStoreInitializationMode;
+using v8::BackingStoreOnFailureMode;
 using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -47,7 +48,6 @@ namespace {
 void Concat(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
   Local<Context> context = isolate->GetCurrentContext();
-  Environment* env = Environment::GetCurrent(context);
 
   CHECK(args[0]->IsArray());
   Local<Array> array = args[0].As<Array>();
@@ -84,7 +84,14 @@ void Concat(const FunctionCallbackInfo<Value>& args) {
   }
 
   std::shared_ptr<BackingStore> store = ArrayBuffer::NewBackingStore(
-      env->isolate(), total, BackingStoreInitializationMode::kUninitialized);
+      isolate,
+      total,
+      BackingStoreInitializationMode::kUninitialized,
+      BackingStoreOnFailureMode::kReturnNull);
+  if (!store) [[unlikely]] {
+    THROW_ERR_MEMORY_ALLOCATION_FAILED(isolate);
+    return;
+  }
   uint8_t* ptr = static_cast<uint8_t*>(store->Data());
   for (size_t n = 0; n < views.size(); n++) {
     uint8_t* from =
@@ -93,7 +100,7 @@ void Concat(const FunctionCallbackInfo<Value>& args) {
     ptr += views[n].length;
   }
 
-  args.GetReturnValue().Set(ArrayBuffer::New(env->isolate(), std::move(store)));
+  args.GetReturnValue().Set(ArrayBuffer::New(isolate, std::move(store)));
 }
 
 void BlobFromFilePath(const FunctionCallbackInfo<Value>& args) {
@@ -148,8 +155,7 @@ Local<FunctionTemplate> Blob::GetConstructorTemplate(Environment* env) {
   if (tmpl.IsEmpty()) {
     Isolate* isolate = env->isolate();
     tmpl = NewFunctionTemplate(isolate, nullptr);
-    tmpl->InstanceTemplate()->SetInternalFieldCount(
-        BaseObject::kInternalFieldCount);
+    tmpl->InstanceTemplate()->SetInternalFieldCount(Blob::kInternalFieldCount);
     tmpl->SetClassName(
         FIXED_ONE_BYTE_STRING(env->isolate(), "Blob"));
     SetProtoMethod(isolate, tmpl, "getReader", GetReader);
@@ -311,9 +317,10 @@ Local<FunctionTemplate> Blob::Reader::GetConstructorTemplate(Environment* env) {
     Isolate* isolate = env->isolate();
     tmpl = NewFunctionTemplate(isolate, nullptr);
     tmpl->InstanceTemplate()->SetInternalFieldCount(
-        BaseObject::kInternalFieldCount);
+        Blob::Reader::kInternalFieldCount);
     tmpl->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "BlobReader"));
     SetProtoMethod(env->isolate(), tmpl, "pull", Pull);
+    SetProtoMethod(env->isolate(), tmpl, "setWakeup", SetWakeup);
     env->set_blob_reader_constructor_template(tmpl);
   }
   return tmpl;
@@ -404,6 +411,20 @@ void Blob::Reader::Pull(const FunctionCallbackInfo<Value>& args) {
       std::move(next), node::bob::OPTIONS_END, nullptr, 0));
 }
 
+void Blob::Reader::SetWakeup(const FunctionCallbackInfo<Value>& args) {
+  Blob::Reader* reader;
+  ASSIGN_OR_RETURN_UNWRAP(&reader, args.This());
+  CHECK(args[0]->IsFunction());
+  reader->wakeup_.Reset(args.GetIsolate(), args[0].As<Function>());
+}
+
+void Blob::Reader::NotifyPull() {
+  if (wakeup_.IsEmpty() || !env()->can_call_into_js()) return;
+  HandleScope handle_scope(env()->isolate());
+  Local<Function> fn = wakeup_.Get(env()->isolate());
+  MakeCallback(fn, 0, nullptr);
+}
+
 BaseObjectPtr<BaseObject>
 Blob::BlobTransferData::Deserialize(
     Environment* env,
@@ -443,11 +464,9 @@ void Blob::StoreDataObject(const FunctionCallbackInfo<Value>& args) {
   Utf8Value type(isolate, args[3]);
 
   binding_data->store_data_object(
-      std::string(*key, key.length()),
+      key.ToString(),
       BlobBindingData::StoredDataObject(
-        BaseObjectPtr<Blob>(blob),
-        length,
-        std::string(*type, type.length())));
+          BaseObjectPtr<Blob>(blob), length, type.ToString()));
 }
 
 // Note: applying the V8 Fast API to the following function does not produce
@@ -487,7 +506,7 @@ void Blob::GetDataObject(const FunctionCallbackInfo<Value>& args) {
   Utf8Value key(isolate, args[0]);
 
   BlobBindingData::StoredDataObject stored =
-      binding_data->get_data_object(std::string(*key, key.length()));
+      binding_data->get_data_object(key.ToString());
   if (stored.blob) {
     Local<Value> type;
     if (!String::NewFromUtf8(isolate,
@@ -586,6 +605,7 @@ void Blob::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(Blob::GetDataObject);
   registry->Register(Blob::RevokeObjectURL);
   registry->Register(Blob::Reader::Pull);
+  registry->Register(Blob::Reader::SetWakeup);
   registry->Register(Concat);
   registry->Register(BlobFromFilePath);
 }

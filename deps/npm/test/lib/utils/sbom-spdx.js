@@ -131,6 +131,53 @@ t.test('single node - with license object', t => {
   t.end()
 })
 
+t.test('single node - with legacy licenses array (single)', t => {
+  const pkg = {
+    ...rootPkg,
+    licenses: [
+      {
+        type: 'MIT',
+        url: 'http://opensource.org/licenses/mit-license.php',
+      },
+    ],
+  }
+  const node = { ...root, package: pkg }
+  const res = spdxOutput({ npm, nodes: [node] })
+  t.matchSnapshot(JSON.stringify(res))
+  t.end()
+})
+
+t.test('single node - with legacy licenses array (multiple)', t => {
+  const pkg = {
+    ...rootPkg,
+    licenses: [
+      {
+        type: 'MIT',
+        url: 'http://opensource.org/licenses/mit-license.php',
+      },
+      {
+        type: 'Apache-2.0',
+        url: 'http://opensource.org/licenses/apache2.0.php',
+      },
+    ],
+  }
+  const node = { ...root, package: pkg }
+  const res = spdxOutput({ npm, nodes: [node] })
+  t.matchSnapshot(JSON.stringify(res))
+  t.end()
+})
+
+t.test('single node - with legacy licenses array (string entries)', t => {
+  const pkg = {
+    ...rootPkg,
+    licenses: ['MIT'],
+  }
+  const node = { ...root, package: pkg }
+  const res = spdxOutput({ npm, nodes: [node] })
+  t.matchSnapshot(JSON.stringify(res))
+  t.end()
+})
+
 t.test('single node - with license expression', t => {
   const pkg = { ...rootPkg, license: '(MIT OR Apache-2.0)' }
   const node = { ...root, package: pkg }
@@ -205,6 +252,27 @@ t.test('node - with duplicate deps', t => {
       { to: dep2 },
     ] }
   const res = spdxOutput({ npm, nodes: [node, dep1, dep2, dep1, dep2] })
+  t.matchSnapshot(JSON.stringify(res))
+  t.end()
+})
+
+t.test('node - with duplicate edges to same dep', t => {
+  // A node can have multiple outgoing edges resolving to the same
+  // `name@version` of the same edge type (e.g. a direct `dep1: ^1` plus an
+  // alias `dep1-aliased: npm:dep1@^1`). The resulting relationships must
+  // still be unique per (source, target, type) triple.
+  const node = { ...root,
+    edgesOut: [
+      { to: dep1 },
+      { to: dep1 },
+    ] }
+  const res = spdxOutput({ npm, nodes: [node, dep1] })
+  const depRels = res.relationships.filter(
+    r => r.spdxElementId === 'SPDXRef-Package-dep1-0.0.1'
+      && r.relatedSpdxElement === 'SPDXRef-Package-root-1.0.0'
+      && r.relationshipType === 'DEPENDENCY_OF'
+  )
+  t.equal(depRels.length, 1)
   t.matchSnapshot(JSON.stringify(res))
   t.end()
 })

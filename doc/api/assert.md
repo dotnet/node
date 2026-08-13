@@ -227,11 +227,20 @@ The `Assert` class allows creating independent assertion instances with custom o
 
 ### `new assert.Assert([options])`
 
+<!-- YAML
+changes:
+  - version: v24.9.0
+    pr-url: https://github.com/nodejs/node/pull/59762
+    description: Added `skipPrototype` option.
+-->
+
 * `options` {Object}
   * `diff` {string} If set to `'full'`, shows the full diff in assertion errors. Defaults to `'simple'`.
     Accepted values: `'simple'`, `'full'`.
   * `strict` {boolean} If set to `true`, non-strict methods behave like their
     corresponding strict methods. Defaults to `true`.
+  * `skipPrototype` {boolean} If set to `true`, skips prototype and constructor
+    comparison in deep equality checks. Defaults to `false`.
 
 Creates a new assertion instance. The `diff` option controls the verbosity of diffs in assertion error messages.
 
@@ -243,7 +252,8 @@ assertInstance.deepStrictEqual({ a: 1 }, { a: 2 });
 ```
 
 **Important**: When destructuring assertion methods from an `Assert` instance,
-the methods lose their connection to the instance's configuration options (such as `diff` and `strict` settings).
+the methods lose their connection to the instance's configuration options (such
+as `diff`, `strict`, and `skipPrototype` settings).
 The destructured methods will fall back to default behavior instead.
 
 ```js
@@ -255,6 +265,33 @@ myAssert.strictEqual({ a: 1 }, { b: { c: 1 } });
 // This loses the 'full' diff setting - falls back to default 'simple' diff
 const { strictEqual } = myAssert;
 strictEqual({ a: 1 }, { b: { c: 1 } });
+```
+
+The `skipPrototype` option affects all deep equality methods:
+
+```js
+class Foo {
+  constructor(a) {
+    this.a = a;
+  }
+}
+
+class Bar {
+  constructor(a) {
+    this.a = a;
+  }
+}
+
+const foo = new Foo(1);
+const bar = new Bar(1);
+
+// Default behavior - fails due to different constructors
+const assert1 = new Assert();
+assert1.deepStrictEqual(foo, bar); // AssertionError
+
+// Skip prototype comparison - passes if properties are equal
+const assert2 = new Assert({ skipPrototype: true });
+assert2.deepStrictEqual(foo, bar); // OK
 ```
 
 When destructured, methods lose access to the instance's `this` context and revert to default assertion behavior
@@ -678,6 +715,7 @@ are also recursively evaluated by the following rules.
   both sides are {NaN}.
 * [Type tags][Object.prototype.toString()] of objects should be the same.
 * Only [enumerable "own" properties][] are considered.
+* Object constructors are compared when available.
 * {Error} names, messages, causes, and errors are always compared,
   even if these are not enumerable properties.
 * [Object wrappers][] are compared both as objects and unwrapped values.
@@ -1998,6 +2036,8 @@ If no arguments are passed in at all `message` will be set to the string:
 Be aware that in the `repl` the error message will be different to the one
 thrown in a file! See below for further details.
 
+<!-- eslint-disable no-restricted-syntax -->
+
 ```mjs
 import assert from 'node:assert/strict';
 
@@ -2032,6 +2072,8 @@ assert.ok(0);
 //
 //   assert.ok(0)
 ```
+
+<!-- eslint-disable no-restricted-syntax -->
 
 ```cjs
 const assert = require('node:assert/strict');
@@ -2072,20 +2114,20 @@ assert.ok(0);
 import assert from 'node:assert/strict';
 
 // Using `assert()` works the same:
-assert(0);
+assert(2 + 2 > 5);
 // AssertionError: The expression evaluated to a falsy value:
 //
-//   assert(0)
+//   assert(2 + 2 > 5)
 ```
 
 ```cjs
 const assert = require('node:assert');
 
 // Using `assert()` works the same:
-assert(0);
+assert(2 + 2 > 5);
 // AssertionError: The expression evaluated to a falsy value:
 //
-//   assert(0)
+//   assert(2 + 2 > 5)
 ```
 
 ## `assert.rejects(asyncFn[, error][, message])`
@@ -2801,7 +2843,7 @@ assert.partialDeepStrictEqual(
 // AssertionError
 ```
 
-[Object wrappers]: https://developer.mozilla.org/en-US/docs/Glossary/Primitive#Primitive_wrapper_objects_in_JavaScript
+[Object wrappers]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Data_structures#primitive_values
 [Object.prototype.toString()]: https://tc39.github.io/ecma262/#sec-object.prototype.tostring
 [`!=` operator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Inequality
 [`===` operator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Strict_equality
@@ -2828,5 +2870,5 @@ assert.partialDeepStrictEqual(
 [`process.on('exit')`]: process.md#event-exit
 [`tracker.calls()`]: #trackercallsfn-exact
 [`tracker.verify()`]: #trackerverify
-[enumerable "own" properties]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Enumerability_and_ownership_of_properties
+[enumerable "own" properties]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Enumerability_and_ownership_of_properties
 [prototype-spec]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots

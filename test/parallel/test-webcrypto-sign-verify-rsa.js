@@ -82,12 +82,12 @@ async function testVerify({
   // Test failure when using the wrong algorithms
   await assert.rejects(
     subtle.verify(algorithm, hmacKey, signature, plaintext), {
-      message: /Unable to use this key to verify/
+      message: /Key algorithm mismatch/
     });
 
   await assert.rejects(
     subtle.verify(algorithm, ecdsaKeys.publicKey, signature, plaintext), {
-      message: /Unable to use this key to verify/
+      message: /Key algorithm mismatch/
     });
 
   // Test failure when signature is altered
@@ -185,12 +185,12 @@ async function testSign({
   // Test failure when using the wrong algorithms
   await assert.rejects(
     subtle.sign(algorithm, hmacKey, plaintext), {
-      message: /Unable to use this key to sign/
+      message: /Key algorithm mismatch/
     });
 
   await assert.rejects(
     subtle.sign(algorithm, ecdsaKeys.privateKey, plaintext), {
-      message: /Unable to use this key to sign/
+      message: /Key algorithm mismatch/
     });
 }
 
@@ -241,13 +241,13 @@ async function testSaltLength(keyLength, hash, hLen) {
       ['SHA-256', 32],
       ['SHA-384', 48],
       ['SHA-512', 64],
-      ['SHA3-256', 32],
-      ['SHA3-384', 48],
-      ['SHA3-512', 64],
+      ...(!process.features.openssl_is_boringssl ? [
+        ['SHA3-256', 32],
+        ['SHA3-384', 48],
+        ['SHA3-512', 64],
+      ] : []),
     ]) {
-      if (hash.startsWith('SHA-3') && !process.features.openssl_is_boringssl) {
-        variations.push(testSaltLength(keyLength, hash, hLen));
-      }
+      variations.push(testSaltLength(keyLength, hash, hLen));
     }
   }
 

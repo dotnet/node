@@ -10,6 +10,9 @@
 #include "v8.h"
 
 #include <openssl/evp.h>
+#ifdef OPENSSL_IS_BORINGSSL
+#include <openssl/aead.h>
+#endif
 
 namespace node {
 
@@ -45,67 +48,10 @@ bool ValidateIV(Environment* env,
     return false;
   }
 
-  if (mode == kCryptoJobAsync) {
+  if (IsCryptoJobAsync(mode)) {
     params->iv = iv.ToCopy();
   } else {
     params->iv = iv.ToByteSource();
-  }
-
-  return true;
-}
-
-bool ValidateAuthTag(Environment* env,
-                     CryptoJobMode mode,
-                     WebCryptoCipherMode cipher_mode,
-                     Local<Value> value,
-                     ChaCha20Poly1305CipherConfig* params) {
-  switch (cipher_mode) {
-    case kWebCryptoCipherDecrypt: {
-      if (!IsAnyBufferSource(value)) {
-        THROW_ERR_CRYPTO_INVALID_TAG_LENGTH(
-            env, "Authentication tag must be a buffer");
-        return false;
-      }
-
-      ArrayBufferOrViewContents<unsigned char> tag(value);
-      if (!tag.CheckSizeInt32()) [[unlikely]] {
-        THROW_ERR_OUT_OF_RANGE(env, "tag is too large");
-        return false;
-      }
-
-      if (tag.size() != kChaCha20Poly1305TagSize) {
-        THROW_ERR_CRYPTO_INVALID_TAG_LENGTH(
-            env, "Invalid authentication tag length");
-        return false;
-      }
-
-      if (mode == kCryptoJobAsync) {
-        params->tag = tag.ToCopy();
-      } else {
-        params->tag = tag.ToByteSource();
-      }
-      break;
-    }
-    case kWebCryptoCipherEncrypt: {
-      // For encryption, the value should be the tag length (passed from
-      // JavaScript) We expect it to be the tag size constant for
-      // ChaCha20-Poly1305
-      if (!value->IsUint32()) {
-        THROW_ERR_CRYPTO_INVALID_TAG_LENGTH(env, "Tag length must be a number");
-        return false;
-      }
-
-      uint32_t tag_length = value.As<v8::Uint32>()->Value();
-      if (tag_length != kChaCha20Poly1305TagSize) {
-        THROW_ERR_CRYPTO_INVALID_TAG_LENGTH(
-            env, "Invalid tag length for ChaCha20-Poly1305");
-        return false;
-      }
-      // Tag is generated during encryption, not provided
-      break;
-    }
-    default:
-      UNREACHABLE();
   }
 
   return true;
@@ -122,7 +68,7 @@ bool ValidateAdditionalData(Environment* env,
       return false;
     }
 
-    if (mode == kCryptoJobAsync) {
+    if (IsCryptoJobAsync(mode)) {
       params->additional_data = additional_data.ToCopy();
     } else {
       params->additional_data = additional_data.ToByteSource();
@@ -138,8 +84,7 @@ ChaCha20Poly1305CipherConfig::ChaCha20Poly1305CipherConfig(
     : mode(other.mode),
       cipher(other.cipher),
       iv(std::move(other.iv)),
-      additional_data(std::move(other.additional_data)),
-      tag(std::move(other.tag)) {}
+      additional_data(std::move(other.additional_data)) {}
 
 ChaCha20Poly1305CipherConfig& ChaCha20Poly1305CipherConfig::operator=(
     ChaCha20Poly1305CipherConfig&& other) noexcept {
@@ -151,10 +96,9 @@ ChaCha20Poly1305CipherConfig& ChaCha20Poly1305CipherConfig::operator=(
 void ChaCha20Poly1305CipherConfig::MemoryInfo(MemoryTracker* tracker) const {
   // If mode is sync, then the data in each of these properties
   // is not owned by the ChaCha20Poly1305CipherConfig, so we ignore it.
-  if (mode == kCryptoJobAsync) {
+  if (IsCryptoJobAsync(mode)) {
     tracker->TrackFieldWithSize("iv", iv.size());
     tracker->TrackFieldWithSize("additional_data", additional_data.size());
-    tracker->TrackFieldWithSize("tag", tag.size());
   }
 }
 
@@ -169,27 +113,24 @@ Maybe<void> ChaCha20Poly1305CipherTraits::AdditionalConfig(
   params->mode = mode;
   params->cipher = ncrypto::Cipher::CHACHA20_POLY1305;
 
+#ifndef OPENSSL_IS_BORINGSSL
+  // On BoringSSL, ChaCha20-Poly1305 is not exposed via the EVP_CIPHER registry
+  // so FromNid() returns a null Cipher. We use EVP_AEAD directly in DoCipher
+  // instead.
   if (!params->cipher) {
     THROW_ERR_CRYPTO_UNKNOWN_CIPHER(env);
     return Nothing<void>();
   }
+#endif
 
   // IV parameter (required)
   if (!ValidateIV(env, mode, args[offset], params)) {
     return Nothing<void>();
   }
 
-  // Authentication tag parameter (only for decryption) or tag length (for
-  // encryption)
-  if (static_cast<unsigned int>(args.Length()) > offset + 1) {
-    if (!ValidateAuthTag(env, mode, cipher_mode, args[offset + 1], params)) {
-      return Nothing<void>();
-    }
-  }
-
   // Additional authenticated data parameter (optional)
-  if (static_cast<unsigned int>(args.Length()) > offset + 2) {
-    if (!ValidateAdditionalData(env, mode, args[offset + 2], params)) {
+  if (static_cast<unsigned int>(args.Length()) > offset + 1) {
+    if (!ValidateAdditionalData(env, mode, args[offset + 1], params)) {
       return Nothing<void>();
     }
   }
@@ -211,6 +152,75 @@ WebCryptoCipherStatus ChaCha20Poly1305CipherTraits::DoCipher(
     return WebCryptoCipherStatus::INVALID_KEY_TYPE;
   }
 
+#ifdef OPENSSL_IS_BORINGSSL
+  // BoringSSL does not expose ChaCha20-Poly1305 via the EVP_CIPHER registry;
+  // it is only available through the EVP_AEAD API. Matches Chromium's
+  // WebCrypto ChaCha20-Poly1305 implementation.
+  const auto key_bytes =
+      reinterpret_cast<const unsigned char*>(key_data.GetSymmetricKey());
+  const auto ad_bytes = params.additional_data.data<unsigned char>();
+  const auto ad_len = params.additional_data.size();
+  const auto iv_bytes = params.iv.data<unsigned char>();
+  const auto iv_len = params.iv.size();
+
+  bssl::ScopedEVP_AEAD_CTX ctx;
+  if (!EVP_AEAD_CTX_init(ctx.get(),
+                         EVP_aead_chacha20_poly1305(),
+                         key_bytes,
+                         key_data.GetSymmetricKeySize(),
+                         kChaCha20Poly1305TagSize,
+                         nullptr)) {
+    return WebCryptoCipherStatus::FAILED;
+  }
+
+  if (cipher_mode == kWebCryptoCipherEncrypt) {
+    size_t out_len = 0;
+    const size_t max_out_len = in.size() + kChaCha20Poly1305TagSize;
+    auto buf = DataPointer::Alloc(max_out_len);
+    if (!EVP_AEAD_CTX_seal(ctx.get(),
+                           static_cast<unsigned char*>(buf.get()),
+                           &out_len,
+                           max_out_len,
+                           iv_bytes,
+                           iv_len,
+                           in.data<unsigned char>(),
+                           in.size(),
+                           ad_bytes,
+                           ad_len)) {
+      return WebCryptoCipherStatus::FAILED;
+    }
+    buf = buf.resize(out_len);
+    *out = ByteSource::Allocated(buf.release());
+    return WebCryptoCipherStatus::OK;
+  }
+
+  // Decrypt
+  if (in.size() < kChaCha20Poly1305TagSize) {
+    return WebCryptoCipherStatus::FAILED;
+  }
+  size_t out_len = 0;
+  const size_t max_out_len = in.size();  // at most |in_len| bytes written
+  auto buf = DataPointer::Alloc(max_out_len == 0 ? 1 : max_out_len);
+  if (!EVP_AEAD_CTX_open(ctx.get(),
+                         static_cast<unsigned char*>(buf.get()),
+                         &out_len,
+                         max_out_len,
+                         iv_bytes,
+                         iv_len,
+                         in.data<unsigned char>(),
+                         in.size(),
+                         ad_bytes,
+                         ad_len)) {
+    return WebCryptoCipherStatus::FAILED;
+  }
+  if (out_len == 0) {
+    *out = ByteSource();
+  } else {
+    buf = buf.resize(out_len);
+    *out = ByteSource::Allocated(buf.release());
+  }
+  return WebCryptoCipherStatus::OK;
+#else
   auto ctx = CipherCtxPointer::New();
   CHECK(ctx);
 
@@ -229,23 +239,25 @@ WebCryptoCipherStatus ChaCha20Poly1305CipherTraits::DoCipher(
     return WebCryptoCipherStatus::FAILED;
   }
 
-  size_t tag_len = 0;
+  size_t tag_len = kChaCha20Poly1305TagSize;
+  size_t data_len = in.size();
 
   switch (cipher_mode) {
     case kWebCryptoCipherDecrypt: {
-      if (params.tag.size() != kChaCha20Poly1305TagSize) {
+      if (data_len < tag_len) {
         return WebCryptoCipherStatus::FAILED;
       }
+      data_len -= tag_len;
+
       if (!ctx.setAeadTag(ncrypto::Buffer<const char>{
-              .data = params.tag.data<char>(),
-              .len = params.tag.size(),
+              .data = in.data<char>() + data_len,
+              .len = tag_len,
           })) {
         return WebCryptoCipherStatus::FAILED;
       }
       break;
     }
     case kWebCryptoCipherEncrypt: {
-      tag_len = kChaCha20Poly1305TagSize;
       break;
     }
     default:
@@ -253,7 +265,17 @@ WebCryptoCipherStatus ChaCha20Poly1305CipherTraits::DoCipher(
   }
 
   size_t total = 0;
-  int buf_len = in.size() + ctx.getBlockSize() + tag_len;
+  const int block_size = ctx.getBlockSize();
+  if (block_size < 0) {
+    return WebCryptoCipherStatus::FAILED;
+  }
+  int buf_len;
+  if (!TryGetIntCipherOutputLength(
+          data_len,
+          static_cast<size_t>(block_size) + (encrypt ? tag_len : 0),
+          &buf_len)) {
+    return WebCryptoCipherStatus::FAILED;
+  }
   int out_len;
 
   // Process additional authenticated data if present
@@ -271,9 +293,9 @@ WebCryptoCipherStatus ChaCha20Poly1305CipherTraits::DoCipher(
   // Process the input data
   buffer = {
       .data = in.data<unsigned char>(),
-      .len = in.size(),
+      .len = data_len,
   };
-  if (in.empty()) {
+  if (data_len == 0) {
     if (!ctx.update({}, ptr, &out_len)) {
       return WebCryptoCipherStatus::FAILED;
     }
@@ -283,7 +305,7 @@ WebCryptoCipherStatus ChaCha20Poly1305CipherTraits::DoCipher(
 
   total += out_len;
   CHECK_LE(out_len, buf_len);
-  out_len = ctx.getBlockSize();
+  out_len = block_size;
   if (!ctx.update({}, ptr + total, &out_len, true)) {
     return WebCryptoCipherStatus::FAILED;
   }
@@ -307,6 +329,7 @@ WebCryptoCipherStatus ChaCha20Poly1305CipherTraits::DoCipher(
   *out = ByteSource::Allocated(buf.release());
 
   return WebCryptoCipherStatus::OK;
+#endif  // OPENSSL_IS_BORINGSSL
 }
 
 void ChaCha20Poly1305::Initialize(Environment* env, Local<Object> target) {
