@@ -13,6 +13,14 @@ variables:
   # prevent UsePythonVersion@0 from accessing pypi.org
 - name: PIP_INDEX_URL
   value: https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public-pypi/pypi/simple/
+# Attribute mirrored source to GitHub without changing the build checkout.
+- ${{ if and(eq(variables['System.TeamProject'], 'internal'), eq(variables['Build.Repository.Name'], 'dotnet-node')) }}:
+  - name: Codeql.ADO.Build.Repository.Provider
+    value: GitHub
+  - name: Codeql.ADO.Build.Repository.Uri
+    value: https://github.com/dotnet/node
+  - name: Codeql.ADO.Build.SourceBranchName
+    value: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
 
 resources:
   repositories:
