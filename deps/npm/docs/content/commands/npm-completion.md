@@ -24,7 +24,7 @@ npm completion >> ~/.bashrc
 npm completion >> ~/.zshrc
 ```
 
-You may of course also pipe the output of `npm completion` to a file such as `/usr/local/etc/bash_completion.d/npm` or
+You may of course also pipe the output of `npm completion` to a file such as `/usr/local/etc/bash_completion.d/npm` or 
 `/etc/bash_completion.d/npm` if you have a system that will read 
 that file for you.
 
