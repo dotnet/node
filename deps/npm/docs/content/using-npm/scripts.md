@@ -322,7 +322,7 @@ For example, if your package.json contains this:
 }
 ```
 
-then `scripts/build.js` will be called for the prepare stage of the lifecycle, and you can check the
+then `scripts/build.js` will be called for the prepare stage of the lifecycle, and you can check the 
 `npm_lifecycle_event` environment variable if your script needs to behave differently in different contexts.
 
 If you want to run build commands, you can do so.
