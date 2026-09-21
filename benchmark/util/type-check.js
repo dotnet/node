@@ -23,13 +23,18 @@ const args = {
     'false-primitive': true,
     'false-object': int32Array,
   },
+  DataView: {
+    'true': dataView,
+    'false-primitive': true,
+    'false-object': uint8Array,
+  },
 };
 
 const bench = common.createBenchmark(main, {
   type: Object.keys(args),
   version: ['native', 'js'],
   argument: ['true', 'false-primitive', 'false-object'],
-  n: [1e5],
+  n: [1e6],
 }, {
   flags: ['--expose-internals', '--no-warnings'],
 });

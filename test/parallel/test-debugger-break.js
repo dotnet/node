@@ -11,7 +11,7 @@ const path = require('path');
 
 const scriptFullPath = fixtures.path('debugger', 'break.js');
 const script = path.relative(process.cwd(), scriptFullPath);
-const cli = startCLI(['--port=0', script]);
+const cli = startCLI([script]);
 
 (async () => {
   await cli.waitForInitialBreak();
@@ -27,7 +27,7 @@ const cli = startCLI(['--port=0', script]);
 
   await cli.stepCommand('n');
   assert.ok(
-    cli.output.includes(`break in ${script}:2`),
+    cli.output.includes(`step in ${script}:2`),
     'pauses in next line of the script');
   assert.match(
     cli.output,
@@ -36,7 +36,7 @@ const cli = startCLI(['--port=0', script]);
 
   await cli.stepCommand('next');
   assert.ok(
-    cli.output.includes(`break in ${script}:3`),
+    cli.output.includes(`step in ${script}:3`),
     'pauses in next line of the script');
   assert.match(
     cli.output,
@@ -53,6 +53,7 @@ const cli = startCLI(['--port=0', script]);
     'marks the debugger line');
 
   await cli.command('sb("break.js", 6)');
+  await cli.waitFor(/> 6.*[.\s\S]*debug>/);
   assert.doesNotMatch(cli.output, /Could not resolve breakpoint/);
 
   await cli.command('sb("otherFunction()")');
@@ -89,7 +90,7 @@ const cli = startCLI(['--port=0', script]);
   await cli.stepCommand('');
   assert.match(
     cli.output,
-    /break in node:timers/,
+    /step in node:timers/,
     'entered timers.js');
 
   await cli.stepCommand('cont');

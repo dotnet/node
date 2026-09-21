@@ -1,15 +1,13 @@
-const fs = require('fs')
-const util = require('util')
-const readdir = util.promisify(fs.readdir)
-const { resolve } = require('path')
-
+const { readdir } = require('node:fs/promises')
+const { resolve } = require('node:path')
 const npa = require('npm-package-arg')
-const rpj = require('read-package-json-fast')
+const pkgJson = require('@npmcli/package-json')
 const semver = require('semver')
-
 const reifyFinish = require('../utils/reify-finish.js')
-
+const resolveAllowScripts = require('../utils/resolve-allow-scripts.js')
+const strictAllowScriptsPreflight = require('../utils/strict-allow-scripts-preflight.js')
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
+
 class Link extends ArboristWorkspaceCmd {
   static description = 'Symlink a package folder'
   static name = 'link'
@@ -27,7 +25,12 @@ class Link extends ArboristWorkspaceCmd {
     'strict-peer-deps',
     'package-lock',
     'omit',
+    'include',
     'ignore-scripts',
+    'allow-directory',
+    'allow-file',
+    'allow-git',
+    'allow-remote',
     'audit',
     'bin-links',
     'fund',
@@ -35,8 +38,8 @@ class Link extends ArboristWorkspaceCmd {
     ...super.params,
   ]
 
-  async completion (opts) {
-    const dir = this.npm.globalDir
+  static async completion (opts, npm) {
+    const dir = npm.globalDir
     const files = await readdir(dir)
     return files.filter(f => !/^[._-]/.test(f))
   }
@@ -63,16 +66,19 @@ class Link extends ArboristWorkspaceCmd {
   }
 
   async linkInstall (args) {
-    // load current packages from the global space,
-    // and then add symlinks installs locally
+    // load current packages from the global space, and then add symlinks installs locally
     const globalTop = resolve(this.npm.globalDir, '..')
     const Arborist = require('@npmcli/arborist')
+    // Resolve the policy up front so it also gates the global install of
+    // missing packages, not just the local link.
+    const { policy: allowScriptsPolicy } = await resolveAllowScripts(this.npm)
     const globalOpts = {
       ...this.npm.flatOptions,
       Arborist,
       path: globalTop,
       global: true,
       prune: false,
+      allowScripts: allowScriptsPolicy,
     }
     const globalArb = new Arborist(globalOpts)
 
@@ -82,38 +88,44 @@ class Link extends ArboristWorkspaceCmd {
         !node.isRoot || args.some(a => npa(a).name === kid),
     })
 
-    // any extra arg that is missing from the current
-    // global space should be reified there first
+    // any extra arg that is missing from the current global space should be reified there first
     const missing = this.missingArgsFromTree(globals, args)
     if (missing.length) {
-      await globalArb.reify({
+      const globalReifyOpts = {
         ...globalOpts,
         add: missing,
+      }
+      // Gate the global install with the same preflight as `npm install`.
+      await strictAllowScriptsPreflight({
+        arb: globalArb,
+        npm: this.npm,
+        idealTreeOpts: globalReifyOpts,
       })
+      await globalArb.reify(globalReifyOpts)
     }
 
     // get a list of module names that should be linked in the local prefix
     const names = []
     for (const a of args) {
       const arg = npa(a)
-      names.push(
-        arg.type === 'directory'
-          ? (await rpj(resolve(arg.fetchSpec, 'package.json'))).name
-          : arg.name
-      )
+      if (arg.type === 'directory') {
+        const { content } = await pkgJson.normalize(arg.fetchSpec)
+        names.push(content.name)
+      } else {
+        names.push(arg.name)
+      }
     }
 
-    // npm link should not save=true by default unless you're
-    // using any of --save-dev or other types
+    // npm link should not save=true by default unless you're using any of --save-dev or other types
     const save =
       Boolean(
-        this.npm.config.find('save') !== 'default' ||
+        (this.npm.config.find('save') !== 'default' &&
+        this.npm.config.get('save')) ||
         this.npm.config.get('save-optional') ||
         this.npm.config.get('save-peer') ||
         this.npm.config.get('save-dev') ||
         this.npm.config.get('save-prod')
       )
-
     // create a new arborist instance for the local prefix and
     // reify all the pending names as symlinks there
     const localArb = new Arborist({
@@ -121,14 +133,18 @@ class Link extends ArboristWorkspaceCmd {
       prune: false,
       path: this.npm.prefix,
       save,
+      // Arborist reads this.options.workspaces (set at construction) to decide which node receives the add, so it must be set here, not only at reify time.
+      workspaces: this.workspaceNames,
+      allowScripts: allowScriptsPolicy,
     })
     await localArb.reify({
       ...this.npm.flatOptions,
       prune: false,
       path: this.npm.prefix,
-      add: names.map(l => `file:${resolve(globalTop, 'node_modules', l).replace(/#/g, '%23')}`),
+      add: names.map(l => `file:${resolve(globalTop, 'node_modules', l)}`),
       save,
       workspaces: this.workspaceNames,
+      allowScripts: allowScriptsPolicy,
     })
 
     await reifyFinish(this.npm, localArb)
@@ -137,7 +153,7 @@ class Link extends ArboristWorkspaceCmd {
   async linkPkg () {
     const wsp = this.workspacePaths
     const paths = wsp && wsp.length ? wsp : [this.npm.prefix]
-    const add = paths.map(path => `file:${path.replace(/#/g, '%23')}`)
+    const add = paths.map(path => `file:${path}`)
     const globalTop = resolve(this.npm.globalDir, '..')
     const Arborist = require('@npmcli/arborist')
     const arb = new Arborist({
@@ -152,8 +168,7 @@ class Link extends ArboristWorkspaceCmd {
     await reifyFinish(this.npm, arb)
   }
 
-  // Returns a list of items that can't be fulfilled by
-  // things found in the current arborist inventory
+  // Returns a list of items that can't be fulfilled by things found in the current arborist inventory
   missingArgsFromTree (tree, args) {
     if (tree.isLink) {
       return this.missingArgsFromTree(tree.target, args)
@@ -164,8 +179,8 @@ class Link extends ArboristWorkspaceCmd {
       const arg = npa(a)
       const nodes = tree.children.values()
       const argFound = [...nodes].every(node => {
-        // TODO: write tests for unmatching version specs, this is hard to test
-        // atm but should be simple once we have a mocked registry again
+        // TODO: write tests for unmatching version specs
+        // this is hard to test atm but should be simple once we have a mocked registry again
         if (arg.name !== node.name /* istanbul ignore next */ || (
           arg.version &&
           /* istanbul ignore next */
@@ -178,8 +193,7 @@ class Link extends ArboristWorkspaceCmd {
       return argFound
     })
 
-    // remote nodes from the loaded tree in order
-    // to avoid dropping them later when reifying
+    // remote nodes from the loaded tree in order to avoid dropping them later when reifying
     for (const node of foundNodes) {
       node.parent = null
     }
@@ -187,4 +201,5 @@ class Link extends ArboristWorkspaceCmd {
     return missing
   }
 }
+
 module.exports = Link

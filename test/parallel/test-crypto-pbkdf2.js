@@ -5,6 +5,7 @@ if (!common.hasCrypto)
 
 const assert = require('assert');
 const crypto = require('crypto');
+const { hasOpenSSL3 } = require('../common/crypto');
 
 function runPBKDF2(password, salt, iterations, keylen, hash) {
   const syncResult =
@@ -108,6 +109,35 @@ for (const iterations of [-1, 0, 2147483648]) {
       name: 'RangeError',
     });
 });
+
+// `-0` keylen must not abort the process via the native binding's
+// IsInt32() assertion. Behavior of `keylen=0` itself varies by OpenSSL
+// build (bundled returns an empty buffer; some shared OpenSSL builds
+// throw); the requirement here is only that `-0` produces the same
+// outcome as `+0`.
+{
+  let posError;
+  let posResult;
+  try {
+    posResult = crypto.pbkdf2Sync('password', 'salt', 1, 0, 'sha256');
+  } catch (err) {
+    posError = err;
+  }
+  let negError;
+  let negResult;
+  try {
+    negResult = crypto.pbkdf2Sync('password', 'salt', 1, -0, 'sha256');
+  } catch (err) {
+    negError = err;
+  }
+  if (posError !== undefined) {
+    assert.strictEqual(negError?.message, posError.message);
+  } else {
+    assert.deepStrictEqual(negResult, posResult);
+  }
+
+  crypto.pbkdf2('password', 'salt', 1, -0, 'sha256', common.mustCall());
+}
 
 // Should not get FATAL ERROR with empty password and salt
 // https://github.com/nodejs/node/issues/8571
@@ -219,7 +249,7 @@ assert.throws(
   }
 );
 
-if (!common.hasOpenSSL3) {
+if (!hasOpenSSL3) {
   const kNotPBKDF2Supported = ['shake128', 'shake256'];
   crypto.getHashes()
     .filter((hash) => !kNotPBKDF2Supported.includes(hash))

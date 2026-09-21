@@ -9,7 +9,7 @@ const { createServer, constants, connect } = require('http2');
 
 const server = createServer();
 
-server.on('stream', (stream, headers) => {
+server.on('stream', common.mustCall((stream, headers) => {
   stream.respond(undefined, { waitForTrailers: true });
 
   stream.on('data', common.mustNotCall());
@@ -30,9 +30,9 @@ server.on('stream', (stream, headers) => {
   stream.on('close', common.mustCall());
 
   stream.end();
-});
+}));
 
-server.listen(0, () => {
+server.listen(0, common.mustCall(() => {
   const clientSession = connect(`http://localhost:${server.address().port}`);
 
   clientSession.on('frameError', common.mustNotCall());
@@ -43,9 +43,13 @@ server.listen(0, () => {
   const clientStream = clientSession.request();
 
   clientStream.on('close', common.mustCall());
-  // These events mustn't be called once the frame size error is from the server
+  clientStream.on('error', common.expectsError({
+    code: 'ERR_HTTP2_STREAM_ERROR',
+    name: 'Error',
+    message: 'Stream closed with error code NGHTTP2_FRAME_SIZE_ERROR'
+  }));
+  // This event mustn't be called once the frame size error is from the server
   clientStream.on('frameError', common.mustNotCall());
-  clientStream.on('error', common.mustNotCall());
 
   clientStream.end();
-});
+}));

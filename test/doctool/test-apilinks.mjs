@@ -1,4 +1,4 @@
-import '../common/index.mjs';
+import { mustCallAtLeast } from '../common/index.mjs';
 import * as fixtures from '../common/fixtures.mjs';
 import tmpdir from '../common/tmpdir.js';
 
@@ -14,12 +14,12 @@ const apilinks = fixtures.path('apilinks');
 
 tmpdir.refresh();
 
-fs.readdirSync(apilinks).forEach((fixture) => {
+fs.readdirSync(apilinks).forEach(mustCallAtLeast((fixture) => {
   if (!fixture.endsWith('.js')) return;
   const input = path.join(apilinks, fixture);
 
   const expectedContent = fs.readFileSync(`${input}on`, 'utf8');
-  const outputPath = path.join(tmpdir.path, `${fixture}on`);
+  const outputPath = tmpdir.resolve(`${fixture}on`);
   execFileSync(
     process.execPath,
     [script, outputPath, input],
@@ -40,4 +40,4 @@ fs.readdirSync(apilinks).forEach((fixture) => {
     Object.keys(actualLinks).length, 0,
     `unexpected links returned ${JSON.stringify(actualLinks)}`,
   );
-});
+}));

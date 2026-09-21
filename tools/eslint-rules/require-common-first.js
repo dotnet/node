@@ -1,5 +1,5 @@
 /**
- * @fileoverview Require `common` module first in our tests.
+ * @file Require `common` module first in our tests.
  */
 'use strict';
 
@@ -13,7 +13,7 @@ const { isRequireCall, isString } = require('./rules-utils.js');
 module.exports = {
   create(context) {
     const requiredModule = 'common';
-    const isESM = context.parserOptions.sourceType === 'module';
+    const isESM = context.languageOptions.sourceType === 'module';
     const foundModules = [];
 
     /**
@@ -22,7 +22,7 @@ module.exports = {
      * @returns {string} module name
      */
     function getModuleName(str) {
-      if (str === '../common/index.mjs') {
+      if (str.startsWith('../') && str.endsWith('/common/index.mjs')) {
         return 'common';
       }
 
@@ -49,12 +49,13 @@ module.exports = {
       // The common module should be loaded in the first place.
         const notLoadedFirst = foundModules.indexOf(requiredModule) !== 0;
         if (notLoadedFirst) {
-          context.report(
-            node,
-            'Mandatory module "{{moduleName}}" must be loaded ' +
-          'before any other modules.',
-            { moduleName: requiredModule },
-          );
+          context.report({
+            node: node.body[0] ?? node,
+            message:
+              'Mandatory module "{{moduleName}}" must be loaded ' +
+              'before any other modules.',
+            data: { moduleName: requiredModule },
+          });
         }
       },
     };

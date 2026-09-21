@@ -1,13 +1,16 @@
 'use strict';
 
 const common = require('../common');
+const { isMainThread } = require('worker_threads');
 
-if (!common.isMainThread)
+if (!isMainThread) {
   common.skip('process.chdir is not available in Workers');
+}
 
 const { writeHeapSnapshot, getHeapSnapshot } = require('v8');
 const assert = require('assert');
 const fs = require('fs');
+const { promises: { pipeline }, PassThrough } = require('stream');
 const tmpdir = require('../common/tmpdir');
 
 tmpdir.refresh();
@@ -43,7 +46,25 @@ process.chdir(tmpdir.path);
     name: 'TypeError',
     message: 'The "path" argument must be of type string or an instance of ' +
              'Buffer or URL.' +
-             common.invalidArgTypeHelper(i)
+             common.invalidArgTypeHelper(i),
+  });
+});
+
+[1, true, [], null, Infinity, NaN].forEach((i) => {
+  assert.throws(() => writeHeapSnapshot('test.heapsnapshot', i), {
+    code: 'ERR_INVALID_ARG_TYPE',
+    name: 'TypeError',
+    message: 'The "options" argument must be of type object.' +
+             common.invalidArgTypeHelper(i),
+  });
+});
+
+[1, true, [], null, Infinity, NaN].forEach((i) => {
+  assert.throws(() => getHeapSnapshot(i), {
+    code: 'ERR_INVALID_ARG_TYPE',
+    name: 'TypeError',
+    message: 'The "options" argument must be of type object.' +
+             common.invalidArgTypeHelper(i),
   });
 });
 
@@ -57,4 +78,14 @@ process.chdir(tmpdir.path);
   snapshot.on('end', common.mustCall(() => {
     JSON.parse(data);
   }));
+}
+
+{
+  const passthrough = new PassThrough();
+  passthrough.on('data', common.mustCallAtLeast(1));
+
+  pipeline(
+    getHeapSnapshot(),
+    passthrough,
+  ).then(common.mustCall());
 }

@@ -1,21 +1,19 @@
-const { resolve } = require('path')
-const rpj = require('read-package-json-fast')
-
+const { resolve } = require('node:path')
+const pkgJson = require('@npmcli/package-json')
 const reifyFinish = require('../utils/reify-finish.js')
-const completion = require('../utils/completion/installed-shallow.js')
-
+const resolveAllowScripts = require('../utils/resolve-allow-scripts.js')
+const completion = require('../utils/installed-shallow.js')
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
+
 class Uninstall extends ArboristWorkspaceCmd {
   static description = 'Remove a package'
   static name = 'uninstall'
-  static params = ['save', ...super.params]
+  static params = ['save', 'global', ...super.params]
   static usage = ['[<@scope>/]<pkg>...']
   static ignoreImplicitWorkspace = false
 
-  // TODO
-  /* istanbul ignore next */
-  async completion (opts) {
-    return completion(this.npm, opts)
+  static async completion (opts, npm) {
+    return completion(npm, opts)
   }
 
   async exec (args) {
@@ -24,7 +22,7 @@ class Uninstall extends ArboristWorkspaceCmd {
         throw new Error('Must provide a package name to remove')
       } else {
         try {
-          const pkg = await rpj(resolve(this.npm.localPrefix, 'package.json'))
+          const { content: pkg } = await pkgJson.normalize(this.npm.localPrefix)
           args.push(pkg.name)
         } catch (er) {
           if (er.code !== 'ENOENT' && er.code !== 'ENOTDIR') {
@@ -42,15 +40,18 @@ class Uninstall extends ArboristWorkspaceCmd {
       : this.npm.localPrefix
 
     const Arborist = require('@npmcli/arborist')
+    const { policy: allowScriptsPolicy } = await resolveAllowScripts(this.npm)
     const opts = {
       ...this.npm.flatOptions,
       path,
       rm: args,
       workspaces: this.workspaceNames,
+      allowScripts: allowScriptsPolicy,
     }
     const arb = new Arborist(opts)
     await arb.reify(opts)
     await reifyFinish(this.npm, arb)
   }
 }
+
 module.exports = Uninstall

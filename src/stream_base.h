@@ -37,7 +37,7 @@ class StreamReq {
   // BaseObject, and the slots are used for the identical purpose.
   enum InternalFields {
     kSlot = BaseObject::kSlot,
-    kStreamReqField = BaseObject::kInternalFieldCount,
+    kStreamReqField = AsyncWrap::kInternalFieldCount,
     kInternalFieldCount
   };
 
@@ -225,7 +225,7 @@ class StreamResource {
   // These need to be implemented on the readable side of this stream:
 
   // Start reading from the underlying resource. This is called by the consumer
-  // when more data is desired. Use `EmitAlloc()` and `EmitData()` to
+  // when more data is desired. Use `EmitAlloc()` and `EmitRead()` to
   // pass data along to the consumer.
   virtual int ReadStart() = 0;
   // Stop reading from the underlying resource. This is called by the
@@ -244,6 +244,8 @@ class StreamResource {
   // `*bufs` and `*count` accordingly. This is a no-op by default.
   // Return 0 for success and a libuv error code for failures.
   virtual int DoTryWrite(uv_buf_t** bufs, size_t* count);
+  // Indicates whether this subclass overrides the DoTryWrite
+  virtual inline bool HasDoTryWrite() const { return false; }
   // Initiate a write of data.
   // Upon an immediate failure, a libuv error code is returned,
   // w->Done() will never be called and caller should free `bufs`.
@@ -308,11 +310,13 @@ class StreamBase : public StreamResource {
   // BaseObject (it's possible for it not to, however).
   enum InternalFields {
     kSlot = BaseObject::kSlot,
-    kStreamBaseField = BaseObject::kInternalFieldCount,
+    kStreamBaseField = AsyncWrap::kInternalFieldCount,
     kOnReadFunctionField,
     kInternalFieldCount
   };
 
+  static void AddMethods(IsolateData* isolate_data,
+                         v8::Local<v8::FunctionTemplate> target);
   static void AddMethods(Environment* env,
                          v8::Local<v8::FunctionTemplate> target);
   static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
@@ -409,7 +413,14 @@ class StreamBase : public StreamResource {
   EmitToJSStreamListener default_listener_;
 
   void SetWriteResult(const StreamWriteResult& res);
-  static void AddMethod(Environment* env,
+  static void AddAccessor(v8::Isolate* isolate,
+                          v8::Local<v8::Signature> sig,
+                          enum v8::PropertyAttribute attributes,
+                          v8::Local<v8::FunctionTemplate> t,
+                          JSMethodFunction* getter,
+                          JSMethodFunction* setter,
+                          v8::Local<v8::String> str);
+  static void AddMethod(v8::Isolate* isolate,
                         v8::Local<v8::Signature> sig,
                         enum v8::PropertyAttribute attributes,
                         v8::Local<v8::FunctionTemplate> t,
@@ -429,6 +440,11 @@ class StreamBase : public StreamResource {
 template <typename OtherBase>
 class SimpleShutdownWrap : public ShutdownWrap, public OtherBase {
  public:
+  enum InternalFields {
+    kInternalFieldCount = std::max<uint32_t>(ShutdownWrap::kInternalFieldCount,
+                                             OtherBase::kInternalFieldCount),
+  };
+
   SimpleShutdownWrap(StreamBase* stream,
                      v8::Local<v8::Object> req_wrap_obj);
 
@@ -446,6 +462,11 @@ class SimpleShutdownWrap : public ShutdownWrap, public OtherBase {
 template <typename OtherBase>
 class SimpleWriteWrap : public WriteWrap, public OtherBase {
  public:
+  enum InternalFields {
+    kInternalFieldCount = std::max<uint32_t>(WriteWrap::kInternalFieldCount,
+                                             OtherBase::kInternalFieldCount),
+  };
+
   SimpleWriteWrap(StreamBase* stream,
                   v8::Local<v8::Object> req_wrap_obj);
 

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
   <ItemDefinitionGroup>
     <MARMASM>
       <!-- Works around a situation when we preprocess file in $(IntDir). In such case the output file is the same as input file
@@ -7,7 +10,5 @@
       <PreprocessedFileName Condition="'%(PreprocessedFileName)' == ''">$(IntDir)%(FileName)%(Extension).pp</PreprocessedFileName>
     </MARMASM>
   </ItemDefinitionGroup>
-  <PropertyGroup>
-    <_SuppressSdkImports>true</_SuppressSdkImports>
-  </PropertyGroup>
+
 </Project>

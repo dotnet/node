@@ -132,10 +132,10 @@ const { setTimeout } = require('timers/promises');
     name: 'AbortError',
   }).then(common.mustCall());
 
-  setImmediate(() => {
+  setImmediate(common.mustCall(() => {
     ac.abort();
     assert.strictEqual(calls, 2);
-  });
+  }));
 }
 
 {
@@ -169,7 +169,7 @@ const { setTimeout } = require('timers/promises');
 {
   const stream = Readable.from([1, 2, 3, 4, 5]);
   Object.defineProperty(stream, 'map', {
-    value: common.mustNotCall(() => {}),
+    value: common.mustNotCall(),
   });
   // Check that map isn't getting called.
   stream.filter(() => true);

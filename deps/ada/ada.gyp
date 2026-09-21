@@ -1,16 +1,24 @@
 {
   'variables': {
-    'v8_enable_i18n_support%': 1,
     'ada_sources': [ 'ada.cpp' ],
   },
   'targets': [
     {
       'target_name': 'ada',
       'type': 'static_library',
-      'include_dirs': ['.'],
+      'include_dirs': [
+        '.',
+        '<(DEPTH)/deps/v8/third_party/simdutf',
+      ],
       'direct_dependent_settings': {
         'include_dirs': ['.'],
       },
+      'defines': [
+        'ADA_USE_SIMDUTF=1',
+      ],
+      'dependencies': [
+        '../../tools/v8_gypfiles/v8.gyp:simdutf',
+      ],
       'sources': [ '<@(ada_sources)' ]
     },
   ]

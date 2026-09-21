@@ -1,6 +1,6 @@
 const t = require('tap')
-const { resolve, join } = require('path')
-const fs = require('fs')
+const { resolve, join } = require('node:path')
+const fs = require('node:fs')
 const Arborist = require('@npmcli/arborist')
 const { cleanCwd } = require('../../fixtures/clean-snapshot.js')
 const mockNpm = require('../../fixtures/mock-npm')
@@ -10,6 +10,7 @@ t.cleanSnapshot = (str) => cleanCwd(str)
 const mockLink = async (t, { globalPrefixDir, ...opts } = {}) => {
   const mock = await mockNpm(t, {
     ...opts,
+    command: 'link',
     globalPrefixDir,
     mocks: {
       ...opts.mocks,
@@ -36,10 +37,6 @@ const mockLink = async (t, { globalPrefixDir, ...opts } = {}) => {
 
   return {
     ...mock,
-    link: {
-      exec: (args = []) => mock.npm.exec('link', args),
-      completion: (o) => mock.npm.cmd('link').then(c => c.completion(o)),
-    },
     printLinks,
   }
 }
@@ -292,6 +289,44 @@ t.test('link global linked pkg to local workspace using args', async t => {
   t.matchSnapshot(await printLinks(), 'should create a local symlink to global pkg')
 })
 
+t.test('link --workspace --save targets the workspace manifest, not the root', async t => {
+  const { link, prefix } = await mockLink(t, {
+    globalPrefixDir: {
+      node_modules: {
+        a: {
+          'package.json': JSON.stringify({
+            name: 'a',
+            version: '1.0.0',
+          }),
+        },
+      },
+    },
+    prefixDir: {
+      'package.json': JSON.stringify({
+        name: 'my-project',
+        version: '1.0.0',
+        workspaces: ['packages/*'],
+      }),
+      packages: {
+        x: {
+          'package.json': JSON.stringify({
+            name: 'x',
+            version: '1.0.0',
+          }),
+        },
+      },
+    },
+    config: { workspace: 'x', save: true },
+  })
+
+  await link.exec(['a'])
+
+  const root = JSON.parse(fs.readFileSync(join(prefix, 'package.json'), 'utf8'))
+  const ws = JSON.parse(fs.readFileSync(join(prefix, 'packages', 'x', 'package.json'), 'utf8'))
+  t.notOk(root.dependencies, 'root manifest should not get the dependency')
+  t.match(ws.dependencies, { a: /^file:/ }, 'workspace manifest should get the file: dependency')
+})
+
 t.test('link pkg already in global space', async t => {
   const { npm, link, printLinks, prefix } = await mockLink(t, {
     globalPrefixDir: {
@@ -370,6 +405,40 @@ t.test('link pkg already in global space when prefix is a symlink', async t => {
   )
 
   t.matchSnapshot(await printLinks(), 'should create a local symlink to global pkg')
+})
+
+t.test('should not save link to package file', async t => {
+  const { link, prefix } = await mockLink(t, {
+    globalPrefixDir: {
+      node_modules: {
+        '@myscope': {
+          linked: t.fixture('symlink', '../../../other/scoped-linked'),
+        },
+      },
+    },
+    otherDirs: {
+      'scoped-linked': {
+        'package.json': JSON.stringify({
+          name: '@myscope/linked',
+          version: '1.0.0',
+        }),
+      },
+    },
+    prefixDir: {
+      'package.json': JSON.stringify({
+        name: 'my-project',
+        version: '1.0.0',
+      }),
+    },
+    config: { save: false },
+  })
+
+  await link.exec(['@myscope/linked'])
+  t.match(
+    require(resolve(prefix, 'package.json')).dependencies,
+    undefined,
+    'should not save to package.json upon linking'
+  )
 })
 
 t.test('should not prune dependencies when linking packages', async t => {
@@ -491,4 +560,105 @@ t.test('test linked installed as symlinks', async t => {
   )
 
   t.matchSnapshot(await printLinks(), 'linked package should not be installed')
+})
+
+t.test('link threads allowScripts policy through to arborist', async t => {
+  const capturedOpts = []
+  const FakeArborist = function (opts) {
+    capturedOpts.push(opts)
+    this.options = opts
+    this.actualTree = { inventory: new Map() }
+  }
+  FakeArborist.prototype.loadActual = async () => ({ isLink: false, children: new Map() })
+  FakeArborist.prototype.reify = async () => {}
+
+  const mock = await mockNpm(t, {
+    command: 'link',
+    prefixDir: {
+      'package.json': JSON.stringify({
+        name: 'host',
+        version: '1.0.0',
+        allowScripts: { canvas: true },
+      }),
+    },
+    mocks: {
+      '@npmcli/arborist': FakeArborist,
+      '{LIB}/utils/reify-finish.js': async () => {},
+    },
+  })
+  await mock.npm.exec('link', ['canvas'])
+  // the local Arborist is the last one constructed in linkInstall
+  const localOpts = capturedOpts[capturedOpts.length - 1]
+  t.strictSame(localOpts.allowScripts, { canvas: true },
+    'local arborist opts.allowScripts populated from package.json')
+})
+
+t.test('link threads allowScripts policy to the global install', async t => {
+  const capturedOpts = []
+  const FakeArborist = function (opts) {
+    capturedOpts.push(opts)
+    this.options = opts
+    this.actualTree = { inventory: new Map() }
+  }
+  FakeArborist.prototype.loadActual = async () => ({ isLink: false, children: new Map() })
+  FakeArborist.prototype.reify = async () => {}
+
+  const mock = await mockNpm(t, {
+    command: 'link',
+    prefixDir: {
+      'package.json': JSON.stringify({
+        name: 'host',
+        version: '1.0.0',
+        allowScripts: { canvas: true },
+      }),
+    },
+    mocks: {
+      '@npmcli/arborist': FakeArborist,
+      '{LIB}/utils/reify-finish.js': async () => {},
+    },
+  })
+  await mock.npm.exec('link', ['canvas'])
+  // the global Arborist is constructed first; its missing-package install
+  // must carry the project policy.
+  t.strictSame(capturedOpts[0].allowScripts, { canvas: true },
+    'global arborist opts.allowScripts populated from package.json')
+})
+
+t.test('link runs the strict-allow-scripts preflight before the global install', async t => {
+  // The mocked preflight stands in for strict mode finding an uncovered
+  // script. It must run and throw before the global reify.
+  const calls = []
+  const FakeArborist = function (opts) {
+    this.options = opts
+    this.actualTree = { inventory: new Map() }
+  }
+  FakeArborist.prototype.loadActual = async () => ({ isLink: false, children: new Map() })
+  FakeArborist.prototype.reify = async () => {
+    calls.push('reify')
+  }
+
+  const mock = await mockNpm(t, {
+    command: 'link',
+    prefixDir: {
+      'package.json': JSON.stringify({
+        name: 'host',
+        version: '1.0.0',
+      }),
+    },
+    mocks: {
+      '@npmcli/arborist': FakeArborist,
+      '{LIB}/utils/reify-finish.js': async () => {},
+      '{LIB}/utils/strict-allow-scripts-preflight.js': async () => {
+        calls.push('preflight')
+        throw Object.assign(new Error('blocked'), { code: 'ESTRICTALLOWSCRIPTS' })
+      },
+    },
+  })
+  await t.rejects(
+    mock.npm.exec('link', ['canvas']),
+    { code: 'ESTRICTALLOWSCRIPTS' },
+    'the strict preflight blocks the link'
+  )
+  t.strictSame(calls, ['preflight'],
+    'preflight ran and the global reify never executed')
 })

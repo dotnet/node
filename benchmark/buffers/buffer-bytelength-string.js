@@ -2,8 +2,9 @@
 const common = require('../common');
 
 const bench = common.createBenchmark(main, {
-  type: ['one_byte', 'two_bytes', 'three_bytes', 'four_bytes'],
-  encoding: ['utf8', 'base64'],
+  type: ['one_byte', 'two_bytes', 'three_bytes',
+         'four_bytes', 'latin1'],
+  encoding: ['utf8', 'base64', 'latin1', 'hex'],
   repeat: [1, 2, 16, 256], // x16
   n: [4e6],
 });
@@ -14,12 +15,14 @@ const chars = {
   two_bytes: 'ΰαβγδεζηθικλμνξο',
   three_bytes: '挰挱挲挳挴挵挶挷挸挹挺挻挼挽挾挿',
   four_bytes: '𠜎𠜱𠝹𠱓𠱸𠲖𠳏𠳕𠴕𠵼𠵿𠸎𠸏𠹷𠺝𠺢',
+  latin1: 'Un homme sage est supérieur à toutes ' +
+    'les insultes qui peuvent lui être adressées, et la meilleure réponse est la patience et la modération.',
 };
 
 function getInput(type, repeat, encoding) {
   const original = (repeat === 1) ? chars[type] : chars[type].repeat(repeat);
   if (encoding === 'base64') {
-    Buffer.from(original, 'utf8').toString('base64');
+    return Buffer.from(original, 'utf8').toString('base64');
   }
   return original;
 }

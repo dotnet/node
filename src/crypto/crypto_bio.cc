@@ -30,10 +30,13 @@
 #include <cstring>
 
 namespace node {
+
+using ncrypto::BIOPointer;
+
 namespace crypto {
 
 BIOPointer NodeBIO::New(Environment* env) {
-  BIOPointer bio(BIO_new(GetMethod()));
+  auto bio = BIOPointer::New(GetMethod());
   if (bio && env != nullptr)
     NodeBIO::FromBIO(bio.get())->env_ = env;
   return bio;
@@ -43,9 +46,9 @@ BIOPointer NodeBIO::New(Environment* env) {
 BIOPointer NodeBIO::NewFixed(const char* data, size_t len, Environment* env) {
   BIOPointer bio = New(env);
 
-  if (!bio ||
-      len > INT_MAX ||
-      BIO_write(bio.get(), data, len) != static_cast<int>(len) ||
+  if (!bio || len > INT_MAX ||
+      BIOPointer::Write(&bio, std::string_view(data, len)) !=
+          static_cast<int>(len) ||
       BIO_set_mem_eof_return(bio.get(), 0) != 1) {
     return BIOPointer();
   }
@@ -223,6 +226,7 @@ const BIO_METHOD* NodeBIO::GetMethod() {
   // Static initialization ensures that this is safe to use concurrently.
   static const BIO_METHOD* method = [&]() {
     BIO_METHOD* method = BIO_meth_new(BIO_TYPE_MEM, "node.js SSL buffer");
+    CHECK_NOT_NULL(method);
     BIO_meth_set_write(method, Write);
     BIO_meth_set_read(method, Read);
     BIO_meth_set_puts(method, Puts);

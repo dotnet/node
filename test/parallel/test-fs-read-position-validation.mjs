@@ -75,8 +75,7 @@ async function testInvalid(code, position) {
 
   await testValid(2n ** 63n - 1n - BigInt(length), [ 'EFBIG', 'EOVERFLOW' ]);
   await testInvalid('ERR_OUT_OF_RANGE', 2n ** 63n);
-
-  // TODO(LiviaMedeiros): test `2n ** 63n - BigInt(length)`
+  await testInvalid('ERR_OUT_OF_RANGE', 2n ** 63n - BigInt(length));
 
   await testInvalid('ERR_OUT_OF_RANGE', NaN);
   await testInvalid('ERR_OUT_OF_RANGE', -Infinity);
@@ -91,4 +90,27 @@ async function testInvalid(code, position) {
   ]) {
     await testInvalid('ERR_INVALID_ARG_TYPE', badTypeValue);
   }
+}
+
+{
+  const emptyBuffer = Buffer.alloc(0);
+  await new Promise((resolve, reject) => {
+    fs.open(filepath, 'r', common.mustSucceed((fd) => {
+      try {
+        assert.throws(
+          () => fs.read(fd, emptyBuffer, 0, 0, { not: 'a number' }, common.mustNotCall()),
+          { code: 'ERR_INVALID_ARG_TYPE' }
+        );
+        assert.throws(
+          () => fs.read(fd, { buffer: emptyBuffer, offset: 0, length: 0, position: 'string' }, common.mustNotCall()),
+          { code: 'ERR_INVALID_ARG_TYPE' }
+        );
+        resolve();
+      } catch (err) {
+        reject(err);
+      } finally {
+        fs.close(fd, common.mustSucceed());
+      }
+    }));
+  });
 }
