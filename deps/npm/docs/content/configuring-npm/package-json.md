@@ -598,7 +598,7 @@ See [semver](https://github.com/npm/node-semver#versions) for more details about
 * `user/repo` See 'GitHub URLs' below
 * `tag` A specific version tagged and published as `tag`  See [`npm dist-tag`](/commands/npm-dist-tag)
 * `path/path/path` See [Local Paths](#local-paths) below
-* `npm:@scope/pkg@version` Custom alias for a package See [`package-spec`](/using-npm/package-spec#aliases)
+* `npm:@scope/pkg@version` Custom alias for a package See [`package-spec`](/using-npm/package-spec#aliases) 
 
 For example, these are all valid:
 
@@ -880,6 +880,21 @@ To make sure the package `@npm/foo` is always installed as version `1.0.0` no ma
 {
   "overrides": {
     "@npm/foo": "1.0.0"
+  }
+}
+```
+
+Override values can use any specifier that npm accepts for dependencies, including
+an exact version, a semver range, a dist-tag, or a replacement specifier such as
+`npm:`, `file:`, or a Git URL.
+
+For example, if you only need to enforce a minimum patched release instead of one
+exact version, you can use a semver range:
+
+```json
+{
+  "overrides": {
+    "@npm/foo": "^1.0.0"
   }
 }
 ```
