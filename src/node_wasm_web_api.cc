@@ -28,7 +28,6 @@ Local<Function> WasmStreamingObject::Initialize(Environment* env) {
 
   Isolate* isolate = env->isolate();
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
-  t->Inherit(BaseObject::GetConstructorTemplate(env));
   t->InstanceTemplate()->SetInternalFieldCount(
       WasmStreamingObject::kInternalFieldCount);
 
@@ -82,18 +81,18 @@ void WasmStreamingObject::New(const FunctionCallbackInfo<Value>& args) {
 
 void WasmStreamingObject::SetURL(const FunctionCallbackInfo<Value>& args) {
   WasmStreamingObject* obj;
-  ASSIGN_OR_RETURN_UNWRAP(&obj, args.Holder());
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
   CHECK(obj->streaming_);
 
   CHECK_EQ(args.Length(), 1);
   CHECK(args[0]->IsString());
-  Utf8Value url(Environment::GetCurrent(args)->isolate(), args[0]);
+  Utf8Value url(args.GetIsolate(), args[0]);
   obj->streaming_->SetUrl(url.out(), url.length());
 }
 
 void WasmStreamingObject::Push(const FunctionCallbackInfo<Value>& args) {
   WasmStreamingObject* obj;
-  ASSIGN_OR_RETURN_UNWRAP(&obj, args.Holder());
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
   CHECK(obj->streaming_);
 
   CHECK_EQ(args.Length(), 1);
@@ -105,12 +104,12 @@ void WasmStreamingObject::Push(const FunctionCallbackInfo<Value>& args) {
   size_t offset;
   size_t size;
 
-  if (LIKELY(chunk->IsArrayBufferView())) {
+  if (chunk->IsArrayBufferView()) [[likely]] {
     Local<ArrayBufferView> view = chunk.As<ArrayBufferView>();
     bytes = view->Buffer()->Data();
     offset = view->ByteOffset();
     size = view->ByteLength();
-  } else if (LIKELY(chunk->IsArrayBuffer())) {
+  } else if (chunk->IsArrayBuffer()) [[likely]] {
     Local<ArrayBuffer> buffer = chunk.As<ArrayBuffer>();
     bytes = buffer->Data();
     offset = 0;
@@ -129,7 +128,7 @@ void WasmStreamingObject::Push(const FunctionCallbackInfo<Value>& args) {
 
 void WasmStreamingObject::Finish(const FunctionCallbackInfo<Value>& args) {
   WasmStreamingObject* obj;
-  ASSIGN_OR_RETURN_UNWRAP(&obj, args.Holder());
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
   CHECK(obj->streaming_);
 
   CHECK_EQ(args.Length(), 0);
@@ -138,7 +137,7 @@ void WasmStreamingObject::Finish(const FunctionCallbackInfo<Value>& args) {
 
 void WasmStreamingObject::Abort(const FunctionCallbackInfo<Value>& args) {
   WasmStreamingObject* obj;
-  ASSIGN_OR_RETURN_UNWRAP(&obj, args.Holder());
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
   CHECK(obj->streaming_);
 
   CHECK_EQ(args.Length(), 1);

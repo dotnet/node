@@ -1,7 +1,8 @@
-const { resolve, basename } = require('path')
-const { unlink } = require('fs').promises
-const log = require('../utils/log-shim')
-const BaseCommand = require('../base-command.js')
+const { resolve, basename } = require('node:path')
+const { unlink } = require('node:fs/promises')
+const { log } = require('proc-log')
+const BaseCommand = require('../base-cmd.js')
+
 class Shrinkwrap extends BaseCommand {
   static description = 'Lock down dependency versions for publication'
   static name = 'shrinkwrap'
@@ -30,11 +31,8 @@ class Shrinkwrap extends BaseCommand {
     const oldFilename = meta.filename
     const notSW = !newFile && basename(oldFilename) !== 'npm-shrinkwrap.json'
 
-    // The computed lockfile version of a hidden lockfile is always 3
-    // even if the actual value of the property is a different.
-    // When shrinkwrap is run with only a hidden lockfile we want to
-    // set the shrinkwrap lockfile version as whatever was explicitly
-    // requested with a fallback to the actual value from the hidden
+    // The computed lockfile version of a hidden lockfile is always 3 even if the actual value of the property is a different.
+    // When shrinkwrap is run with only a hidden lockfile we want to set the shrinkwrap lockfile version as whatever was explicitly requested with a fallback to the actual value from the hidden
     // lockfile.
     if (meta.hiddenLockfile) {
       meta.lockfileVersion = arb.options.lockfileVersion ||
@@ -68,4 +66,5 @@ class Shrinkwrap extends BaseCommand {
     }
   }
 }
+
 module.exports = Shrinkwrap

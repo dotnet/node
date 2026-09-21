@@ -61,8 +61,8 @@ function sum(p, c) {
         throw new Error('boom');
       }
       return c;
-    }, 0)
-  , /boom/).then(common.mustCall());
+    }, 0),
+                 /boom/).then(common.mustCall());
 }
 
 {
@@ -103,13 +103,13 @@ function sum(p, c) {
   // Support for AbortSignal - deep
   const stream = Readable.from([1, 2, 3]);
   assert.rejects(async () => {
-    await stream.reduce(async (p, c, { signal }) => {
+    await stream.reduce(common.mustCallAtLeast(async (p, c, { signal }) => {
       signal.addEventListener('abort', common.mustCall(), { once: true });
       if (c === 3) {
         await new Promise(() => {}); // Explicitly do not pass signal here
       }
       return Promise.resolve();
-    }, 0, { signal: AbortSignal.abort() });
+    }, 0), 0, { signal: AbortSignal.abort() });
   }, {
     name: 'AbortError',
   }).then(common.mustCall(() => {
@@ -119,10 +119,10 @@ function sum(p, c) {
 
 {
   // Error cases
-  assert.rejects(() => Readable.from([]).reduce(1), /TypeError/);
-  assert.rejects(() => Readable.from([]).reduce('5'), /TypeError/);
-  assert.rejects(() => Readable.from([]).reduce((x, y) => x + y, 0, 1), /ERR_INVALID_ARG_TYPE/);
-  assert.rejects(() => Readable.from([]).reduce((x, y) => x + y, 0, { signal: true }), /ERR_INVALID_ARG_TYPE/);
+  assert.rejects(() => Readable.from([]).reduce(1), /TypeError/).then(common.mustCall());
+  assert.rejects(() => Readable.from([]).reduce('5'), /TypeError/).then(common.mustCall());
+  assert.rejects(() => Readable.from([]).reduce((x, y) => x + y, 0, 1), /ERR_INVALID_ARG_TYPE/).then(common.mustCall());
+  assert.rejects(() => Readable.from([]).reduce((x, y) => x + y, 0, { signal: true }), /ERR_INVALID_ARG_TYPE/).then(common.mustCall());
 }
 
 {

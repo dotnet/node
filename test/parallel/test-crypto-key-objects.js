@@ -24,6 +24,8 @@ const {
   generateKeyPairSync,
 } = require('crypto');
 
+const { hasOpenSSL3 } = require('../common/crypto');
+
 const fixtures = require('../common/fixtures');
 
 const publicPem = fixtures.readKey('rsa_public.pem', 'ascii');
@@ -168,17 +170,34 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
   assert.strictEqual(derivedPublicKey.asymmetricKeyType, 'rsa');
   assert.strictEqual(derivedPublicKey.symmetricKeySize, undefined);
 
+  // The private key should not be extractable from the derived public key.
+  assert.throws(() => derivedPublicKey.export({ format: 'pem', type: 'pkcs8' }),
+                { code: 'ERR_INVALID_ARG_VALUE' });
+  assert.throws(() => derivedPublicKey.export({ format: 'der', type: 'pkcs8' }),
+                { code: 'ERR_INVALID_ARG_VALUE' });
+  // JWK export should only contain public components, no 'd'.
+  {
+    const jwkExport = derivedPublicKey.export({ format: 'jwk' });
+    assert.strictEqual(jwkExport.kty, 'RSA');
+    assert.strictEqual(jwkExport.d, undefined);
+    assert.strictEqual(jwkExport.dp, undefined);
+    assert.strictEqual(jwkExport.dq, undefined);
+    assert.strictEqual(jwkExport.qi, undefined);
+    assert.strictEqual(jwkExport.p, undefined);
+    assert.strictEqual(jwkExport.q, undefined);
+  }
+
   const publicKeyFromJwk = createPublicKey({ key: publicJwk, format: 'jwk' });
-  assert.strictEqual(publicKey.type, 'public');
-  assert.strictEqual(publicKey.toString(), '[object KeyObject]');
-  assert.strictEqual(publicKey.asymmetricKeyType, 'rsa');
-  assert.strictEqual(publicKey.symmetricKeySize, undefined);
+  assert.strictEqual(publicKeyFromJwk.type, 'public');
+  assert.strictEqual(publicKeyFromJwk.toString(), '[object KeyObject]');
+  assert.strictEqual(publicKeyFromJwk.asymmetricKeyType, 'rsa');
+  assert.strictEqual(publicKeyFromJwk.symmetricKeySize, undefined);
 
   const privateKeyFromJwk = createPrivateKey({ key: jwk, format: 'jwk' });
-  assert.strictEqual(privateKey.type, 'private');
-  assert.strictEqual(privateKey.toString(), '[object KeyObject]');
-  assert.strictEqual(privateKey.asymmetricKeyType, 'rsa');
-  assert.strictEqual(privateKey.symmetricKeySize, undefined);
+  assert.strictEqual(privateKeyFromJwk.type, 'private');
+  assert.strictEqual(privateKeyFromJwk.toString(), '[object KeyObject]');
+  assert.strictEqual(privateKeyFromJwk.asymmetricKeyType, 'rsa');
+  assert.strictEqual(privateKeyFromJwk.symmetricKeySize, undefined);
 
   // It should also be possible to import an encrypted private key as a public
   // key.
@@ -227,6 +246,12 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
     code: 'ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS'
   });
 
+  // Importing a public-only RSA JWK as a private key should fail.
+  assert.throws(
+    () => createPrivateKey({ key: publicJwk, format: 'jwk' }),
+    { code: 'ERR_CRYPTO_INVALID_JWK' }
+  );
+
   const publicDER = publicKey.export({
     format: 'der',
     type: 'pkcs1'
@@ -241,14 +266,14 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
   assert(Buffer.isBuffer(privateDER));
 
   const plaintext = Buffer.from('Hello world', 'utf8');
-  const testDecryption = (fn, ciphertexts, decryptionKeys) => {
+  const testDecryption = common.mustCall((fn, ciphertexts, decryptionKeys) => {
     for (const ciphertext of ciphertexts) {
       for (const key of decryptionKeys) {
         const deciphered = fn(key, ciphertext);
         assert.deepStrictEqual(deciphered, plaintext);
       }
     }
-  };
+  }, 2);
 
   testDecryption(privateDecrypt, [
     // Encrypt using the public key.
@@ -297,8 +322,14 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
   // This should not cause a crash: https://github.com/nodejs/node/issues/25247
   assert.throws(() => {
     createPrivateKey({ key: '' });
-  }, common.hasOpenSSL3 ? {
+  }, hasOpenSSL3 ? {
     message: 'error:1E08010C:DECODER routines::unsupported',
+  } : process.features.openssl_is_boringssl ? {
+    message: 'error:0900006e:PEM routines:OPENSSL_internal:NO_START_LINE',
+    code: 'ERR_OSSL_PEM_NO_START_LINE',
+    reason: 'NO_START_LINE',
+    library: 'PEM routines',
+    function: 'OPENSSL_internal',
   } : {
     message: 'error:0909006C:PEM routines:get_name:no start line',
     code: 'ERR_OSSL_PEM_NO_START_LINE',
@@ -312,7 +343,7 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
     createPrivateKey({ key: Buffer.alloc(0), format: 'der', type: 'spki' });
   }, {
     code: 'ERR_INVALID_ARG_VALUE',
-    message: "The property 'options.type' is invalid. Received 'spki'"
+    message: "The property 'key.type' is invalid. Received 'spki'"
   });
 
   // Unlike SPKI, PKCS#1 is a valid encoding for private keys (and public keys),
@@ -323,16 +354,54 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
       type: 'pkcs1'
     });
     createPrivateKey({ key, format: 'der', type: 'pkcs1' });
-  }, common.hasOpenSSL3 ? {
+  }, hasOpenSSL3 ? {
     message: /error:1E08010C:DECODER routines::unsupported/,
     library: 'DECODER routines'
+  } : process.features.openssl_is_boringssl ? {
+    library: 'public key routines',
+    message: 'error:06000066:public key routines:OPENSSL_internal:DECODE_ERROR'
   } : {
     message: /asn1 encoding/,
     library: 'asn1 encoding routines'
   });
 }
 
-[
+// Test that createPublicKey/createPrivateKey error messages use 'key.<property>' paths
+{
+  // createPrivateKey with invalid format
+  assert.throws(() => {
+    createPrivateKey({ key: Buffer.alloc(0), format: 'banana', type: 'pkcs8' });
+  }, {
+    code: 'ERR_INVALID_ARG_VALUE',
+    message: /key\.format/,
+  });
+
+  // createPrivateKey with invalid type
+  assert.throws(() => {
+    createPrivateKey({ key: Buffer.alloc(0), format: 'der', type: 'banana' });
+  }, {
+    code: 'ERR_INVALID_ARG_VALUE',
+    message: /key\.type/,
+  });
+
+  // createPublicKey with invalid format
+  assert.throws(() => {
+    createPublicKey({ key: Buffer.alloc(0), format: 'banana', type: 'spki' });
+  }, {
+    code: 'ERR_INVALID_ARG_VALUE',
+    message: /key\.format/,
+  });
+
+  // createPublicKey with invalid type
+  assert.throws(() => {
+    createPublicKey({ key: Buffer.alloc(0), format: 'der', type: 'banana' });
+  }, {
+    code: 'ERR_INVALID_ARG_VALUE',
+    message: /key\.type/,
+  });
+}
+
+for (const info of [
   { private: fixtures.readKey('ed25519_private.pem', 'ascii'),
     public: fixtures.readKey('ed25519_public.pem', 'ascii'),
     keyType: 'ed25519',
@@ -373,8 +442,13 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
          'S0jlSYJk',
       kty: 'OKP'
     } },
-].forEach((info) => {
+]) {
   const keyType = info.keyType;
+
+  if (process.features.openssl_is_boringssl && keyType.endsWith('448')) {
+    common.printSkipMessage(`Skipping unsupported ${keyType} test case`);
+    continue;
+  }
 
   {
     const key = createPrivateKey(info.private);
@@ -413,9 +487,72 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
         key.export({ format: 'jwk' }), jwk);
     }
   }
-});
 
-[
+  // Raw format round-trip
+  {
+    const privKey = createPrivateKey(info.private);
+    const pubKey = createPublicKey(info.public);
+
+    const rawPriv = privKey.export({ format: 'raw-private' });
+    const rawPub = pubKey.export({ format: 'raw-public' });
+    assert(Buffer.isBuffer(rawPriv));
+    assert(Buffer.isBuffer(rawPub));
+
+    const importedPriv = createPrivateKey({
+      key: rawPriv, format: 'raw-private', asymmetricKeyType: keyType,
+    });
+    assert.strictEqual(importedPriv.type, 'private');
+    assert.strictEqual(importedPriv.asymmetricKeyType, keyType);
+    assert.deepStrictEqual(
+      importedPriv.export({ format: 'raw-private' }), rawPriv);
+
+    const importedPub = createPublicKey({
+      key: rawPub, format: 'raw-public', asymmetricKeyType: keyType,
+    });
+    assert.strictEqual(importedPub.type, 'public');
+    assert.strictEqual(importedPub.asymmetricKeyType, keyType);
+    assert.deepStrictEqual(
+      importedPub.export({ format: 'raw-public' }), rawPub);
+  }
+}
+
+{
+  const okpJwk = {
+    crv: 'Ed25519',
+    x: 'K1wIouqnuiA04b3WrMa-xKIKIpfHetNZRv3h9fBf768',
+    d: 'wVK6M3SMhQh3NK-7GRrSV-BVWQx1FO5pW8hhQeu_NdA',
+    kty: 'OKP'
+  };
+
+  // Importing a public-only OKP JWK as a private key should fail.
+  assert.throws(
+    () => createPrivateKey({
+      key: { kty: okpJwk.kty, crv: okpJwk.crv, x: okpJwk.x },
+      format: 'jwk',
+    }),
+    { code: 'ERR_CRYPTO_INVALID_JWK' }
+  );
+
+  // Importing an OKP JWK with missing crv should fail.
+  assert.throws(
+    () => createPublicKey({
+      key: { kty: okpJwk.kty, x: okpJwk.x },
+      format: 'jwk',
+    }),
+    { code: 'ERR_CRYPTO_INVALID_JWK' }
+  );
+
+  // Importing an OKP JWK with invalid crv should fail.
+  assert.throws(
+    () => createPublicKey({
+      key: { ...okpJwk, crv: 'invalid' },
+      format: 'jwk',
+    }),
+    { code: 'ERR_CRYPTO_INVALID_JWK' }
+  );
+}
+
+for (const info of [
   { private: fixtures.readKey('ec_p256_private.pem', 'ascii'),
     public: fixtures.readKey('ec_p256_public.pem', 'ascii'),
     keyType: 'ec',
@@ -463,8 +600,13 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
       y: 'Ad3flexBeAfXceNzRBH128kFbOWD6W41NjwKRqqIF26vmgW_8COldGKZjFkOSEASxPB' +
          'cvA2iFJRUyQ3whC00j0Np'
     } },
-].forEach((info) => {
+]) {
   const { keyType, namedCurve } = info;
+
+  if (process.features.openssl_is_boringssl && !getCurves().includes(namedCurve)) {
+    common.printSkipMessage(`Skipping unsupported ${keyType} test case`);
+    continue;
+  }
 
   {
     const key = createPrivateKey(info.private);
@@ -504,13 +646,89 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
       delete jwk.d;
       assert.deepStrictEqual(
         key.export({ format: 'jwk' }), jwk);
+
+      // Private key material must not be extractable from a derived public key.
+      assert.throws(() => key.export({ format: 'pem', type: 'pkcs8' }),
+                    { code: 'ERR_INVALID_ARG_VALUE' });
+      assert.throws(() => key.export({ format: 'pem', type: 'sec1' }),
+                    { code: 'ERR_INVALID_ARG_VALUE' });
+      assert.throws(() => key.export({ format: 'der', type: 'pkcs8' }),
+                    { code: 'ERR_INVALID_ARG_VALUE' });
+      assert.throws(() => key.export({ format: 'der', type: 'sec1' }),
+                    { code: 'ERR_INVALID_ARG_VALUE' });
     }
   }
-});
+
+  // Raw format round-trip
+  {
+    const privKey = createPrivateKey(info.private);
+    const pubKey = createPublicKey(info.public);
+
+    const rawPriv = privKey.export({ format: 'raw-private' });
+    const rawPub = pubKey.export({ format: 'raw-public' });
+    assert(Buffer.isBuffer(rawPriv));
+    assert(Buffer.isBuffer(rawPub));
+
+    const importedPriv = createPrivateKey({
+      key: rawPriv, format: 'raw-private',
+      asymmetricKeyType: keyType, namedCurve,
+    });
+    assert.strictEqual(importedPriv.type, 'private');
+    assert.strictEqual(importedPriv.asymmetricKeyType, keyType);
+    assert.deepStrictEqual(
+      importedPriv.export({ format: 'raw-private' }), rawPriv);
+
+    const importedPub = createPublicKey({
+      key: rawPub, format: 'raw-public',
+      asymmetricKeyType: keyType, namedCurve,
+    });
+    assert.strictEqual(importedPub.type, 'public');
+    assert.strictEqual(importedPub.asymmetricKeyType, keyType);
+    assert.deepStrictEqual(
+      importedPub.export({ format: 'raw-public' }), rawPub);
+  }
+}
+
+{
+  const ecJwk = {
+    crv: 'P-256',
+    d: 'DxBsPQPIgMuMyQbxzbb9toew6Ev6e9O6ZhpxLNgmAEo',
+    kty: 'EC',
+    x: 'X0mMYR_uleZSIPjNztIkAS3_ud5LhNpbiIFp6fNf2Gs',
+    y: 'UbJuPy2Xi0lW7UYTBxPK3yGgDu9EAKYIecjkHX5s2lI'
+  };
+
+  // Importing a public-only EC JWK as a private key should fail.
+  assert.throws(
+    () => createPrivateKey({
+      key: { kty: ecJwk.kty, crv: ecJwk.crv, x: ecJwk.x, y: ecJwk.y },
+      format: 'jwk',
+    }),
+    { code: 'ERR_CRYPTO_INVALID_JWK' }
+  );
+
+  // Importing an EC JWK with missing crv should fail.
+  assert.throws(
+    () => createPublicKey({
+      key: { kty: ecJwk.kty, x: ecJwk.x, y: ecJwk.y },
+      format: 'jwk',
+    }),
+    { code: 'ERR_CRYPTO_INVALID_JWK' }
+  );
+
+  // Importing an EC JWK with invalid crv should fail.
+  assert.throws(
+    () => createPublicKey({
+      key: { ...ecJwk, crv: 'invalid' },
+      format: 'jwk',
+    }),
+    { code: 'ERR_CRYPTO_INVALID_CURVE' }
+  );
+}
 
 {
   // Reading an encrypted key without a passphrase should fail.
-  assert.throws(() => createPrivateKey(privateDsa), common.hasOpenSSL3 ? {
+  assert.throws(() => createPrivateKey(privateDsa), hasOpenSSL3 ? {
     name: 'Error',
     message: 'error:07880109:common libcrypto routines::interrupted or ' +
              'cancelled',
@@ -526,7 +744,7 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
     key: privateDsa,
     format: 'pem',
     passphrase: Buffer.alloc(1025, 'a')
-  }), common.hasOpenSSL3 ? { name: 'Error' } : {
+  }), hasOpenSSL3 ? { name: 'Error' } : {
     code: 'ERR_OSSL_PEM_BAD_PASSWORD_READ',
     name: 'Error'
   });
@@ -538,7 +756,7 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
     format: 'pem',
     passphrase: Buffer.alloc(1024, 'a')
   }), {
-    message: /bad decrypt/
+    message: /bad decrypt|BAD_DECRYPT/
   });
 
   const publicKey = createPublicKey(publicDsa);
@@ -562,7 +780,7 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
     { code: 'ERR_CRYPTO_JWK_UNSUPPORTED_KEY_TYPE' });
 }
 
-{
+if (!process.features.openssl_is_boringssl) {
   // Test RSA-PSS.
   {
     // This key pair does not restrict the message digest algorithm or salt
@@ -758,6 +976,8 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
       }
     }
   }
+} else {
+  common.printSkipMessage('Skipping unsupported RSA-PSS test case');
 }
 
 {
@@ -857,7 +1077,7 @@ const privateDsa = fixtures.readKey('dsa_private_encrypted_1025.pem',
 
 {
   const first = generateKeyPairSync('ed25519');
-  const second = generateKeyPairSync('ed448');
+  const second = generateKeyPairSync('x25519');
 
   assert(!first.publicKey.equals(second.publicKey));
   assert(!first.publicKey.equals(second.privateKey));

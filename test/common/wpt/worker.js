@@ -1,23 +1,30 @@
 'use strict';
 
-const { runInThisContext } = require('vm');
+const { runInNewContext, runInThisContext } = require('vm');
+const { setFlagsFromString } = require('v8');
 const { parentPort, workerData } = require('worker_threads');
 
 const { ResourceLoader } = require(workerData.wptRunner);
 const resource = new ResourceLoader(workerData.wptPath);
 
-global.self = global;
-global.GLOBAL = {
+if (workerData.needsGc) {
+  // See https://github.com/nodejs/node/issues/16595#issuecomment-340288680
+  setFlagsFromString('--expose-gc');
+  globalThis.gc = runInNewContext('gc');
+}
+
+globalThis.self = global;
+globalThis.GLOBAL = {
   isWindow() { return false; },
   isShadowRealm() { return false; },
 };
-global.require = require;
+globalThis.require = require;
 
-// This is a mock, because at the moment fetch is not implemented
-// in Node.js, but some tests and harness depend on this to pull
-// resources.
-global.fetch = function fetch(file) {
-  return resource.read(workerData.testRelativePath, file, true);
+// This is a mock for non-fetch tests that use fetch to resolve
+// a relative fixture file.
+// Actual Fetch API WPTs are executed in nodejs/undici.
+globalThis.fetch = function fetch(file) {
+  return resource.readAsFetch(workerData.testRelativePath, file);
 };
 
 if (workerData.initScript) {
@@ -27,6 +34,32 @@ if (workerData.initScript) {
 runInThisContext(workerData.harness.code, {
   filename: workerData.harness.filename,
 });
+
+// If there are skip patterns, wrap test functions to prevent execution of
+// matching tests. This must happen after testharness.js is loaded but before
+// the test scripts run.
+if (workerData.skippedTests?.length) {
+  function isSkipped(name) {
+    for (const matcher of workerData.skippedTests) {
+      if (typeof matcher === 'string') {
+        if (name === matcher) return true;
+      } else if (matcher.test(name)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  for (const fn of ['test', 'async_test', 'promise_test']) {
+    const original = globalThis[fn];
+    globalThis[fn] = function(func, name, ...rest) {
+      if (typeof name === 'string' && isSkipped(name)) {
+        parentPort.postMessage({ type: 'skip', name });
+        return;
+      }
+      return original.call(this, func, name, ...rest);
+    };
+  }
+}
 
 // eslint-disable-next-line no-undef
 add_result_callback((result) => {

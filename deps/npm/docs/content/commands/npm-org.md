@@ -56,9 +56,8 @@ $ npm org ls my-org @mx-santos
 
 ### Description
 
-You can use the `npm org` commands to manage and view users of an
-organization.  It supports adding and removing users, changing their roles,
-listing them, and finding specific ones and their roles.
+You can use the `npm org` commands to manage and view users of an organization.
+It supports adding and removing users, changing their roles, listing them, and finding specific ones and their roles.
 
 ### Configuration
 
@@ -68,6 +67,8 @@ listing them, and finding specific ones and their roles.
 * Type: URL
 
 The base URL of the npm registry.
+
+
 
 #### `otp`
 
@@ -79,6 +80,8 @@ when publishing or changing package permissions with `npm access`.
 
 If not set, and a registry response fails with a challenge for a one-time
 password, npm will prompt on the command line for one.
+
+
 
 #### `json`
 
@@ -92,6 +95,8 @@ Whether or not to output JSON data, rather than the normal output.
 
 Not supported by all npm commands.
 
+
+
 #### `parseable`
 
 * Default: false
@@ -99,6 +104,8 @@ Not supported by all npm commands.
 
 Output parseable results from commands that write to standard output. For
 `npm search`, this will be tab-separated table format.
+
+
 
 ### See Also
 

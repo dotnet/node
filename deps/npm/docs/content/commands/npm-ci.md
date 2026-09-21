@@ -14,10 +14,7 @@ aliases: clean-install, ic, install-clean, isntall-clean
 
 ### Description
 
-This command is similar to [`npm install`](/commands/npm-install), except
-it's meant to be used in automated environments such as test platforms,
-continuous integration, and deployment -- or any situation where you want
-to make sure you're doing a clean install of your dependencies.
+This command is similar to [`npm install`](/commands/npm-install), except it's meant to be used in automated environments such as test platforms, continuous integration, and deployment -- or any situation where you want to make sure you're doing a clean install of your dependencies.
 
 The main differences between using `npm install` and `npm ci` are:
 
@@ -25,18 +22,14 @@ The main differences between using `npm install` and `npm ci` are:
   `npm-shrinkwrap.json`.
 * If dependencies in the package lock do not match those in `package.json`,
   `npm ci` will exit with an error, instead of updating the package lock.
-* `npm ci` can only install entire projects at a time: individual
-  dependencies cannot be added with this command.
-* If a `node_modules` is already present, it will be automatically removed
-  before `npm ci` begins its install.
+* `npm ci` can only install entire projects at a time: individual dependencies cannot be added with this command.
+* If a `node_modules` is already present, it will be automatically removed before `npm ci` begins its install.
 * It will never write to `package.json` or any of the package-locks:
   installs are essentially frozen.
 
-NOTE: If you create your `package-lock.json` file by running `npm install`
-with flags that can affect the shape of your dependency tree, such as
-`--legacy-peer-deps` or `--install-links`, you _must_ provide the same
-flags to `npm ci` or you are likely to encounter errors. An easy way to do
-this is to run, for example,
+NOTE: If you create your `package-lock.json` file by running `npm install` with flags that can affect the shape of your dependency tree, such as
+`--legacy-peer-deps` or `--install-links`, you _must_ provide the same flags to `npm ci` or you are likely to encounter errors.
+An easy way to do this is to run, for example,
 `npm config set legacy-peer-deps=true --location=project` and commit the
 `.npmrc` file to your repo.
 
@@ -84,6 +77,8 @@ place, no hoisting. shallow (formerly --global-style) only install direct
 deps at top-level. linked: (experimental) install in node_modules/.store,
 link in place, unhoisted.
 
+
+
 #### `legacy-bundling`
 
 * Default: false
@@ -96,6 +91,8 @@ the same manner that they are depended on. This may cause very deep
 directory structures and duplicate package installs as there is no
 de-duplicating. Sets `--install-strategy=nested`.
 
+
+
 #### `global-style`
 
 * Default: false
@@ -106,10 +103,12 @@ de-duplicating. Sets `--install-strategy=nested`.
 Only install direct dependencies in the top level `node_modules`, but hoist
 on deeper dependencies. Sets `--install-strategy=shallow`.
 
+
+
 #### `omit`
 
 * Default: 'dev' if the `NODE_ENV` environment variable is set to
-  'production', otherwise empty.
+  'production'; otherwise, empty.
 * Type: "dev", "optional", or "peer" (can be set multiple times)
 
 Dependency types to omit from the installation tree on disk.
@@ -123,6 +122,22 @@ it will be included.
 
 If the resulting omit list includes `'dev'`, then the `NODE_ENV` environment
 variable will be set to `'production'` for all lifecycle scripts.
+
+
+
+#### `include`
+
+* Default:
+* Type: "prod", "dev", "optional", or "peer" (can be set multiple times)
+
+Option that allows for defining which types of dependencies to install.
+
+This is the inverse of `--omit=<type>`.
+
+Dependency types specified in `--include` will not be omitted, regardless of
+the order in which omit/include are specified on the command-line.
+
+
 
 #### `strict-peer-deps`
 
@@ -143,19 +158,12 @@ When such an override is performed, a warning is printed, explaining the
 conflict and the packages involved. If `--strict-peer-deps` is set, then
 this warning is treated as a failure.
 
-#### `package-lock`
 
-* Default: true
-* Type: Boolean
-
-If set to false, then ignore `package-lock.json` files when installing. This
-will also prevent _writing_ `package-lock.json` if `save` is true.
-
-This configuration does not affect `npm ci`.
 
 #### `foreground-scripts`
 
-* Default: false
+* Default: `false` unless when using `npm pack` or `npm publish` where it
+  defaults to `true`
 * Type: Boolean
 
 Run all build scripts (ie, `preinstall`, `install`, and `postinstall`)
@@ -165,6 +173,8 @@ input, output, and error with the main npm process.
 Note that this will generally make installs run slower, and be much noisier,
 but can be useful for debugging.
 
+
+
 #### `ignore-scripts`
 
 * Default: false
@@ -173,9 +183,134 @@ but can be useful for debugging.
 If true, npm does not run scripts specified in package.json files.
 
 Note that commands explicitly intended to run a particular script, such as
-`npm start`, `npm stop`, `npm restart`, `npm test`, and `npm run-script`
-will still run their intended script if `ignore-scripts` is set, but they
-will *not* run any pre- or post-scripts.
+`npm start`, `npm stop`, `npm restart`, `npm test`, and `npm run` will still
+run their intended script if `ignore-scripts` is set, but they will *not*
+run any pre- or post-scripts.
+
+
+
+#### `allow-directory`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to install dependencies from directories. That
+is, dependencies that point to a directory instead of a version or semver
+range. Please note that this could leave your tree incomplete and some
+packages may not function as intended or designed. Changing this setting
+will not remove dependencies that are already installed.
+
+`all` allows any directories to be installed. `none` prevents any
+directories from being installed. `root` only allows directories defined in
+your project's package.json to be installed. Also allows directory
+dependencies to be used for other commands like `npm view`
+
+
+
+#### `allow-file`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to install dependencies from tarball files. That
+is, dependencies that point to a local tarball file instead of a version or
+semver range. Please note that this could leave your tree incomplete and
+some packages may not function as intended or designed. Changing this
+setting will not remove dependencies that are already installed.
+
+`all` allows any tarball file to be installed. `none` prevents any tarball
+file from being installed. `root` only allows tarball files defined in your
+project's package.json to be installed. Also allows tarball file
+dependencies to be used for other commands like `npm view`
+
+
+
+#### `allow-git`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to fetch dependencies from git references. That
+is, dependencies that point to a git repo instead of a version or semver
+range. Please note that this could leave your tree incomplete and some
+packages may not function as intended or designed. Changing this setting
+will not remove dependencies that are already installed.
+
+`all` allows any git dependencies to be fetched and installed. `none`
+prevents any git dependencies from being fetched and installed. `root` only
+allows git dependencies defined in your project's package.json to be fetched
+and installed. Also allows git dependencies to be fetched for other commands
+like `npm view`
+
+
+
+#### `allow-remote`
+
+* Default: "all"
+* Type: "all", "none", or "root"
+
+Limits the ability for npm to fetch dependencies from urls. That is,
+dependencies that point to a tarball url instead of a version or semver
+range. Please note that this could leave your tree incomplete and some
+packages may not function as intended or designed. Changing this setting
+will not remove dependencies that are already installed.
+
+`all` allows any url to be installed. `none` prevents any url from being
+installed. `root` only allows urls defined in your project's package.json to
+be installed. Also allows url dependencies to be used for other commands
+like `npm view`
+
+
+
+#### `allow-scripts`
+
+* Default: ""
+* Type: String (can be set multiple times)
+
+Comma-separated list of packages whose install-time lifecycle scripts
+(`preinstall`, `install`, `postinstall`, and `prepare` for non-registry
+dependencies) are allowed to run.
+
+This setting is intended for one-off and global contexts: `npm exec`, `npx`,
+and `npm install -g`, where no project `package.json` is involved. For
+team-wide policy in a project, use the `allowScripts` field in
+`package.json` (which also supports explicit denials), or configure it in
+`.npmrc`. Passing `--allow-scripts` on the command line during a
+project-scoped `npm install`, `ci`, `update`, or `rebuild` is an error.
+
+Each name is matched against a dependency's resolved identity, not against
+the package's self-reported name. `--ignore-scripts` and
+`--dangerously-allow-all-scripts` both override this setting.
+
+
+
+#### `strict-allow-scripts`
+
+* Default: false
+* Type: Boolean
+
+If `true`, turn the install-script policy from a warning into a hard error:
+any dependency with install scripts not covered by `allowScripts` will fail
+the install instead of running with a notice.
+
+Dependencies explicitly denied with `false` in `allowScripts` are always
+silently skipped; this setting only affects unreviewed entries.
+`--ignore-scripts` and `--dangerously-allow-all-scripts` both override this
+setting.
+
+
+
+#### `dangerously-allow-all-scripts`
+
+* Default: false
+* Type: Boolean
+
+If `true`, bypass the `allowScripts` policy entirely and run every
+dependency install script regardless of whether it was approved or denied.
+Intended as a migration escape hatch only; its use is strongly discouraged.
+`--ignore-scripts` still takes precedence over this setting.
+
+
 
 #### `audit`
 
@@ -186,6 +321,8 @@ When "true" submit audit reports alongside the current npm command to the
 default registry and all registries configured for scopes. See the
 documentation for [`npm audit`](/commands/npm-audit) for details on what is
 submitted.
+
+
 
 #### `bin-links`
 
@@ -199,6 +336,8 @@ Set to false to have it not do this. This can be used to work around the
 fact that some file systems don't support symlinks, even on ostensibly Unix
 systems.
 
+
+
 #### `fund`
 
 * Default: true
@@ -207,6 +346,8 @@ systems.
 When "true" displays the message at the end of each `npm install`
 acknowledging the number of dependencies looking for funding. See [`npm
 fund`](/commands/npm-fund) for details.
+
+
 
 #### `dry-run`
 
@@ -220,6 +361,8 @@ commands that modify your local installation, eg, `install`, `update`,
 
 Note: This is NOT honored by other network related commands, eg `dist-tags`,
 `owner`, etc.
+
+
 
 #### `workspace`
 
@@ -282,6 +425,8 @@ This value is not exported to the environment for child processes.
 When set file: protocol dependencies will be packed and installed as regular
 dependencies instead of creating a symlink. This option has no effect on
 workspaces.
+
+
 
 ### See Also
 

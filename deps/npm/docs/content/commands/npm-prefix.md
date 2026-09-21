@@ -7,19 +7,18 @@ description: Display prefix
 ### Synopsis
 
 ```bash
-npm prefix [-g]
+npm prefix
 ```
 
 Note: This command is unaware of workspaces.
 
 ### Description
 
-Print the local prefix to standard output. This is the closest parent directory
-to contain a `package.json` file or `node_modules` directory, unless `-g` is
-also specified.
+Print the local prefix to standard output.
+This is the closest parent directory to contain a `package.json` file or `node_modules` directory, unless `-g` is also specified.
 
-If `-g` is specified, this will be the value of the global prefix. See
-[`npm config`](/commands/npm-config) for more detail.
+If `-g` is specified, this will be the value of the global prefix.
+See [`npm config`](/commands/npm-config) for more detail.
 
 ### Example
 
@@ -48,6 +47,8 @@ folder instead of the current working directory. See
   of the current working directory.
 * bin files are linked to `{prefix}/bin`
 * man pages are linked to `{prefix}/share/man`
+
+
 
 ### See Also
 

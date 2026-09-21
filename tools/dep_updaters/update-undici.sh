@@ -8,60 +8,89 @@
 set -ex
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+DEPS_DIR="$ROOT/deps"
 [ -z "$NODE" ] && NODE="$ROOT/out/Release/node"
 [ -x "$NODE" ] || NODE=$(command -v node)
 NPM="$ROOT/deps/npm/bin/npm-cli.js"
 
-NEW_VERSION=$("$NODE" "$NPM" view undici dist-tags.latest)
-CURRENT_VERSION=$("$NODE" -p "require('./deps/undici/src/package.json').version")
+# shellcheck disable=SC1091
+. "$ROOT/tools/dep_updaters/utils.sh"
 
-echo "Comparing $NEW_VERSION with $CURRENT_VERSION"
+NEW_VERSION="$("$NODE" --input-type=module <<'EOF'
+const res = await fetch('https://registry.npmjs.org/undici/seven');
+if (!res.ok) throw new Error(`FetchError: ${res.status} ${res.statusText}`, { cause: res });
+const { version } = await res.json();
+if (!version) throw new Error('No "seven" dist-tag found');
+console.log(version);
+EOF
+)"
 
-if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
-  echo "Skipped because Undici is on the latest version."
-  exit 0
-fi
+CURRENT_VERSION=$("$NODE" -p "require('$DEPS_DIR/undici/src/package.json').version")
 
-cd "$( dirname "$0" )/../.." || exit
+echo "$CURRENT_VERSION"
+echo "$NEW_VERSION"
+
+# This function exit with 0 if new version and current version are the same
+compare_dependency_version "undici" "$NEW_VERSION" "$CURRENT_VERSION"
+
 rm -rf deps/undici/src
 rm -f deps/undici/undici.js
 
+TARBALL=$(mktemp 2> /dev/null || mktemp -t 'tmp')
+
+cleanup () {
+  EXIT_CODE=$?
+  [ -e "$TARBALL" ] && rm "$TARBALL"
+  exit $EXIT_CODE
+}
+
+trap cleanup INT TERM EXIT
+
+echo "Fetching UNDICI source archive..."
+curl -fsSLo "$TARBALL" "https://github.com/nodejs/undici/archive/refs/tags/v$NEW_VERSION.tar.gz"
+
+log_and_verify_sha256sum "undici" "$TARBALL"
+
+echo "Unzipping..."
+tar -xzf "$TARBALL" -C "$DEPS_DIR/undici"
+mv "$DEPS_DIR/undici"/undici-* "$DEPS_DIR/undici/src"
+
 (
-    rm -rf undici-tmp
-    mkdir undici-tmp
-    cd undici-tmp || exit
+  cd "$DEPS_DIR/undici/src"
 
-    "$NODE" "$NPM" init --yes
+  # remove components we don't need to keep in nodejs/deps
+  rm -rf .husky || true
+  rm -rf .github || true
+  rm -rf test
+  rm -rf benchmarks
+  rm -rf docs-tmp
+  mv docs docs-tmp
+  mkdir docs
+  mv docs-tmp/docs docs/docs
+  rm -rf docs-tmp
 
-    "$NODE" "$NPM" install --global-style --no-bin-links --ignore-scripts "undici@$NEW_VERSION"
-    cd node_modules/undici
-    "$NODE" "$NPM" run build:node
+  # Rebuild components from source
+  rm lib/llhttp/llhttp*.*
+  "$NODE" "$NPM" install --ignore-scripts
+  "$NODE" "$NPM" run build:wasm > lib/llhttp/wasm_build_env.txt
+  "$NODE" "$NPM" run build:node
+  "$NODE" "$NPM" prune --production
 )
 
 # update version information in src/undici_version.h
 cat > "$ROOT/src/undici_version.h" <<EOF
 // This is an auto generated file, please do not edit.
-// Refer to tools/update-undici.sh
+// Refer to tools/dep_updaters/update-undici.sh
 #ifndef SRC_UNDICI_VERSION_H_
 #define SRC_UNDICI_VERSION_H_
 #define UNDICI_VERSION "$NEW_VERSION"
 #endif  // SRC_UNDICI_VERSION_H_
 EOF
 
-mv undici-tmp/node_modules/undici deps/undici/src
-mv deps/undici/src/undici-fetch.js deps/undici/undici.js
-cp deps/undici/src/LICENSE deps/undici/LICENSE
+mv "$DEPS_DIR/undici/src/undici-fetch.js" "$DEPS_DIR/undici/undici.js"
+cp "$DEPS_DIR/undici/src/LICENSE" "$DEPS_DIR/undici/LICENSE"
 
-rm -rf undici-tmp/
-
-echo "All done!"
-echo ""
-echo "Please git add and commit the new version:"
-echo ""
-echo "$ git add -A deps/undici src/undici_version.h"
-echo "$ git commit -m \"deps: update Undici to $NEW_VERSION\""
-echo ""
-
-# The last line of the script should always print the new version,
-# as we need to add it to $GITHUB_ENV variable.
-echo "NEW_VERSION=$NEW_VERSION"
+# Update the version number on maintaining-dependencies.md
+# and print the new version as the last line of the script as we need
+# to add it to $GITHUB_ENV variable
+finalize_version_update "undici" "$NEW_VERSION" "src/undici_version.h"

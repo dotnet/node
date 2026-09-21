@@ -16,14 +16,6 @@ namespace node {
 
 static constexpr uint32_t kLabelMask = 0xFFFFF;
 
-inline void hash_combine(size_t* seed) { }
-
-template <typename T, typename... Args>
-inline void hash_combine(size_t* seed, const T& value, Args... rest) {
-    *seed ^= std::hash<T>{}(value) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
-    hash_combine(seed, rest...);
-}
-
 bool SocketAddress::is_numeric_host(const char* hostname) {
   return is_numeric_host(hostname, AF_INET) ||
          is_numeric_host(hostname, AF_INET6);
@@ -79,12 +71,16 @@ SocketAddress::SocketAddress(const SocketAddress& addr) {
 }
 
 SocketAddress& SocketAddress::operator=(const sockaddr* addr) {
-  memcpy(&address_, addr, GetLength(addr));
+  if (reinterpret_cast<const sockaddr*>(&address_) != addr) {
+    memcpy(&address_, addr, GetLength(addr));
+  }
   return *this;
 }
 
 SocketAddress& SocketAddress::operator=(const SocketAddress& addr) {
-  memcpy(&address_, &addr.address_, addr.length());
+  if (this != &addr) {
+    memcpy(&address_, &addr.address_, addr.length());
+  }
   return *this;
 }
 
@@ -172,22 +168,9 @@ bool SocketAddress::operator!=(const SocketAddress& other) const {
   return !(*this == other);
 }
 
-bool SocketAddress::operator<(const SocketAddress& other) const {
-  return compare(other) == CompareResult::LESS_THAN;
-}
-
-bool SocketAddress::operator>(const SocketAddress& other) const {
-  return compare(other) == CompareResult::GREATER_THAN;
-}
-
-bool SocketAddress::operator<=(const SocketAddress& other) const {
-  CompareResult c = compare(other);
-  return c == CompareResult::NOT_COMPARABLE ? false :
-              c <= CompareResult::SAME;
-}
-
-bool SocketAddress::operator>=(const SocketAddress& other) const {
-  return compare(other) >= CompareResult::SAME;
+std::partial_ordering SocketAddress::operator<=>(
+    const SocketAddress& other) const {
+  return compare(other);
 }
 
 template <typename T>

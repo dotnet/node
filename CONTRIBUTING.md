@@ -1,9 +1,26 @@
 # Contributing to Node.js
 
+Contributions to Node.js include code, documentation, answering user questions,
+running the project's infrastructure, and advocating for all types of Node.js
+users.
+
+The Node.js project welcomes all contributions from anyone willing to work in
+good faith with other contributors and the community. No contribution is too
+small and all contributions are valued.
+
+The Node.js project has an open governance model.
+Individuals making significant and valuable contributions are made
+Collaborators and given commit-access to the project. See the
+[GOVERNANCE.md](./GOVERNANCE.md) document for more information about how this
+works.
+
+## Contents
+
 * [Code of Conduct](#code-of-conduct)
 * [Issues](#issues)
 * [Pull Requests](#pull-requests)
-* [Developer's Certificate of Origin 1.1](#developers-certificate-of-origin)
+* [Automation and bots](#automation-and-bots)
+* [Developer's Certificate of Origin 1.1](#developers-certificate-of-origin-11)
 
 ## [Code of Conduct](./doc/contributing/code-of-conduct.md)
 
@@ -22,17 +39,31 @@ See [details on our policy on Code of Conduct](./doc/contributing/code-of-conduc
 
 ## [Pull Requests](./doc/contributing/pull-requests.md)
 
+Pull Requests are the way concrete changes are made to the code, documentation,
+dependencies, and tools contained in the `nodejs/node` repository.
+
 * [Dependencies](./doc/contributing/pull-requests.md#dependencies)
 * [Setting up your local environment](./doc/contributing/pull-requests.md#setting-up-your-local-environment)
 * [The Process of Making Changes](./doc/contributing/pull-requests.md#the-process-of-making-changes)
 * [Reviewing Pull Requests](./doc/contributing/pull-requests.md#reviewing-pull-requests)
+* [Large Pull Requests](./doc/contributing/large-pull-requests.md)
 * [Notes](./doc/contributing/pull-requests.md#notes)
 
-<a id="developers-certificate-of-origin"></a>
+## Automation and bots
+
+An automation tool or bot that is not managed by the Node.js project
+must seek explicit authorization by opening an issue with their owner
+in [nodejs/admin](https://github.com/nodejs/admin) before interacting
+with the project.
+
+Interactions (including Issues, Comments, Pull Requests and Reviews) made
+by an automation that was not authorized by Node.js collaborators are
+subject to immediate moderation enforcement on the automation and owner
+without notice.
 
 ## Developer's Certificate of Origin 1.1
 
-<pre>
+```text
 By making a contribution to this project, I certify that:
 
  (a) The contribution was created in whole or in part by me and I
@@ -56,4 +87,4 @@ By making a contribution to this project, I certify that:
      personal information I submit with it, including my sign-off) is
      maintained indefinitely and may be redistributed consistent with
      this project or the open source license(s) involved.
-</pre>
+```

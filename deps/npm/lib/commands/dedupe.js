@@ -1,8 +1,7 @@
-// dedupe duplicated packages, or find them in the tree
 const reifyFinish = require('../utils/reify-finish.js')
-
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
 
+// dedupe duplicated packages, or find them in the tree
 class Dedupe extends ArboristWorkspaceCmd {
   static description = 'Reduce duplication in the package tree'
   static name = 'dedupe'
@@ -13,7 +12,12 @@ class Dedupe extends ArboristWorkspaceCmd {
     'strict-peer-deps',
     'package-lock',
     'omit',
+    'include',
     'ignore-scripts',
+    'allow-directory',
+    'allow-file',
+    'allow-git',
+    'allow-remote',
     'audit',
     'bin-links',
     'fund',
@@ -21,7 +25,7 @@ class Dedupe extends ArboristWorkspaceCmd {
     ...super.params,
   ]
 
-  async exec (args) {
+  async exec () {
     if (this.npm.global) {
       const er = new Error('`npm dedupe` does not work in global mode.')
       er.code = 'EDEDUPEGLOBAL'
@@ -35,10 +39,9 @@ class Dedupe extends ArboristWorkspaceCmd {
       ...this.npm.flatOptions,
       path: where,
       dryRun,
-      // Saving during dedupe would only update if one of your direct
-      // dependencies was also duplicated somewhere in your tree. It would be
-      // confusing if running this were to also update your package.json.  In
-      // order to reduce potential confusion we set this to false.
+      // Saving during dedupe would only update if one of your direct dependencies was also duplicated somewhere in your tree.
+      // It would be confusing if running this were to also update your package.json.
+      // In order to reduce potential confusion we set this to false.
       save: false,
       workspaces: this.workspaceNames,
     }

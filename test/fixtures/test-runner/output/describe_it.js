@@ -1,4 +1,3 @@
-// Flags: --no-warnings
 'use strict';
 require('../../../common');
 const assert = require('node:assert');
@@ -6,22 +5,45 @@ const { describe, it, test } = require('node:test');
 const util = require('util');
 
 
-it.todo('sync pass todo', () => {
+it.expectFailure('sync expect fail (method)', () => {
+  throw new Error('should pass');
+});
 
+it('sync expect fail (options)', { expectFailure: true }, () => {
+  throw new Error('should pass');
+});
+
+it.expectFailure('async expect fail (method)', async () => {
+  throw new Error('should pass');
+});
+
+it('async expect fail (options)', { expectFailure: true }, async () => {
+  throw new Error('should pass');
+});
+
+it.todo('sync pass todo', () => {
 });
 
 it('sync pass todo with message', { todo: 'this is a passing todo' }, () => {
 });
 
-it.todo('sync fail todo', () => {
-  throw new Error('thrown from sync fail todo');
+it.todo('sync todo', () => {
+  throw new Error('should not count as a failure');
 });
 
-it('sync fail todo with message', { todo: 'this is a failing todo' }, () => {
-  throw new Error('thrown from sync fail todo with message');
+it.todo('sync todo with expect fail', { expectFailure: true }, () => {
+  throw new Error('should not count as an expected failure');
+});
+
+it('sync todo with message', { todo: 'this is a failing todo' }, () => {
+  throw new Error('should not count as a failure');
 });
 
 it.skip('sync skip pass', () => {
+});
+
+it.skip('sync skip expect fail', { expectFailure: true }, () => {
+  throw new Error('should not fail');
 });
 
 it('sync skip pass with message', { skip: 'this is skipped' }, () => {
@@ -197,15 +219,6 @@ it('test with a name and options provided', { skip: true });
 // A test with only options and a function provided.
 it({ skip: true }, function functionAndOptions() {});
 
-// A test whose description needs to be escaped.
-it('escaped description \\ # \\#\\');
-
-// A test whose skip message needs to be escaped.
-it('escaped skip message', { skip: '#skip' });
-
-// A test whose todo message needs to be escaped.
-it('escaped todo message', { todo: '#todo' });
-
 it('callback pass', (t, done) => {
   setImmediate(done);
 });
@@ -312,12 +325,18 @@ describe('describe async throw fails', async () => {
 describe('timeouts', () => {
   it('timed out async test', { timeout: 5 }, async () => {
     return new Promise((resolve) => {
-      setTimeout(resolve, 100);
+      setTimeout(() => {
+        // Empty timer so the process doesn't exit before the timeout triggers.
+      }, 5);
+      setTimeout(resolve, 30_000_000).unref();
     });
   });
 
   it('timed out callback test', { timeout: 5 }, (t, done) => {
-    setTimeout(done, 100);
+    setTimeout(() => {
+      // Empty timer so the process doesn't exit before the timeout triggers.
+    }, 5);
+    setTimeout(done, 30_000_000).unref();
   });
 
 
@@ -374,4 +393,23 @@ describe('rejected thenable', () => {
       return (_, errorHandler) => errorHandler(new Error('custom error'));
     },
   };
+});
+
+describe('async describe function', async () => {
+  await null;
+
+  await it('it inside describe 1', async () => {
+    await null;
+  });
+  await it('it inside describe 2', async () => {
+    await null;
+  });
+
+  describe('inner describe', async () => {
+    await null;
+
+    it('it inside inner describe', async () => {
+      await null;
+    });
+  });
 });

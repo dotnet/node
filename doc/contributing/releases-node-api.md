@@ -9,14 +9,15 @@ release process.
   * [0. Pre-release steps](#0-pre-release-steps)
   * [1. Update the main branch](#1-update-the-main-branch)
   * [2. Create a new branch for the release](#2-create-a-new-branch-for-the-release)
-  * [3. Update `NAPI_VERSION`](#3-update-napi_version)
+  * [3. Update `NODE_API_SUPPORTED_VERSION_MAX`](#3-update-node_api_supported_version_max)
   * [4. Define `addon_context_register_func`](#4-define-addon_context_register_func)
   * [5. Update version guards](#5-update-version-guards)
-  * [6. Create release commit](#6-create-release-commit)
-  * [7. Propose release on GitHub](#7-propose-release-on-github)
-  * [8. Ensure that the release branch is stable](#8-ensure-that-the-release-branch-is-stable)
-  * [9. Land the release](#9-land-the-release)
-  * [10. Backport the release](#10-backport-the-release)
+  * [6. Update version matrix document](#6-update-version-matrix-document)
+  * [7. Create release commit](#7-create-release-commit)
+  * [8. Propose release on GitHub](#8-propose-release-on-github)
+  * [9. Ensure that the release branch is stable](#9-ensure-that-the-release-branch-is-stable)
+  * [10. Land the release](#10-land-the-release)
+  * [11. Backport the release](#11-backport-the-release)
 
 ## How to create a release
 
@@ -38,10 +39,10 @@ Node-API Working Group can be contacted best by opening up an issue on the
 
 Checkout the staging branch locally.
 
-```console
-$ git remote update
-$ git checkout main
-$ git reset --hard upstream/main
+```bash
+git remote update
+git checkout main
+git reset --hard upstream/main
 ```
 
 If the staging branch is not up to date relative to `main`, bring the
@@ -51,17 +52,17 @@ appropriate PRs and commits into it.
 
 Create a new branch named `node-api-x-proposal`, off the main branch.
 
-```console
-$ git checkout -b node-api-10-proposal upstream/main
+```bash
+git checkout -b node-api-10-proposal upstream/main
 ```
 
-### 3. Update `NAPI_VERSION`
+### 3. Update `NODE_API_SUPPORTED_VERSION_MAX`
 
 Set the version for the proposed release using the following macros, which are
 already defined in `src/node_version.h`:
 
 ```c
-#define NAPI_VERSION x
+#define NODE_API_SUPPORTED_VERSION_MAX x
 ```
 
 > Note: Do not update the `NAPI_VERSION` defined in `src/js_native_api.h`. It
@@ -83,22 +84,31 @@ version, the relevant commits should already include the `NAPI_EXPERIMENTAL`
 define guards on the declaration of the new Node-API. Check for these guards
 with:
 
-```console
-grep NAPI_EXPERIMENTAL src/js_native_api{_types,}.h src/node_api{_types,}.h
+```bash
+grep                           \
+  -nHE                         \
+  'N(ODE_)?API_EXPERIMENTAL'   \
+  src/js_native_api{_types,}.h \
+  src/node_api{_types,}.h
 ```
 
 and update the define version guards with the release version:
 
 ```diff
 - #ifdef NAPI_EXPERIMENTAL
-+ #if NAPI_VERSION >= 10
++ #if NAPI_VERSION >= 11
 
   NAPI_EXTERN napi_status NAPI_CDECL
   node_api_function(napi_env env);
 
 - #endif  // NAPI_EXPERIMENTAL
-+ #endif  // NAPI_VERSION >= 10
++ #endif  // NAPI_VERSION >= 11
 ```
+
+Remove any feature flags of the form `NODE_API_EXPERIMENTAL_HAS_<FEATURE>`.
+
+Remove any additional `NODE_API_EXPERIMENTAL_*` guards along with
+`NAPI_EXPERIMENTAL`.
 
 Also, update the Node-API version value of the `napi_get_version` test in
 `test/js-native-api/test_general/test.js` with the release version `x`:
@@ -112,11 +122,11 @@ Also, update the Node-API version value of the `napi_get_version` test in
 #### Step 2. Update runtime version guards
 
 If this release includes runtime behavior version guards, the relevant commits
-should already include `NAPI_VERSION_EXPERIMENTAL` guard for the change. Check
-for these guards with:
+should already include the `NAPI_VERSION_EXPERIMENTAL` guard for the change.
+Check for these guards with:
 
-```console
-grep NAPI_VERSION_EXPERIMENTAL src/js_native_api_v8* src/node_api.cc
+```bash
+grep -nH NAPI_VERSION_EXPERIMENTAL src/js_native_api_v8* src/node_api.cc
 ```
 
 and substitute this guard version with the release version `x`.
@@ -127,8 +137,12 @@ If this release includes add-on tests for the new Node-APIs, the relevant
 commits should already include `NAPI_EXPERIMENTAL` definition for the tests.
 Check for these definitions with:
 
-```console
-grep NAPI_EXPERIMENTAL test/node-api/*/{*.{h,c},binding.gyp} test/js-native-api/*/{*.{h,c},binding.gyp}
+```bash
+grep                                    \
+  -nHE                                  \
+  'N(ODE_)?API_EXPERIMENTAL'            \
+  test/node-api/*/{*.{h,c},binding.gyp} \
+  test/js-native-api/*/{*.{h,c},binding.gyp}
 ```
 
 and substitute the `NAPI_EXPERIMENTAL` with the release version
@@ -138,6 +152,8 @@ and substitute the `NAPI_EXPERIMENTAL` with the release version
 - #define NAPI_EXPERIMENTAL
 + #define NAPI_VERSION 10
 ```
+
+Remove any `NODE_API_EXPERIMENTAL_*` flags.
 
 #### Step 4. Update document
 
@@ -155,7 +171,7 @@ stability banner:
   <!-- YAML
   added:
     - v1.2.3
-+ napiVersion: 10
++ napiVersion: 11
   -->
 
 - > Stability: 1 - Experimental
@@ -170,8 +186,8 @@ should already have documented the new behavior in a "Change History" section.
 For all runtime version guards updated in Step 2, check for these definitions
 with:
 
-```console
-grep NAPI_EXPERIMENTAL doc/api/n-api.md
+```bash
+grep -nH NAPI_EXPERIMENTAL doc/api/n-api.md
 ```
 
 In `doc/api/n-api.md`, update the `experimental` change history item to be the
@@ -184,7 +200,22 @@ released version `x`:
 + * version 10:
 ```
 
-### 6. Create release commit
+### 6. Update version matrix document
+
+Add a new row in the [version matrix][] for
+the new version:
+
+```text
+<tr>
+  <th scope="row">10</th>
+  <td>vREPLACEME+ and all later versions</td>
+</tr>
+```
+
+In this case, use `REPLACEME` as a placeholder for the Node.js version to be released.
+It will be updated in a Node.js version release.
+
+### 7. Create release commit
 
 When committing these to git, use the following message format:
 
@@ -192,7 +223,7 @@ When committing these to git, use the following message format:
 node-api: define version x
 ```
 
-### 7. Propose release on GitHub
+### 8. Propose release on GitHub
 
 Create a pull request targeting the `main` branch. These PRs should be left
 open for at least 24 hours, and can be updated as new commits land.
@@ -203,22 +234,26 @@ good place to @-mention the relevant contributors.
 Tag the PR with the `notable-change` label, and @-mention the GitHub team
 @nodejs/node-api and @nodejs/node-api-implementer.
 
-### 8. Ensure that the release branch is stable
+### 9. Ensure that the release branch is stable
 
 Run a **[`node-test-pull-request`](https://ci.nodejs.org/job/node-test-pull-request/)**
 test run to ensure that the build is stable and the HEAD commit is ready for
 release.
 
-### 9. Land the release
+### 10. Land the release
 
 See the steps documented in [Collaborator Guide - Landing a PR][] to land the
 PR.
 
-### 10. Backport the release
+### 11. Backport the release
 
 Consider backporting the release to all LTS versions following the steps
 documented in the [backporting guide][].
 
+Additionally, update the [version matrix][] for the backported version if
+necessary.
+
 [Collaborator Guide - Landing a PR]: ./collaborator-guide.md#landing-pull-requests
 [abi-stable-node issue tracker]: https://github.com/nodejs/abi-stable-node/issues
 [backporting guide]: backporting-to-release-lines.md
+[version matrix]: ../api/n-api.md#node-api-version-matrix

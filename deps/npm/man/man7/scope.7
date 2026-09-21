@@ -1,6 +1,6 @@
-.TH "SCOPE" "7" "May 2023" "" ""
+.TH "SCOPE" "7" "May 2026" "NPM@11.16.0" ""
 .SH "NAME"
-\fBscope\fR - Scoped packages
+\fBScope\fR - Scoped packages
 .SS "Description"
 .P
 All npm packages have a name. Some package names also have a scope. A scope follows the usual rules for package names (URL-safe characters, no leading dots or underscores). When used in package names, scopes are preceded by an \fB@\fR symbol and followed by a slash, e.g.
@@ -95,7 +95,7 @@ You can also associate a scope with a registry using \fBnpm config\fR:
 .P
 .RS 2
 .nf
-npm config set @myco:registry http://reg.example.com
+npm config set @myco:registry=http://reg.example.com
 .fi
 .RE
 .P

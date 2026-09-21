@@ -1,9 +1,9 @@
 const pacote = require('pacote')
 const libpack = require('libnpmpack')
 const npa = require('npm-package-arg')
-const log = require('../utils/log-shim')
+const { log, output } = require('proc-log')
 const { getContents, logTar } = require('../utils/tar.js')
-const BaseCommand = require('../base-command.js')
+const BaseCommand = require('../base-cmd.js')
 
 class Pack extends BaseCommand {
   static description = 'Create a tarball from a package'
@@ -15,6 +15,7 @@ class Pack extends BaseCommand {
     'workspace',
     'workspaces',
     'include-workspace-root',
+    'ignore-scripts',
   ]
 
   static usage = ['<package-spec>']
@@ -29,46 +30,50 @@ class Pack extends BaseCommand {
     const unicode = this.npm.config.get('unicode')
     const json = this.npm.config.get('json')
 
-    // Get the manifests and filenames first so we can bail early on manifest
-    // errors before making any tarballs
+    const Arborist = require('@npmcli/arborist')
+    // Get the manifests and filenames first so we can bail early on manifest errors before making any tarballs
     const manifests = []
     for (const arg of args) {
       const spec = npa(arg)
-      const manifest = await pacote.manifest(spec, this.npm.flatOptions)
+      const manifest = await pacote.manifest(spec, {
+        ...this.npm.flatOptions,
+        Arborist,
+        preferOnline: true,
+        _isRoot: true,
+      })
       if (!manifest._id) {
         throw new Error('Invalid package, must have name and version')
       }
       manifests.push({ arg, manifest })
     }
 
-    // Load tarball names up for printing afterward to isolate from the
-    // noise generated during packing
+    // Load tarball names up for printing afterward to isolate from the noise generated during packing
     const tarballs = []
     for (const { arg, manifest } of manifests) {
       const tarballData = await libpack(arg, {
         ...this.npm.flatOptions,
+        foregroundScripts: this.npm.config.isDefault('foreground-scripts')
+          ? true
+          : this.npm.config.get('foreground-scripts'),
+        preferOnline: true,
         prefix: this.npm.localPrefix,
         workspaces: this.workspacePaths,
       })
-      const pkgContents = await getContents(manifest, tarballData)
-      tarballs.push(pkgContents)
+      tarballs.push(await getContents(manifest, tarballData))
     }
 
-    if (json) {
-      this.npm.output(JSON.stringify(tarballs, null, 2))
-      return
-    }
-
-    for (const tar of tarballs) {
-      logTar(tar, { unicode })
-      this.npm.output(tar.filename.replace(/^@/, '').replace(/\//, '-'))
+    for (const [index, tar] of Object.entries(tarballs)) {
+      // XXX(BREAKING_CHANGE): publish outputs a json object with package names as keys.
+      // Pack should do the same here instead of an array
+      logTar(tar, { unicode, json, key: index })
+      if (!json) {
+        output.standard(tar.filename.replace(/^@/, '').replace(/\//, '-'))
+      }
     }
   }
 
   async execWorkspaces (args) {
-    // If they either ask for nothing, or explicitly include '.' in the args,
-    // we effectively translate that into each workspace requested
-
+    // If they either ask for nothing, or explicitly include '.' in the args, we effectively translate that into each workspace requested
     const useWorkspaces = args.length === 0 || args.includes('.')
 
     if (!useWorkspaces) {
@@ -80,4 +85,5 @@ class Pack extends BaseCommand {
     return this.exec([...this.workspacePaths, ...args.filter(a => a !== '.')])
   }
 }
+
 module.exports = Pack

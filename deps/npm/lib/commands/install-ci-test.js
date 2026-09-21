@@ -1,6 +1,3 @@
-// npm install-ci-test
-// Runs `npm ci` and then runs `npm test`
-
 const CI = require('./ci.js')
 
 class InstallCITest extends CI {
@@ -12,4 +9,5 @@ class InstallCITest extends CI {
     return this.npm.exec('test', [])
   }
 }
+
 module.exports = InstallCITest

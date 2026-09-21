@@ -33,6 +33,7 @@ following table:
 | File (\*.h/\*.cc)    | Description                                                                |
 | -------------------- | -------------------------------------------------------------------------- |
 | `crypto_aes`         | AES Cipher support.                                                        |
+| `crypto_argon2`      | Argon2 key / bit generation implementation.                                |
 | `crypto_cipher`      | General Encryption/Decryption utilities.                                   |
 | `crypto_clienthello` | TLS/SSL client hello parser implementation. Used during SSL/TLS handshake. |
 | `crypto_context`     | Implementation of the `SecureContext` object.                              |
@@ -79,10 +80,10 @@ using SSLPointer = DeleteFnPtr<SSL, SSL_free>;
 using PKCS8Pointer = DeleteFnPtr<PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free>;
 using EVPKeyPointer = DeleteFnPtr<EVP_PKEY, EVP_PKEY_free>;
 using EVPKeyCtxPointer = DeleteFnPtr<EVP_PKEY_CTX, EVP_PKEY_CTX_free>;
-using EVPMDPointer = DeleteFnPtr<EVP_MD_CTX, EVP_MD_CTX_free>;
+using EVPMDCtxPointer = DeleteFnPtr<EVP_MD_CTX, EVP_MD_CTX_free>;
 using RSAPointer = DeleteFnPtr<RSA, RSA_free>;
 using ECPointer = DeleteFnPtr<EC_KEY, EC_KEY_free>;
-using BignumPointer = DeleteFnPtr<BIGNUM, BN_free>;
+using BignumPointer = DeleteFnPtr<BIGNUM, BN_clear_free>;
 using NetscapeSPKIPointer = DeleteFnPtr<NETSCAPE_SPKI, NETSCAPE_SPKI_free>;
 using ECGroupPointer = DeleteFnPtr<EC_GROUP, EC_GROUP_free>;
 using ECPointPointer = DeleteFnPtr<EC_POINT, EC_POINT_free>;
@@ -105,10 +106,6 @@ an `ArrayBuffer` (`v8::BackingStore`), or allocated data.
   must remain valid until the `ByteSource` is destroyed.
 * If allocated data is used, then it must have been allocated using OpenSSL's
   allocator. It will be freed automatically when the `ByteSource` is destroyed.
-
-The `ByteSource::Builder` class can be used to allocate writable memory that can
-then be released as a `ByteSource`, making it read-only, or freed by destroying
-the `ByteSource::Builder` without releasing it as a `ByteSource`.
 
 ### `ArrayBufferOrViewContents`
 
@@ -149,32 +146,39 @@ threadpool).
 Refer to `crypto_keys.h` and `crypto_keys.cc` for all code relating to the
 core key objects.
 
-#### `ManagedEVPPKey`
-
-The `ManagedEVPPKey` class is a smart pointer for OpenSSL `EVP_PKEY`
-structures. These manage the lifecycle of Public and Private key pairs.
-
 #### `KeyObjectData`
 
 `KeyObjectData` is an internal thread-safe structure used to wrap either
-a `ManagedEVPPKey` (for Public or Private keys) or a `ByteSource` containing
-a Secret key.
+an `EVPKeyPointer` (for Public or Private keys) or a `ByteSource` containing
+a Secret key. It is the shared backing representation used by `KeyObject`,
+`CryptoKey`, and native crypto jobs that operate on key material.
 
 #### `KeyObjectHandle`
 
-The `KeyObjectHandle` provides the interface between the native C++ code
-handling keys and the public JavaScript `KeyObject` API.
+`KeyObjectHandle` is the internal JavaScript-visible C++ handle for a
+`KeyObjectData`. It exposes operations that internal JavaScript uses to
+initialize, inspect, compare, and export key material. Native code passes
+`KeyObjectData` across threads and jobs; a `KeyObjectHandle` is created when
+JavaScript needs access to those operations and is kept out of user-visible
+`KeyObject` own properties.
 
 #### `KeyObject`
 
-A `KeyObject` is the public Node.js-specific API for keys. A single
-`KeyObject` wraps exactly one `KeyObjectHandle`.
+A `KeyObject` is the public Node.js-specific API for keys. It extends a
+native `NativeKeyObject`, which stores `KeyObjectData` for structured
+cloning. The JavaScript API surface reads its key type and a
+`KeyObjectHandle` through a hidden native-backed slot tuple, caching that
+tuple in a private field outside user-visible own properties. Derived
+metadata, such as symmetric key size and asymmetric key details, is read
+from the cached handle and appended lazily to the same private-field cache.
 
 #### `CryptoKey`
 
-A `CryptoKey` is the Web Crypto API's alternative to `KeyObject`. In the
-Node.js implementation, `CryptoKey` is a thin wrapper around the
-`KeyObject` and it is largely possible to use them interchangeably.
+A `CryptoKey` is the Web Crypto API key type. In the Node.js implementation,
+public `CryptoKey` instances are backed by a native `NativeCryptoKey`, not by
+a `KeyObject`. `NativeCryptoKey` stores the same `KeyObjectData`
+representation as `KeyObject`, plus the Web Crypto internal slots
+(`[[extractable]]`, `[[algorithm]]`, and `[[usages]]`).
 
 ### `CryptoJob`
 
@@ -182,7 +186,8 @@ All operations that are not either Stream-based or single-use functions
 are built around the `CryptoJob` class.
 
 A `CryptoJob` encapsulates a single crypto operation that can be
-invoked synchronously or asynchronously.
+invoked synchronously, asynchronously, or as a Web Crypto API
+Promise-based job.
 
 The `CryptoJob` class itself is a C++ template that takes a single
 `CryptoJobTraits` struct as a parameter. The `CryptoJobTraits`
@@ -226,14 +231,15 @@ specializations and will either be called synchronously within
 the current thread or from within the libuv threadpool.
 
 Every `CryptoJob` instance exposes a `run()` function to the
-JavaScript layer. When called, `run()` with either dispatch the
-job to the libuv threadpool or invoke the Implementation
-function synchronously. If invoked synchronously, run() will
-return a JavaScript array. The first value in the array is
-either an `Error` or `undefined`. If the operation was successful,
-the second value in the array will contain the result of the
-operation. Typically, the result is an `ArrayBuffer`, but
-certain `CryptoJob` types can alter the output.
+JavaScript layer. When called, `run()` will either dispatch the
+job to the libuv threadpool, invoke the Implementation function
+synchronously, or return a `Promise` for Web Crypto API jobs. If
+invoked synchronously, `run()` will return a JavaScript array.
+The first value in the array is either an `Error` or `undefined`.
+If the operation was successful, the second value in the array
+will contain the result of the operation. Typically, the result
+is an `ArrayBuffer`, but certain `CryptoJob` types can alter the
+output.
 
 If the `CryptoJob` is processed asynchronously, then the job
 must have an `ondone` property whose value is a function that
@@ -242,6 +248,12 @@ be called with two arguments. The first is either an `Error`
 or `undefined`, and the second is the result of the operation
 if successful.
 
+If the `CryptoJob` is processed as a Web Crypto API job, then
+`run()` returns a Promise. Operation-specific failures are
+rejected with an `OperationError`, and successful jobs resolve
+with the Web Crypto API result shape expected by the JavaScript
+implementation.
+
 For `CipherJob` types, the output is always an `ArrayBuffer`.
 
 For `KeyExportJob` types, the output is either an `ArrayBuffer` or
@@ -249,7 +261,9 @@ a JavaScript object (for JWK output format);
 
 For `KeyGenJob` types, the output is either a single KeyObject,
 or an array containing a Public/Private key pair represented
-either as a `KeyObjectHandle` object or a `Buffer`.
+either as a `KeyObjectHandle` object or a `Buffer`. Web Crypto
+API key generation jobs return a `CryptoKey` or a `CryptoKeyPair`
+object.
 
 For `DeriveBitsJob` type output is typically an `ArrayBuffer` but
 can be other values (`RandomBytesJob` for instance, fills an
@@ -274,11 +288,12 @@ should be used to throw JavaScript errors when necessary.
 
 ### Operation mode
 
-All crypto functions in Node.js operate in one of three
+All crypto functions in Node.js operate in one of these
 modes:
 
 * Synchronous single-call
 * Asynchronous single-call
+* Web Crypto API Promise-based
 * Stream-oriented
 
 It is often possible to perform various operations across
@@ -310,12 +325,12 @@ crypto.randomFill(buf, (err, buf) => {
 For the legacy Node.js crypto API, asynchronous single-call
 operations use the traditional Node.js callback pattern, as
 illustrated in the previous `randomFill()` example. In the
-Web Crypto API (accessible via `require('node:crypto').webcrypto`),
+Web Crypto API (accessible via `globalThis.crypto`),
 all asynchronous single-call operations are Promise-based.
 
 ```js
 // Example Web Crypto API asynchronous single-call operation
-const { subtle } = require('node:crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 
 subtle.generateKeys({ name: 'HMAC', length: 256 }, true, ['sign'])
   .then((key) => {

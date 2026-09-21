@@ -4,7 +4,7 @@
 // may change when node-tap is updated.
 
 const t = require('tap')
-const { utimesSync } = require('fs')
+const { utimesSync } = require('node:fs')
 const mockNpm = require('../../fixtures/mock-npm.js')
 const { cleanCwd } = require('../../fixtures/clean-snapshot')
 
@@ -100,7 +100,7 @@ const mockLs = async (t, { mocks, config, ...opts } = {}) => {
     command: 'ls',
     mocks: {
       path: {
-        ...require('path'),
+        ...require('node:path'),
         sep: '/',
       },
       ...mocks,
@@ -263,7 +263,7 @@ t.test('ls', async t => {
     await
 
     ls.exec([])
-    t.matchSnapshot(cleanCwd(result()), 'should contain overridden outout')
+    t.matchSnapshot(cleanCwd(result()), 'should contain overridden output')
   })
 
   t.test('overridden dep w/ color', async t => {
@@ -305,7 +305,7 @@ t.test('ls', async t => {
     })
 
     await ls.exec([])
-    t.matchSnapshot(cleanCwd(result()), 'should contain overridden outout')
+    t.matchSnapshot(cleanCwd(result()), 'should contain overridden output')
   })
 
   t.test('with filter arg', async t => {
@@ -329,7 +329,7 @@ t.test('ls', async t => {
     await ls.exec(['chai'])
     t.matchSnapshot(
       cleanCwd(result()),
-      'should output tree contaning only occurrences of filtered by package and colored output'
+      'should output tree containing only occurrences of filtered by package and colored output'
     )
   })
 
@@ -355,7 +355,7 @@ t.test('ls', async t => {
     await ls.exec(['.'])
     t.matchSnapshot(
       cleanCwd(result()),
-      'should output tree contaning only occurrences of filtered by package and colored output'
+      'should output tree containing only occurrences of filtered by package and colored output'
     )
   })
 
@@ -377,7 +377,7 @@ t.test('ls', async t => {
     await ls.exec(['dog'])
     t.matchSnapshot(
       cleanCwd(result()),
-      'should output tree contaning only occurrences of filtered package and its ancestors'
+      'should output tree containing only occurrences of filtered package and its ancestors'
     )
   })
 
@@ -408,8 +408,7 @@ t.test('ls', async t => {
     await ls.exec(['dog@*', 'chai@1.0.0'])
     t.matchSnapshot(
       cleanCwd(result()),
-      /* eslint-disable-next-line max-len */
-      'should output tree contaning only occurrences of multiple filtered packages and their ancestors'
+      'should output tree containing only occurrences of multiple filtered packages and their ancestors'
     )
   })
 
@@ -1314,7 +1313,6 @@ t.test('ls', async t => {
                 name: 'abbrev',
                 version: '1.1.1',
                 from: 'git+https://github.com/isaacs/abbrev-js.git',
-                /* eslint-disable-next-line max-len */
                 resolved: 'git+https://github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
               },
             },
@@ -1325,7 +1323,6 @@ t.test('ls', async t => {
               version: '1.1.1',
               _id: 'abbrev@1.1.1',
               _from: 'git+https://github.com/isaacs/abbrev-js.git',
-              /* eslint-disable-next-line max-len */
               _resolved: 'git+https://github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
               _requested: {
                 type: 'git',
@@ -1372,7 +1369,6 @@ t.test('ls', async t => {
             a: {
               version: '1.0.1',
               resolved: 'foo@dog://b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
-              /* eslint-disable-next-line max-len */
               integrity: 'sha512-8AN9lNCcBt5Xeje7fMEEpp5K3rgcAzIpTtAjYb/YMUYu8SbIVF6wz0WqACDVKvpQOUcSfNHZQNLNmue0QSwXOQ==',
             },
           },
@@ -1654,7 +1650,7 @@ t.test('ls', async t => {
     }))
 
     // filter out a single workspace and include root
-    t.test('should inlude root and specified workspace', t => mockWorkspaces(t, [], {
+    t.test('should include root and specified workspace', t => mockWorkspaces(t, [], {
       'include-workspace-root': true,
       workspace: 'd',
     }))
@@ -1827,7 +1823,7 @@ t.test('ls --parseable', async t => {
     })
 
     await ls.exec([])
-    t.matchSnapshot(cleanCwd(result()), 'should contain overridden outout')
+    t.matchSnapshot(cleanCwd(result()), 'should contain overridden output')
   })
 
   t.test('with filter arg', async t => {
@@ -1848,7 +1844,7 @@ t.test('ls --parseable', async t => {
     await ls.exec(['chai'])
     t.matchSnapshot(
       cleanCwd(result()),
-      'should output parseable contaning only occurrences of filtered by package'
+      'should output parseable containing only occurrences of filtered by package'
     )
   })
 
@@ -1870,7 +1866,7 @@ t.test('ls --parseable', async t => {
     await ls.exec(['dog'])
     t.matchSnapshot(
       cleanCwd(result()),
-      'should output parseable contaning only occurrences of filtered package'
+      'should output parseable containing only occurrences of filtered package'
     )
   })
 
@@ -1901,8 +1897,7 @@ t.test('ls --parseable', async t => {
     await ls.exec(['dog@*', 'chai@1.0.0'])
     t.matchSnapshot(
       cleanCwd(result()),
-      /* eslint-disable-next-line max-len */
-      'should output parseable contaning only occurrences of multiple filtered packages and their ancestors'
+      'should output parseable containing only occurrences of multiple filtered packages and their ancestors'
     )
   })
 
@@ -2465,7 +2460,6 @@ t.test('ls --parseable', async t => {
               'node_modules/abbrev': {
                 name: 'abbrev',
                 version: '1.1.1',
-                /* eslint-disable-next-line max-len */
                 resolved: 'git+https://github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
               },
             },
@@ -2476,7 +2470,6 @@ t.test('ls --parseable', async t => {
               version: '1.1.1',
               _id: 'abbrev@1.1.1',
               _from: 'git+https://github.com/isaacs/abbrev-js.git',
-              /* eslint-disable-next-line max-len */
               _resolved: 'git+https://github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
               _requested: {
                 type: 'git',
@@ -2948,7 +2941,7 @@ t.test('ls --json', async t => {
           },
         },
       },
-      'should output json contaning only occurrences of filtered by package'
+      'should output json containing only occurrences of filtered by package'
     )
     t.not(process.exitCode, 1, 'should not exit with error code 1')
   })
@@ -2989,7 +2982,7 @@ t.test('ls --json', async t => {
           },
         },
       },
-      'should output json contaning only occurrences of filtered by package'
+      'should output json containing only occurrences of filtered by package'
     )
     t.notOk(jsonParse(result()).dependencies.chai)
   })
@@ -3043,8 +3036,7 @@ t.test('ls --json', async t => {
           },
         },
       },
-      /* eslint-disable-next-line max-len */
-      'should output json contaning only occurrences of multiple filtered packages and their ancestors'
+      'should output json containing only occurrences of multiple filtered packages and their ancestors'
     )
   })
 
@@ -3489,9 +3481,7 @@ t.test('ls --json', async t => {
             'node_modules/@isaacs/dedupe-tests-a': {
               name: '@isaacs/dedupe-tests-a',
               version: '1.0.1',
-              /* eslint-disable-next-line max-len */
               resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-a/-/dedupe-tests-a-1.0.1.tgz',
-              /* eslint-disable-next-line max-len */
               integrity: 'sha512-8AN9lNCcBt5Xeje7fMEEpp5K3rgcAzIpTtAjYb/YMUYu8SbIVF6wz0WqACDVKvpQOUcSfNHZQNLNmue0QSwXOQ==',
               dependencies: {
                 '@isaacs/dedupe-tests-b': '1',
@@ -3500,26 +3490,20 @@ t.test('ls --json', async t => {
             'node_modules/@isaacs/dedupe-tests-a/node_modules/@isaacs/dedupe-tests-b': {
               name: '@isaacs/dedupe-tests-b',
               version: '1.0.0',
-              /* eslint-disable-next-line max-len */
               resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-1.0.0.tgz',
-              /* eslint-disable-next-line max-len */
               integrity: 'sha512-3nmvzIb8QL8OXODzipwoV3U8h9OQD9g9RwOPuSBQqjqSg9JZR1CCFOWNsDUtOfmwY8HFUJV9EAZ124uhqVxq+w==',
             },
             'node_modules/@isaacs/dedupe-tests-b': {
               name: '@isaacs/dedupe-tests-b',
               version: '2.0.0',
-              /* eslint-disable-next-line max-len */
               resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-2.0.0.tgz',
-              /* eslint-disable-next-line max-len */
               integrity: 'sha512-KTYkpRv9EzlmCg4Gsm/jpclWmRYFCXow8GZKJXjK08sIZBlElTZEa5Bw/UQxIvEfcKmWXczSqItD49Kr8Ax4UA==',
             },
           },
           dependencies: {
             '@isaacs/dedupe-tests-a': {
               version: '1.0.1',
-              /* eslint-disable-next-line max-len */
               resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-a/-/dedupe-tests-a-1.0.1.tgz',
-              /* eslint-disable-next-line max-len */
               integrity: 'sha512-8AN9lNCcBt5Xeje7fMEEpp5K3rgcAzIpTtAjYb/YMUYu8SbIVF6wz0WqACDVKvpQOUcSfNHZQNLNmue0QSwXOQ==',
               requires: {
                 '@isaacs/dedupe-tests-b': '1',
@@ -3527,18 +3511,14 @@ t.test('ls --json', async t => {
               dependencies: {
                 '@isaacs/dedupe-tests-b': {
                   version: '1.0.0',
-                  /* eslint-disable-next-line max-len */
                   resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-1.0.0.tgz',
-                  /* eslint-disable-next-line max-len */
                   integrity: 'sha512-3nmvzIb8QL8OXODzipwoV3U8h9OQD9g9RwOPuSBQqjqSg9JZR1CCFOWNsDUtOfmwY8HFUJV9EAZ124uhqVxq+w==',
                 },
               },
             },
             '@isaacs/dedupe-tests-b': {
               version: '2.0.0',
-              /* eslint-disable-next-line max-len */
               resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-2.0.0.tgz',
-              /* eslint-disable-next-line max-len */
               integrity: 'sha512-KTYkpRv9EzlmCg4Gsm/jpclWmRYFCXow8GZKJXjK08sIZBlElTZEa5Bw/UQxIvEfcKmWXczSqItD49Kr8Ax4UA==',
             },
           },
@@ -3572,7 +3552,6 @@ t.test('ls --json', async t => {
                 extraneous: true,
                 overridden: false,
                 problems: [
-                  /* eslint-disable-next-line max-len */
                   'extraneous: @isaacs/dedupe-tests-b@ {CWD}/prefix/node_modules/@isaacs/dedupe-tests-a/node_modules/@isaacs/dedupe-tests-b',
                 ],
               },
@@ -3586,7 +3565,6 @@ t.test('ls --json', async t => {
           },
         },
         problems: [
-          /* eslint-disable-next-line max-len */
           'extraneous: @isaacs/dedupe-tests-b@ {CWD}/prefix/node_modules/@isaacs/dedupe-tests-a/node_modules/@isaacs/dedupe-tests-b',
         ],
       },
@@ -3860,7 +3838,7 @@ t.test('ls --json', async t => {
     await t.rejects(
       ls.exec([]),
       { code: 'EJSONPARSE', message: 'Failed to parse root package.json' },
-      'should have missin root package.json msg'
+      'should have missing root package.json msg'
     )
     t.same(
       jsonParse(result()),
@@ -4212,7 +4190,6 @@ t.test('ls --json', async t => {
                 version: '1.1.1',
                 id: 'abbrev@1.1.1',
                 from: 'git+https://github.com/isaacs/abbrev-js.git',
-                /* eslint-disable-next-line max-len */
                 resolved: 'git+https://github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
               },
             },
@@ -4223,7 +4200,6 @@ t.test('ls --json', async t => {
               version: '1.1.1',
               _id: 'abbrev@1.1.1',
               _from: 'git+https://github.com/isaacs/abbrev-js.git',
-              /* eslint-disable-next-line max-len */
               _resolved: 'git+https://github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
               _requested: {
                 type: 'git',
@@ -4249,7 +4225,6 @@ t.test('ls --json', async t => {
           abbrev: {
             version: '1.1.1',
             overridden: false,
-            /* eslint-disable-next-line max-len */
             resolved: 'git+ssh://git@github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
           },
         },
@@ -4689,7 +4664,7 @@ t.test('ls --package-lock-only', async t => {
             },
           },
         },
-        'should output json contaning only occurrences of filtered by package'
+        'should output json containing only occurrences of filtered by package'
       )
       t.notOk(process.exitCode, 'should not set exit code')
     })
@@ -4749,7 +4724,7 @@ t.test('ls --package-lock-only', async t => {
             },
           },
         },
-        'should output json contaning only occurrences of filtered by package'
+        'should output json containing only occurrences of filtered by package'
       )
     })
 
@@ -4813,8 +4788,7 @@ t.test('ls --package-lock-only', async t => {
             },
           },
         },
-        /* eslint-disable-next-line max-len */
-        'should output json contaning only occurrences of multiple filtered packages and their ancestors'
+        'should output json containing only occurrences of multiple filtered packages and their ancestors'
       )
     })
 
@@ -5137,9 +5111,7 @@ t.test('ls --package-lock-only', async t => {
               'node_modules/@isaacs/dedupe-tests-a': {
                 name: '@isaacs/dedupe-tests-a',
                 version: '1.0.1',
-                /* eslint-disable-next-line max-len */
                 resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-a/-/dedupe-tests-a-1.0.1.tgz',
-                /* eslint-disable-next-line max-len */
                 integrity: 'sha512-8AN9lNCcBt5Xeje7fMEEpp5K3rgcAzIpTtAjYb/YMUYu8SbIVF6wz0WqACDVKvpQOUcSfNHZQNLNmue0QSwXOQ==',
                 dependencies: {
                   '@isaacs/dedupe-tests-b': '1',
@@ -5148,26 +5120,20 @@ t.test('ls --package-lock-only', async t => {
               'node_modules/@isaacs/dedupe-tests-a/node_modules/@isaacs/dedupe-tests-b': {
                 name: '@isaacs/dedupe-tests-b',
                 version: '1.0.0',
-                /* eslint-disable-next-line max-len */
                 resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-1.0.0.tgz',
-                /* eslint-disable-next-line max-len */
                 integrity: 'sha512-3nmvzIb8QL8OXODzipwoV3U8h9OQD9g9RwOPuSBQqjqSg9JZR1CCFOWNsDUtOfmwY8HFUJV9EAZ124uhqVxq+w==',
               },
               'node_modules/@isaacs/dedupe-tests-b': {
                 name: '@isaacs/dedupe-tests-b',
                 version: '2.0.0',
-                /* eslint-disable-next-line max-len */
                 resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-2.0.0.tgz',
-                /* eslint-disable-next-line max-len */
                 integrity: 'sha512-KTYkpRv9EzlmCg4Gsm/jpclWmRYFCXow8GZKJXjK08sIZBlElTZEa5Bw/UQxIvEfcKmWXczSqItD49Kr8Ax4UA==',
               },
             },
             dependencies: {
               '@isaacs/dedupe-tests-a': {
                 version: '1.0.1',
-                /* eslint-disable-next-line max-len */
                 resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-a/-/dedupe-tests-a-1.0.1.tgz',
-                /* eslint-disable-next-line max-len */
                 integrity: 'sha512-8AN9lNCcBt5Xeje7fMEEpp5K3rgcAzIpTtAjYb/YMUYu8SbIVF6wz0WqACDVKvpQOUcSfNHZQNLNmue0QSwXOQ==',
                 requires: {
                   '@isaacs/dedupe-tests-b': '1',
@@ -5175,18 +5141,14 @@ t.test('ls --package-lock-only', async t => {
                 dependencies: {
                   '@isaacs/dedupe-tests-b': {
                     version: '1.0.0',
-                    /* eslint-disable-next-line max-len */
                     resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-1.0.0.tgz',
-                    /* eslint-disable-next-line max-len */
                     integrity: 'sha512-3nmvzIb8QL8OXODzipwoV3U8h9OQD9g9RwOPuSBQqjqSg9JZR1CCFOWNsDUtOfmwY8HFUJV9EAZ124uhqVxq+w==',
                   },
                 },
               },
               '@isaacs/dedupe-tests-b': {
                 version: '2.0.0',
-                /* eslint-disable-next-line max-len */
                 resolved: 'https://registry.npmjs.org/@isaacs/dedupe-tests-b/-/dedupe-tests-b-2.0.0.tgz',
-                /* eslint-disable-next-line max-len */
                 integrity: 'sha512-KTYkpRv9EzlmCg4Gsm/jpclWmRYFCXow8GZKJXjK08sIZBlElTZEa5Bw/UQxIvEfcKmWXczSqItD49Kr8Ax4UA==',
               },
             },
@@ -5298,7 +5260,6 @@ t.test('ls --package-lock-only', async t => {
             requires: true,
             dependencies: {
               abbrev: {
-              /* eslint-disable-next-line max-len */
                 version: 'git+ssh://git@github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
                 from: 'abbrev@git+https://github.com/isaacs/abbrev-js.git',
               },
@@ -5314,7 +5275,6 @@ t.test('ls --package-lock-only', async t => {
           version: '1.0.0',
           dependencies: {
             abbrev: {
-              /* eslint-disable-next-line max-len */
               resolved: 'git+ssh://git@github.com/isaacs/abbrev-js.git#b8f3a2fc0c3bb8ffd8b0d0072cc6b5a3667e963c',
               overridden: false,
             },
@@ -5323,5 +5283,125 @@ t.test('ls --package-lock-only', async t => {
         'should output json containing git refs'
       )
     })
+  })
+})
+
+t.test('completion', async t => {
+  const { ls } = await mockNpm(t, {
+    command: 'ls',
+    prefixDir: {
+      node_modules: {
+        foo: {
+          'package.json': JSON.stringify({ name: 'foo', version: '1.0.0' }),
+        },
+      },
+      'package.json': JSON.stringify({ name: 'project', version: '1.0.0' }),
+    },
+  })
+  const res = await ls.completion({ conf: { argv: { remain: ['npm', 'ls'] } } })
+  t.type(res, Array)
+})
+
+t.test('ls --install-strategy=linked', async t => {
+  t.test('should not report undeclared workspaces as UNMET DEPENDENCY', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {
+        'install-strategy': 'linked',
+      },
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'test-linked-ws',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          dependencies: { 'workspace-a': '*' },
+        }),
+        packages: {
+          'workspace-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-a',
+              version: '1.0.0',
+            }),
+          },
+          'workspace-b': {
+            'package.json': JSON.stringify({
+              name: 'workspace-b',
+              version: '1.0.0',
+            }),
+          },
+        },
+        node_modules: {
+          'workspace-a': t.fixture('symlink', '../packages/workspace-a'),
+          // workspace-b intentionally NOT linked (undeclared in dependencies)
+        },
+      },
+    })
+    await ls.exec([])
+    const output = cleanCwd(result())
+    t.notMatch(output, /UNMET DEPENDENCY/, 'should not report undeclared workspace as UNMET DEPENDENCY')
+    t.match(output, /workspace-a/, 'should list declared workspace')
+  })
+
+  t.test('should not report devDeps of store packages as UNMET DEPENDENCY', async t => {
+    const { result, ls } = await mockLs(t, {
+      config: {
+        'install-strategy': 'linked',
+      },
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'test-linked-store',
+          version: '1.0.0',
+          dependencies: { nopt: '^1.0.0' },
+        }),
+        node_modules: {
+          nopt: t.fixture('symlink', '.store/nopt@1.0.0/node_modules/nopt'),
+          '.store': {
+            'nopt@1.0.0': {
+              node_modules: {
+                nopt: {
+                  'package.json': JSON.stringify({
+                    name: 'nopt',
+                    version: '1.0.0',
+                    devDependencies: { tap: '^16.0.0' },
+                  }),
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+    await ls.exec([])
+    const output = cleanCwd(result())
+    t.notMatch(output, /UNMET DEPENDENCY/, 'should not report devDeps of store packages')
+    t.match(output, /nopt/, 'should list the dependency')
+  })
+
+  t.test('should still report declared workspace as UNMET DEPENDENCY when missing', async t => {
+    const { ls } = await mockLs(t, {
+      config: {
+        'install-strategy': 'linked',
+      },
+      prefixDir: {
+        'package.json': JSON.stringify({
+          name: 'test-linked-ws-missing',
+          version: '1.0.0',
+          workspaces: ['packages/*'],
+          dependencies: { 'workspace-a': '*' },
+        }),
+        packages: {
+          'workspace-a': {
+            'package.json': JSON.stringify({
+              name: 'workspace-a',
+              version: '1.0.0',
+            }),
+          },
+        },
+        node_modules: {
+          // workspace-a is declared but its symlink is missing
+        },
+      },
+    })
+    await t.rejects(ls.exec([]), { code: 'ELSPROBLEMS' },
+      'should report declared workspace as UNMET DEPENDENCY')
   })
 })

@@ -20,7 +20,7 @@ server.on('connection', function() {
   connections++;
 });
 
-server.listen(0, function() {
+server.listen(0, common.mustCall(() => {
   const port = server.address().port;
 
   // Create a first request but never finish it
@@ -50,7 +50,7 @@ server.listen(0, function() {
 
     client2.on('close', common.mustCall());
 
-    client2.write('GET / HTTP/1.1\r\n\r\n');
+    client2.write('GET / HTTP/1.1\r\nHost: example.com\r\n\r\n');
   }));
 
   client1.on('close', common.mustCall());
@@ -58,4 +58,4 @@ server.listen(0, function() {
   client1.on('error', () => {});
 
   client1.write('GET / HTTP/1.1');
-});
+}));
