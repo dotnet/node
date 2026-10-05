@@ -1,11 +1,10 @@
 const npa = require('npm-package-arg')
-const path = require('path')
-const regFetch = require('npm-registry-fetch')
+const npmFetch = require('npm-registry-fetch')
 const semver = require('semver')
-const log = require('../utils/log-shim')
-const otplease = require('../utils/otplease.js')
-const readPackage = require('read-package-json-fast')
-const BaseCommand = require('../base-command.js')
+const { log, output } = require('proc-log')
+const { otplease } = require('../utils/auth.js')
+const pkgJson = require('@npmcli/package-json')
+const BaseCommand = require('../base-cmd.js')
 
 class DistTag extends BaseCommand {
   static description = 'Modify package distribution tags'
@@ -20,7 +19,7 @@ class DistTag extends BaseCommand {
   static workspaces = true
   static ignoreImplicitWorkspace = false
 
-  async completion (opts) {
+  static async completion (opts) {
     const argv = opts.conf.argv.remain
     if (argv.length === 2) {
       return ['add', 'rm', 'ls']
@@ -50,8 +49,7 @@ class DistTag extends BaseCommand {
     }
 
     if (!pkg) {
-      // when only using the pkg name the default behavior
-      // should be listing the existing tags
+      // when only using the pkg name the default behavior should be listing the existing tags
       return this.list(cmdName, opts)
     } else {
       throw this.usageError()
@@ -78,7 +76,7 @@ class DistTag extends BaseCommand {
     }
 
     // anything else is just a regular dist-tag command
-    // so we fallback to the non-workspaces implementation
+    // so we fall back to the non-workspaces implementation
     log.warn('dist-tag', 'Ignoring workspaces for specified package')
     return this.exec([cmdName, pkg, tag])
   }
@@ -89,6 +87,9 @@ class DistTag extends BaseCommand {
     const defaultTag = tag || this.npm.config.get('tag')
 
     log.verbose('dist-tag add', defaultTag, 'to', spec.name + '@' + version)
+
+    // make sure new spec with tag is valid, this will throw if invalid
+    npa(`${spec.name}@${defaultTag}`)
 
     if (!spec.name || !version || !defaultTag) {
       throw this.usageError('must provide a spec with a name and version, and a tag to add')
@@ -117,8 +118,8 @@ class DistTag extends BaseCommand {
       },
       spec,
     }
-    await otplease(this.npm, reqOpts, o => regFetch(url, o))
-    this.npm.output(`+${t}: ${spec.name}@${version}`)
+    await otplease(this.npm, reqOpts, o => npmFetch(url, o))
+    output.standard(`+${t}: ${spec.name}@${version}`)
   }
 
   async remove (spec, tag, opts) {
@@ -143,8 +144,8 @@ class DistTag extends BaseCommand {
       method: 'DELETE',
       spec,
     }
-    await otplease(this.npm, reqOpts, o => regFetch(url, o))
-    this.npm.output(`-${tag}: ${spec.name}@${version}`)
+    await otplease(this.npm, reqOpts, o => npmFetch(url, o))
+    output.standard(`-${tag}: ${spec.name}@${version}`)
   }
 
   async list (spec, opts) {
@@ -152,7 +153,7 @@ class DistTag extends BaseCommand {
       if (this.npm.global) {
         throw this.usageError()
       }
-      const { name } = await readPackage(path.resolve(this.npm.prefix, 'package.json'))
+      const { content: { name } } = await pkgJson.normalize(this.npm.prefix)
       if (!name) {
         throw this.usageError()
       }
@@ -165,7 +166,7 @@ class DistTag extends BaseCommand {
       const tags = await this.fetchTags(spec, opts)
       const msg =
         Object.keys(tags).map(k => `${k}: ${tags[k]}`).sort().join('\n')
-      this.npm.output(msg)
+      output.standard(msg)
       return tags
     } catch (err) {
       log.error('dist-tag ls', "Couldn't get dist-tag data for", spec)
@@ -178,18 +179,17 @@ class DistTag extends BaseCommand {
 
     for (const name of this.workspaceNames) {
       try {
-        this.npm.output(`${name}:`)
+        output.standard(`${name}:`)
         await this.list(npa(name), this.npm.flatOptions)
-      } catch (err) {
-        // set the exitCode directly, but ignore the error
-        // since it will have already been logged by this.list()
+      } catch {
+        // set the exitCode directly, but ignore the error since it will have already been logged by this.list()
         process.exitCode = 1
       }
     }
   }
 
   async fetchTags (spec, opts) {
-    const data = await regFetch.json(
+    const data = await npmFetch.json(
       `/-/package/${spec.escapedName}/dist-tags`,
       { ...opts, 'prefer-online': true, spec }
     )
@@ -203,4 +203,5 @@ class DistTag extends BaseCommand {
     return data
   }
 }
+
 module.exports = DistTag

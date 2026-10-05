@@ -27,7 +27,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <ngtcp2/ngtcp2.h>
 
@@ -36,7 +36,7 @@ typedef struct ngtcp2_buf {
   uint8_t *begin;
   /* end points to the one beyond of the last byte of the buffer */
   uint8_t *end;
-  /* pos pointers to the start of data.  Typically, this points to the
+  /* pos points to the start of data.  Typically, this points to the
      point that next data should be read.  Initially, it points to
      |begin|. */
   uint8_t *pos;
@@ -62,7 +62,9 @@ void ngtcp2_buf_reset(ngtcp2_buf *buf);
  * written to the underlying buffer.  In other words, it returns
  * buf->end - buf->last.
  */
-#define ngtcp2_buf_left(BUF) (size_t)((BUF)->end - (BUF)->last)
+static inline size_t ngtcp2_buf_left(const ngtcp2_buf *buf) {
+  return (size_t)(buf->end - buf->last);
+}
 
 /*
  * ngtcp2_buf_len returns the number of bytes left to read.  In other
@@ -75,6 +77,13 @@ void ngtcp2_buf_reset(ngtcp2_buf *buf);
  * it returns buf->end - buf->begin.
  */
 size_t ngtcp2_buf_cap(const ngtcp2_buf *buf);
+
+/*
+ * ngtcp2_buf_trunc truncates the number of bytes to read to at most
+ * |len|.  In other words, it sets buf->last = buf->pos + len if
+ * ngtcp2_buf_len(buf) > len.
+ */
+void ngtcp2_buf_trunc(ngtcp2_buf *buf, size_t len);
 
 /*
  * ngtcp2_buf_chain is a linked list of ngtcp2_buf.
@@ -105,4 +114,4 @@ int ngtcp2_buf_chain_new(ngtcp2_buf_chain **pbufchain, size_t len,
  */
 void ngtcp2_buf_chain_del(ngtcp2_buf_chain *bufchain, const ngtcp2_mem *mem);
 
-#endif /* NGTCP2_BUF_H */
+#endif /* !defined(NGTCP2_BUF_H) */

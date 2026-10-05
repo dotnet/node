@@ -1,4 +1,3 @@
-// dedupe duplicated packages, or find them in the tree
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
 
 class FindDupes extends ArboristWorkspaceCmd {
@@ -11,6 +10,7 @@ class FindDupes extends ArboristWorkspaceCmd {
     'strict-peer-deps',
     'package-lock',
     'omit',
+    'include',
     'ignore-scripts',
     'audit',
     'bin-links',
@@ -18,9 +18,10 @@ class FindDupes extends ArboristWorkspaceCmd {
     ...super.params,
   ]
 
-  async exec (args) {
+  async exec () {
     this.npm.config.set('dry-run', true)
     return this.npm.exec('dedupe', [])
   }
 }
+
 module.exports = FindDupes

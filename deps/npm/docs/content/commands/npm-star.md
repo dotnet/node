@@ -14,10 +14,11 @@ Note: This command is unaware of workspaces.
 
 ### Description
 
-"Starring" a package means that you have some interest in it.  It's
-a vaguely positive way to show that you care.
+"Starring" a package means that you have some interest in it.
+It's a vaguely positive way to show that you care.
 
-It's a boolean thing. Starring repeatedly has no additional effect.
+It's a boolean thing.
+Starring repeatedly has no additional effect.
 
 ### More
 
@@ -42,6 +43,8 @@ You can see all your starred packages using [`npm stars`](/commands/npm-stars)
 
 The base URL of the npm registry.
 
+
+
 #### `unicode`
 
 * Default: false on windows, true on mac/unix systems with a unicode locale,
@@ -50,6 +53,8 @@ The base URL of the npm registry.
 
 When set to true, npm uses unicode characters in the tree output. When
 false, it uses ascii characters instead of unicode glyphs.
+
+
 
 #### `otp`
 
@@ -61,6 +66,8 @@ when publishing or changing package permissions with `npm access`.
 
 If not set, and a registry response fails with a challenge for a one-time
 password, npm will prompt on the command line for one.
+
+
 
 ### See Also
 

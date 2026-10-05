@@ -1,5 +1,6 @@
-#if HAVE_OPENSSL && NODE_OPENSSL_HAS_QUIC
-#include "bindingdata.h"
+#if HAVE_OPENSSL && HAVE_QUIC
+#include "guard.h"
+#ifndef OPENSSL_NO_QUIC
 #include <base_object-inl.h>
 #include <env-inl.h>
 #include <memory_tracker-inl.h>
@@ -11,11 +12,11 @@
 #include <node_mem-inl.h>
 #include <node_realm-inl.h>
 #include <v8.h>
+#include "bindingdata.h"
 
 namespace node {
 
 using v8::Function;
-using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Local;
 using v8::Object;
@@ -25,7 +26,7 @@ using v8::Value;
 namespace quic {
 
 BindingData& BindingData::Get(Environment* env) {
-  return *Realm::GetBindingData<BindingData>(env->context());
+  return *(env->principal_realm()->GetBindingData<BindingData>());
 }
 
 BindingData::operator ngtcp2_mem() {
@@ -49,24 +50,24 @@ void BindingData::CheckAllocatedSize(size_t previous_size) const {
 }
 
 void BindingData::IncreaseAllocatedSize(size_t size) {
+  CHECK_GE(current_ngtcp2_memory_ + size, current_ngtcp2_memory_);
   current_ngtcp2_memory_ += size;
 }
 
 void BindingData::DecreaseAllocatedSize(size_t size) {
+  CHECK_LE(current_ngtcp2_memory_ - size, current_ngtcp2_memory_);
   current_ngtcp2_memory_ -= size;
 }
 
-void BindingData::Initialize(Environment* env, Local<Object> target) {
-  SetMethod(env->context(), target, "setCallbacks", SetCallbacks);
-  SetMethod(env->context(), target, "flushPacketFreelist", FlushPacketFreelist);
-  Realm::GetCurrent(env->context())
-      ->AddBindingData<BindingData>(env->context(), target);
+void BindingData::InitPerContext(Realm* realm, Local<Object> target) {
+  SetMethod(realm->context(), target, "setCallbacks", SetCallbacks);
+  Realm::GetCurrent(realm->context())->AddBindingData<BindingData>(target);
 }
 
 void BindingData::RegisterExternalReferences(
     ExternalReferenceRegistry* registry) {
+  registry->Register(IllegalConstructor);
   registry->Register(SetCallbacks);
-  registry->Register(FlushPacketFreelist);
 }
 
 BindingData::BindingData(Realm* realm, Local<Object> object)
@@ -139,10 +140,10 @@ QUIC_JS_CALLBACKS(V)
 
 #undef V
 
-void BindingData::SetCallbacks(const FunctionCallbackInfo<Value>& args) {
+JS_METHOD_IMPL(BindingData::SetCallbacks) {
   auto env = Environment::GetCurrent(args);
   auto isolate = env->isolate();
-  auto& state = BindingData::Get(env);
+  auto& state = Get(env);
   CHECK(args[0]->IsObject());
   Local<Object> obj = args[0].As<Object>();
 
@@ -159,12 +160,6 @@ void BindingData::SetCallbacks(const FunctionCallbackInfo<Value>& args) {
   QUIC_JS_CALLBACKS(V)
 
 #undef V
-}
-
-void BindingData::FlushPacketFreelist(const FunctionCallbackInfo<Value>& args) {
-  auto env = Environment::GetCurrent(args);
-  auto& state = BindingData::Get(env);
-  state.packet_freelist.clear();
 }
 
 NgTcp2CallbackScope::NgTcp2CallbackScope(Environment* env) : env(env) {
@@ -199,11 +194,25 @@ bool NgHttp3CallbackScope::in_nghttp3_callback(Environment* env) {
   return binding.in_nghttp3_callback_scope;
 }
 
-void IllegalConstructor(const FunctionCallbackInfo<Value>& args) {
+CallbackScopeBase::CallbackScopeBase(Environment* env)
+    : env(env), context_scope(env->context()), try_catch(env->isolate()) {}
+
+CallbackScopeBase::~CallbackScopeBase() {
+  if (try_catch.HasCaught()) {
+    if (!try_catch.HasTerminated() && env->can_call_into_js()) {
+      errors::TriggerUncaughtException(env->isolate(), try_catch);
+    } else {
+      try_catch.ReThrow();
+    }
+  }
+}
+
+JS_METHOD_IMPL(IllegalConstructor) {
   THROW_ERR_ILLEGAL_CONSTRUCTOR(Environment::GetCurrent(args));
 }
 
 }  // namespace quic
 }  // namespace node
 
-#endif  // HAVE_OPENSSL && NODE_OPENSSL_HAS_QUIC
+#endif  // OPENSSL_NO_QUIC
+#endif  // HAVE_OPENSSL && HAVE_QUIC

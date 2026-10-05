@@ -8,11 +8,10 @@ const assert = require('assert');
 const { spawnSync } = require('child_process');
 const tmpdir = require('../common/tmpdir');
 const fixtures = require('../common/fixtures');
-const path = require('path');
 const fs = require('fs');
 
 tmpdir.refresh();
-const blobPath = path.join(tmpdir.path, 'snapshot.blob');
+const blobPath = tmpdir.resolve('snapshot.blob');
 const file = fixtures.path('snapshot', 'mutate-fs.js');
 
 {
@@ -50,7 +49,7 @@ const file = fixtures.path('snapshot', 'mutate-fs.js');
     console.log(child.stdout.toString());
     assert.strictEqual(child.status, 0);
   }
-  assert(/I am from the snapshot/.test(child.stdout.toString()));
+  assert.match(child.stdout.toString(), /I am from the snapshot/);
 }
 
 {
@@ -69,5 +68,5 @@ const file = fixtures.path('snapshot', 'mutate-fs.js');
     console.log(child.stdout.toString());
     assert.strictEqual(child.status, 0);
   }
-  assert(/I am from the snapshot/.test(child.stdout.toString()));
+  assert.match(child.stdout.toString(), /I am from the snapshot/);
 }

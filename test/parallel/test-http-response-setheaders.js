@@ -16,12 +16,12 @@ const assert = require('assert');
   }));
 
   server.listen(0, common.mustCall(() => {
-    http.get({ port: server.address().port }, (res) => {
+    http.get({ port: server.address().port }, common.mustCall((res) => {
       assert.strictEqual(res.headers.foo, undefined);
       res.resume().on('end', common.mustCall(() => {
         server.close();
       }));
-    });
+    }));
   }));
 }
 
@@ -61,12 +61,12 @@ const assert = require('assert');
   }));
 
   server.listen(0, common.mustCall(() => {
-    http.get({ port: server.address().port }, (res) => {
+    http.get({ port: server.address().port }, common.mustCall((res) => {
       assert.strictEqual(res.headers.foo, undefined);
       res.resume().on('end', common.mustCall(() => {
         server.close();
       }));
-    });
+    }));
   }));
 }
 
@@ -79,14 +79,14 @@ const assert = require('assert');
   }));
 
   server.listen(0, common.mustCall(() => {
-    http.get({ port: server.address().port }, (res) => {
+    http.get({ port: server.address().port }, common.mustCall((res) => {
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.headers.foo, '1');
       assert.strictEqual(res.headers.bar, '2');
       res.resume().on('end', common.mustCall(() => {
         server.close();
       }));
-    });
+    }));
   }));
 }
 
@@ -99,14 +99,14 @@ const assert = require('assert');
   }));
 
   server.listen(0, common.mustCall(() => {
-    http.get({ port: server.address().port }, (res) => {
+    http.get({ port: server.address().port }, common.mustCall((res) => {
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.headers.foo, '3'); // Override by writeHead
       assert.strictEqual(res.headers.bar, '2');
       res.resume().on('end', common.mustCall(() => {
         server.close();
       }));
-    });
+    }));
   }));
 }
 
@@ -119,13 +119,56 @@ const assert = require('assert');
   }));
 
   server.listen(0, common.mustCall(() => {
-    http.get({ port: server.address().port }, (res) => {
+    http.get({ port: server.address().port }, common.mustCall((res) => {
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.headers.foo, '1');
       assert.strictEqual(res.headers.bar, '2');
       res.resume().on('end', common.mustCall(() => {
         server.close();
       }));
-    });
+    }));
+  }));
+}
+
+{
+  const server = http.createServer({ requireHostHeader: false }, common.mustCall((req, res) => {
+    const headers = new Headers();
+    headers.append('Set-Cookie', 'a=b');
+    headers.append('Set-Cookie', 'c=d');
+    res.setHeaders(headers);
+    res.end();
+  }));
+
+  server.listen(0, common.mustCall(() => {
+    http.get({ port: server.address().port }, common.mustCall((res) => {
+      assert(Array.isArray(res.headers['set-cookie']));
+      assert.strictEqual(res.headers['set-cookie'].length, 2);
+      assert.strictEqual(res.headers['set-cookie'][0], 'a=b');
+      assert.strictEqual(res.headers['set-cookie'][1], 'c=d');
+      res.resume().on('end', common.mustCall(() => {
+        server.close();
+      }));
+    }));
+  }));
+}
+
+{
+  const server = http.createServer({ requireHostHeader: false }, common.mustCall((req, res) => {
+    const headers = new Map();
+    headers.set('Set-Cookie', ['a=b', 'c=d']);
+    res.setHeaders(headers);
+    res.end();
+  }));
+
+  server.listen(0, common.mustCall(() => {
+    http.get({ port: server.address().port }, common.mustCall((res) => {
+      assert(Array.isArray(res.headers['set-cookie']));
+      assert.strictEqual(res.headers['set-cookie'].length, 2);
+      assert.strictEqual(res.headers['set-cookie'][0], 'a=b');
+      assert.strictEqual(res.headers['set-cookie'][1], 'c=d');
+      res.resume().on('end', common.mustCall(() => {
+        server.close();
+      }));
+    }));
   }));
 }

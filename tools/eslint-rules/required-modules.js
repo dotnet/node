@@ -1,5 +1,5 @@
 /**
- * @fileoverview Require usage of specified node modules.
+ * @file Require usage of specified node modules.
  * @author Rich Trott
  */
 'use strict';
@@ -23,7 +23,7 @@ module.exports = {
     const requiredModules = options ? Object.keys(options).map((x) => {
       return [ x, new RegExp(options[x]) ];
     }) : [];
-    const isESM = context.parserOptions.sourceType === 'module';
+    const isESM = context.languageOptions.sourceType === 'module';
 
     const foundModules = [];
 
@@ -66,11 +66,11 @@ module.exports = {
             ([module]) => foundModules.indexOf(module) === -1,
           );
           missingModules.forEach(([moduleName]) => {
-            context.report(
-              node,
-              'Mandatory module "{{moduleName}}" must be loaded.',
-              { moduleName: moduleName },
-            );
+            context.report({
+              node: node.body[0] ?? node,
+              message: 'Mandatory module "{{moduleName}}" must be loaded.',
+              data: { moduleName: moduleName },
+            });
           });
         }
       },

@@ -4,26 +4,26 @@
 
 <!-- type=misc -->
 
-_Addons_ are dynamically-linked shared objects written in C++. The
-[`require()`][require] function can load addons as ordinary Node.js modules.
-Addons provide an interface between JavaScript and C/C++ libraries.
+_Addons_ are dynamically-linked shared objects that can be loaded via the
+[`require()`][] function as ordinary Node.js modules.
+Addons provide a foreign function interface between JavaScript and native code.
 
-There are three options for implementing addons: Node-API, nan, or direct
-use of internal V8, libuv, and Node.js libraries. Unless there is a need for
-direct access to functionality which is not exposed by Node-API, use Node-API.
-Refer to [C/C++ addons with Node-API](n-api.md) for more information on
-Node-API.
+There are three options for implementing addons:
 
-When not using Node-API, implementing addons is complicated,
-involving knowledge of several components and APIs:
+* [Node-API][] (recommended)
+* `nan` ([Native Abstractions for Node.js][])
+* direct use of internal V8, libuv, and Node.js libraries
+
+This rest of this document focuses on the latter, requiring
+knowledge of multiple components and APIs:
 
 * [V8][]: the C++ library Node.js uses to provide the
-  JavaScript implementation. V8 provides the mechanisms for creating objects,
-  calling functions, etc. V8's API is documented mostly in the
+  JavaScript implementation. It provides the mechanisms for creating objects,
+  calling functions, etc. The V8's API is documented mostly in the
   `v8.h` header file (`deps/v8/include/v8.h` in the Node.js source
-  tree), which is also available [online][v8-docs].
+  tree), and is also available [online][v8-docs].
 
-* [libuv][]: The C library that implements the Node.js event loop, its worker
+* [`libuv`][]: The C library that implements the Node.js event loop, its worker
   threads and all of the asynchronous behaviors of the platform. It also
   serves as a cross-platform abstraction library, giving easy, POSIX-like
   access across all major operating systems to many common system tasks, such
@@ -35,10 +35,10 @@ involving knowledge of several components and APIs:
   offloading work via libuv to non-blocking system operations, worker threads,
   or a custom use of libuv threads.
 
-* Internal Node.js libraries. Node.js itself exports C++ APIs that addons can
+* Internal Node.js libraries: Node.js itself exports C++ APIs that addons can
   use, the most important of which is the `node::ObjectWrap` class.
 
-* Node.js includes other statically linked libraries including OpenSSL. These
+* Other statically linked libraries (including OpenSSL): These
   other libraries are located in the `deps/` directory in the Node.js source
   tree. Only the libuv, OpenSSL, V8, and zlib symbols are purposefully
   re-exported by Node.js and may be used to various extents by addons. See
@@ -67,6 +67,7 @@ namespace demo {
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
@@ -74,43 +75,46 @@ using v8::Value;
 void Method(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
   args.GetReturnValue().Set(String::NewFromUtf8(
-      isolate, "world").ToLocalChecked());
+      isolate, "world", NewStringType::kNormal).ToLocalChecked());
 }
 
 void Initialize(Local<Object> exports) {
   NODE_SET_METHOD(exports, "hello", Method);
 }
 
-NODE_MODULE(NODE_GYP_MODULE_NAME, Initialize)
+NODE_MODULE(NODE_GYP_MODULE_NAME, Initialize) // N.B.: no semi-colon, this is not a function
 
 }  // namespace demo
 ```
 
-All Node.js addons must export an initialization function following
-the pattern:
+On most platforms, the following `Makefile` can get us started:
 
-```cpp
-void Initialize(Local<Object> exports);
-NODE_MODULE(NODE_GYP_MODULE_NAME, Initialize)
+<!--lint disable no-tabs remark-lint-->
+
+```bash
+NODEJS_DEV_ROOT ?= $(shell dirname "$$(command -v node)")/..
+CXXFLAGS = -std=c++23 -I$(NODEJS_DEV_ROOT)/include/node -fPIC -shared -Wl,-undefined,dynamic_lookup
+
+hello.node: hello.cc
+	$(CXX) $(CXXFLAGS) -o $@ $<
 ```
 
-There is no semi-colon after `NODE_MODULE` as it's not a function (see
-`node.h`).
+<!--lint enable no-tabs remark-lint-->
 
-The `module_name` must match the filename of the final binary (excluding
-the `.node` suffix).
+Then running the following commands will compile and run the code:
 
-In the `hello.cc` example, then, the initialization function is `Initialize`
-and the addon module name is `addon`.
+```console
+$ make
+$ node -p 'require("./hello.node").hello()'
+world
+```
 
-When building addons with `node-gyp`, using the macro `NODE_GYP_MODULE_NAME` as
-the first parameter of `NODE_MODULE()` will ensure that the name of the final
-binary will be passed to `NODE_MODULE()`.
+To integrate with the npm ecosystem, see the [Building][] section.
+
+### Context-aware addons
 
 Addons defined with `NODE_MODULE()` can not be loaded in multiple contexts or
 multiple threads at the same time.
-
-### Context-aware addons
 
 There are environments in which Node.js addons may need to be loaded multiple
 times in multiple contexts. For example, the [Electron][] runtime runs multiple
@@ -148,8 +152,8 @@ invocation of `NODE_MODULE_INIT()`:
 * `Local<Value> module`, and
 * `Local<Context> context`
 
-The choice to build a context-aware addon carries with it the responsibility of
-carefully managing global static data. Since the addon may be loaded multiple
+Building a context-aware addon requires careful management of global static data
+to ensure stability and correctness. Since the addon may be loaded multiple
 times, potentially even from different threads, any global static data stored
 in the addon must be properly protected, and must not contain any persistent
 references to JavaScript objects. The reason for this is that JavaScript
@@ -251,11 +255,11 @@ changes:
 In order to be loaded from multiple Node.js environments,
 such as a main thread and a Worker thread, an add-on needs to either:
 
-* Be an Node-API addon, or
-* Be declared as context-aware using `NODE_MODULE_INIT()` as described above
+* Be an [Node-API][] addon.
+* Be declared as context-aware using `NODE_MODULE_INIT()` as described above.
 
 In order to support [`Worker`][] threads, addons need to clean up any resources
-they may have allocated when such a thread exists. This can be achieved through
+they may have allocated when such a thread exits. This can be achieved through
 the usage of the `AddEnvironmentCleanupHook()` function:
 
 ```cpp
@@ -334,7 +338,7 @@ require('./build/Release/addon');
 Once the source code has been written, it must be compiled into the binary
 `addon.node` file. To do so, create a file called `binding.gyp` in the
 top-level of the project describing the build configuration of the module
-using a JSON-like format. This file is used by [node-gyp][], a tool written
+using a JSON-like format. This file is used by [`node-gyp`][], a tool written
 specifically to compile Node.js addons.
 
 ```json
@@ -369,7 +373,7 @@ version of `node-gyp` to perform this same set of actions, generating a
 compiled version of the addon for the user's platform on demand.
 
 Once built, the binary addon can be used from within Node.js by pointing
-[`require()`][require] to the built `addon.node` module:
+[`require()`][] to the built `addon.node` module:
 
 ```js
 // hello.js
@@ -416,17 +420,45 @@ aware of:
 ### Loading addons using `require()`
 
 The filename extension of the compiled addon binary is `.node` (as opposed
-to `.dll` or `.so`). The [`require()`][require] function is written to look for
+to `.dll` or `.so`). The [`require()`][] function is written to look for
 files with the `.node` file extension and initialize those as dynamically-linked
 libraries.
 
-When calling [`require()`][require], the `.node` extension can usually be
+When calling [`require()`][], the `.node` extension can usually be
 omitted and Node.js will still find and initialize the addon. One caveat,
 however, is that Node.js will first attempt to locate and load modules or
 JavaScript files that happen to share the same base name. For instance, if
 there is a file `addon.js` in the same directory as the binary `addon.node`,
-then [`require('addon')`][require] will give precedence to the `addon.js` file
+then [`require('addon')`][`require()`] will give precedence to the `addon.js` file
 and load it instead.
+
+### Loading addons using `import`
+
+<!-- YAML
+added:
+  - v23.6.0
+  - v22.20.0
+-->
+
+> Stability: 1.0 - Early development
+
+You can use the [`--experimental-addon-modules`][] flag to enable support for
+both static `import` and dynamic `import()` to load binary addons.
+
+If we reuse the Hello World example from earlier, you could do:
+
+```mjs
+// hello.mjs
+import myAddon from './hello.node';
+// N.B.: import {hello} from './hello.node' would not work
+
+console.log(myAddon.hello());
+```
+
+```console
+$ node --experimental-addon-modules hello.mjs
+world
+```
 
 ## Native abstractions for Node.js
 
@@ -447,59 +479,7 @@ illustration of how it can be used.
 
 > Stability: 2 - Stable
 
-Node-API is an API for building native addons. It is independent from
-the underlying JavaScript runtime (e.g. V8) and is maintained as part of
-Node.js itself. This API will be Application Binary Interface (ABI) stable
-across versions of Node.js. It is intended to insulate addons from
-changes in the underlying JavaScript engine and allow modules
-compiled for one version to run on later versions of Node.js without
-recompilation. Addons are built/packaged with the same approach/tools
-outlined in this document (node-gyp, etc.). The only difference is the
-set of APIs that are used by the native code. Instead of using the V8
-or [Native Abstractions for Node.js][] APIs, the functions available
-in the Node-API are used.
-
-Creating and maintaining an addon that benefits from the ABI stability
-provided by Node-API carries with it certain
-[implementation considerations][].
-
-To use Node-API in the above "Hello world" example, replace the content of
-`hello.cc` with the following. All other instructions remain the same.
-
-```cpp
-// hello.cc using Node-API
-#include <node_api.h>
-
-namespace demo {
-
-napi_value Method(napi_env env, napi_callback_info args) {
-  napi_value greeting;
-  napi_status status;
-
-  status = napi_create_string_utf8(env, "world", NAPI_AUTO_LENGTH, &greeting);
-  if (status != napi_ok) return nullptr;
-  return greeting;
-}
-
-napi_value init(napi_env env, napi_value exports) {
-  napi_status status;
-  napi_value fn;
-
-  status = napi_create_function(env, nullptr, 0, Method, nullptr, &fn);
-  if (status != napi_ok) return nullptr;
-
-  status = napi_set_named_property(env, exports, "hello", fn);
-  if (status != napi_ok) return nullptr;
-  return exports;
-}
-
-NAPI_MODULE(NODE_GYP_MODULE_NAME, init)
-
-}  // namespace demo
-```
-
-The functions available and how to use them are documented in
-[C/C++ addons with Node-API](n-api.md).
+See [C/C++ addons with Node-API][Node-API].
 
 ## Addon examples
 
@@ -532,8 +512,8 @@ filename to the `sources` array:
 Once the `binding.gyp` file is ready, the example addons can be configured and
 built using `node-gyp`:
 
-```console
-$ node-gyp configure build
+```bash
+node-gyp configure build
 ```
 
 ### Function arguments
@@ -845,8 +825,8 @@ class MyObject : public node::ObjectWrap {
 ```
 
 In `myobject.cc`, implement the various methods that are to be exposed.
-Below, the method `plusOne()` is exposed by adding it to the constructor's
-prototype:
+In the following code, the method `plusOne()` is exposed by adding it to the
+constructor's prototype:
 
 ```cpp
 // myobject.cc
@@ -912,7 +892,8 @@ void MyObject::New(const FunctionCallbackInfo<Value>& args) {
     const int argc = 1;
     Local<Value> argv[argc] = { args[0] };
     Local<Function> cons =
-        args.Data().As<Object>()->GetInternalField(0).As<Function>();
+        args.Data().As<Object>()->GetInternalField(0)
+            .As<Value>().As<Function>();
     Local<Object> result =
         cons->NewInstance(context, argc, argv).ToLocalChecked();
     args.GetReturnValue().Set(result);
@@ -922,7 +903,7 @@ void MyObject::New(const FunctionCallbackInfo<Value>& args) {
 void MyObject::PlusOne(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
 
-  MyObject* obj = ObjectWrap::Unwrap<MyObject>(args.Holder());
+  MyObject* obj = ObjectWrap::Unwrap<MyObject>(args.This());
   obj->value_ += 1;
 
   args.GetReturnValue().Set(Number::New(isolate, obj->value_));
@@ -1137,7 +1118,7 @@ void MyObject::NewInstance(const FunctionCallbackInfo<Value>& args) {
 void MyObject::PlusOne(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
 
-  MyObject* obj = ObjectWrap::Unwrap<MyObject>(args.Holder());
+  MyObject* obj = ObjectWrap::Unwrap<MyObject>(args.This());
   obj->value_ += 1;
 
   args.GetReturnValue().Set(Number::New(isolate, obj->value_));
@@ -1272,7 +1253,7 @@ class MyObject : public node::ObjectWrap {
 #endif
 ```
 
-The implementation of `myobject.cc` is similar to before:
+The implementation of `myobject.cc` remains similar to the previous version:
 
 ```cpp
 // myobject.cc
@@ -1369,18 +1350,20 @@ console.log(result);
 // Prints: 30
 ```
 
+[Building]: #building
 [Electron]: https://electronjs.org/
 [Embedder's Guide]: https://v8.dev/docs/embed
 [Linking to libraries included with Node.js]: #linking-to-libraries-included-with-nodejs
 [Native Abstractions for Node.js]: https://github.com/nodejs/nan
+[Node-API]: n-api.md
 [V8]: https://v8.dev/
+[`--experimental-addon-modules`]: cli.md#--experimental-addon-modules
 [`Worker`]: worker_threads.md#class-worker
+[`libuv`]: https://github.com/libuv/libuv
+[`node-gyp`]: https://github.com/nodejs/node-gyp
+[`require()`]: modules.md#requireid
 [bindings]: https://github.com/TooTallNate/node-bindings
 [download]: https://github.com/nodejs/node-addon-examples
 [examples]: https://github.com/nodejs/nan/tree/HEAD/examples/
-[implementation considerations]: n-api.md#implications-of-abi-stability
 [installation instructions]: https://github.com/nodejs/node-gyp#installation
-[libuv]: https://github.com/libuv/libuv
-[node-gyp]: https://github.com/nodejs/node-gyp
-[require]: modules.md#requireid
 [v8-docs]: https://v8docs.nodesource.com/

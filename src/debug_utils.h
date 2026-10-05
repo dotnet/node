@@ -26,6 +26,8 @@ class Environment;
 
 template <typename T>
 inline std::string ToString(const T& value);
+template <typename T>
+inline auto ToStringOrStringView(const T& value);
 
 // C++-style variant of sprintf()/fprintf() that:
 // - Returns an std::string
@@ -33,23 +35,34 @@ inline std::string ToString(const T& value);
 // - Supports %p and %s. %d, %i and %u are aliases for %s.
 // - Accepts any class that has a ToString() method for stringification.
 template <typename... Args>
-inline std::string SPrintF(const char* format, Args&&... args);
+inline std::string SPrintF(std::string_view format, Args&&... args);
 template <typename... Args>
-inline void FPrintF(FILE* file, const char* format, Args&&... args);
+inline void FPrintF(FILE* file, std::string_view format, Args&&... args);
 void NODE_EXTERN_PRIVATE FWrite(FILE* file, const std::string& str);
 
 // Listing the AsyncWrap provider types first enables us to cast directly
 // from a provider type to a debug category.
 #define DEBUG_CATEGORY_NAMES(V)                                                \
   NODE_ASYNC_PROVIDER_TYPES(V)                                                 \
+  V(CRYPTO)                                                                    \
+  V(COMPILE_CACHE)                                                             \
+  V(CONTEXTIFY)                                                                \
   V(DIAGNOSTICS)                                                               \
   V(HUGEPAGES)                                                                 \
   V(INSPECTOR_SERVER)                                                          \
+  V(INSPECTOR_CLIENT)                                                          \
   V(INSPECTOR_PROFILER)                                                        \
   V(CODE_CACHE)                                                                \
   V(NGTCP2_DEBUG)                                                              \
+  V(SEA)                                                                       \
   V(WASI)                                                                      \
-  V(MKSNAPSHOT)
+  V(MODULE)                                                                    \
+  V(MKSNAPSHOT)                                                                \
+  V(SNAPSHOT_SERDES)                                                           \
+  V(PERMISSION_MODEL)                                                          \
+  V(PLATFORM_MINIMAL)                                                          \
+  V(PLATFORM_VERBOSE)                                                          \
+  V(QUIC)
 
 enum class DebugCategory : unsigned int {
 #define V(name) name,
@@ -68,11 +81,10 @@ class NODE_EXTERN_PRIVATE EnabledDebugList {
     return enabled_[static_cast<unsigned int>(category)];
   }
 
-  // Uses NODE_DEBUG_NATIVE to initialize the categories. The env_vars variable
+  // Uses NODE_DEBUG_NATIVE to initialize the categories. env->env_vars()
   // is parsed if it is not a nullptr, otherwise the system environment
   // variables are parsed.
-  void Parse(std::shared_ptr<KVStore> env_vars = nullptr,
-             v8::Isolate* isolate = nullptr);
+  void Parse(Environment* env);
 
  private:
   // Enable all categories matching cats.

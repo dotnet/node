@@ -2,7 +2,7 @@ const t = require('tap')
 const { load: loadMockNpm } = require('../../fixtures/mock-npm.js')
 const MockRegistry = require('@npmcli/mock-registry')
 
-const path = require('path')
+const path = require('node:path')
 const npa = require('npm-package-arg')
 const packageName = '@npmcli/test-package'
 const spec = npa(packageName)
@@ -123,7 +123,7 @@ t.test('owner ls fails to retrieve packument', async t => {
   })
   registry.nock.get(`/${spec.escapedName}`).reply(404)
   await t.rejects(npm.exec('owner', ['ls']))
-  t.match(logs.error, [['owner ls', "Couldn't get owner data", '@npmcli/test-package']])
+  t.match(logs.error.byTitle('owner ls'), [`owner ls Couldn't get owner data @npmcli/test-package`])
 })
 
 t.test('owner ls <pkg>', async t => {
@@ -189,6 +189,58 @@ t.test('owner add <user> <pkg>', async t => {
   t.equal(joinedOutput(), `+ ${username} (${packageName})`)
 })
 
+t.test('owner add resolves user from package scoped registry', async t => {
+  const scopedRegistryUrl = 'https://scoped.registry.npmjs.org'
+  const scopedAuth = '//scoped.registry.npmjs.org/:_authToken'
+  const { npm, joinedOutput } = await loadMockNpm(t, {
+    config: {
+      ...auth,
+      '@npmcli:registry': scopedRegistryUrl,
+      [scopedAuth]: 'scoped-auth-token',
+    },
+  })
+  const username = 'requested-user'
+  const globalRegistry = new MockRegistry({
+    tap: t,
+    registry: npm.config.get('registry'),
+    authorization: 'test-auth-token',
+  })
+  const scopedRegistry = new MockRegistry({
+    tap: t,
+    registry: scopedRegistryUrl,
+    authorization: 'scoped-auth-token',
+  })
+
+  // If `owner add` mistakenly asked the global registry for user data
+  // instead of the package's scoped registry, this substituted user would
+  // be added as the owner instead of the one requested.
+  globalRegistry.nock = globalRegistry.nock
+    .get(`/-/user/org.couchdb.user:${encodeURIComponent(username)}`)
+    .optionally()
+    .reply(200, { name: 'substituted-user', email: 'substituted@example.com' })
+  scopedRegistry.couchuser({ username, body: { name: username, email: 'requested@example.com' } })
+
+  const manifest = scopedRegistry.manifest({
+    name: packageName,
+    packuments: [{ maintainers, version: '1.0.0' }],
+  })
+  await scopedRegistry.package({ manifest })
+  scopedRegistry.nock.put(`/${spec.escapedName}/-rev/${manifest._rev}`, body => {
+    t.match(body, {
+      _id: manifest._id,
+      _rev: manifest._rev,
+      maintainers: [
+        ...manifest.maintainers,
+        { name: username, email: 'requested@example.com' },
+      ],
+    })
+    return true
+  }).reply(200, {})
+
+  await npm.exec('owner', ['add', username, packageName])
+  t.equal(joinedOutput(), `+ ${username} (${packageName})`)
+})
+
 t.test('owner add <user> cwd package', async t => {
   const { npm, joinedOutput } = await loadMockNpm(t, {
     prefixDir: {
@@ -240,8 +292,8 @@ t.test('owner add <user> <pkg> already an owner', async t => {
   await npm.exec('owner', ['add', username, packageName])
   t.equal(joinedOutput(), '')
   t.match(
-    logs.info,
-    [['owner add', 'Already a package owner: test-user-a <test-user-a@npmjs.org>']]
+    logs.info.byTitle('owner add'),
+    [`Already a package owner: test-user-a <test-user-a@npmjs.org>`]
   )
 })
 
@@ -256,7 +308,7 @@ t.test('owner add <user> <pkg> fails to retrieve user', async t => {
   })
   registry.couchuser({ username, responseCode: 404, body: {} })
   await t.rejects(npm.exec('owner', ['add', username, packageName]))
-  t.match(logs.error, [['owner mutate', `Error getting user data for ${username}`]])
+  t.match(logs.error.byTitle('owner mutate'), [`Error getting user data for ${username}`])
 })
 
 t.test('owner add <user> <pkg> fails to PUT updates', async t => {
@@ -364,6 +416,57 @@ t.test('owner rm <user> <pkg>', async t => {
   t.equal(joinedOutput(), `- ${username} (${packageName})`)
 })
 
+t.test('owner rm resolves user from package scoped registry', async t => {
+  const scopedRegistryUrl = 'https://scoped.registry.npmjs.org'
+  const scopedAuth = '//scoped.registry.npmjs.org/:_authToken'
+  const { npm, joinedOutput, logs } = await loadMockNpm(t, {
+    config: {
+      ...auth,
+      '@npmcli:registry': scopedRegistryUrl,
+      [scopedAuth]: 'scoped-auth-token',
+    },
+  })
+  const username = 'requested-user'
+  const globalRegistry = new MockRegistry({
+    tap: t,
+    registry: npm.config.get('registry'),
+    authorization: 'test-auth-token',
+  })
+  const scopedRegistry = new MockRegistry({
+    tap: t,
+    registry: scopedRegistryUrl,
+    authorization: 'scoped-auth-token',
+  })
+
+  // If `owner rm` mistakenly asked the global registry for user data instead
+  // of the package's scoped registry, this substituted user would be
+  // resolved and treated as an existing owner rather than the one requested.
+  globalRegistry.nock = globalRegistry.nock
+    .get(`/-/user/org.couchdb.user:${encodeURIComponent(username)}`)
+    .optionally()
+    .reply(200, maintainers[0])
+  scopedRegistry.couchuser({ username, body: { name: username, email: 'requested@example.com' } })
+
+  const manifest = scopedRegistry.manifest({
+    name: packageName,
+    packuments: [{ maintainers, version: '1.0.0' }],
+  })
+  await scopedRegistry.package({ manifest })
+  let update
+  scopedRegistry.nock
+    .put(`/${spec.escapedName}/-rev/${manifest._rev}`, body => {
+      update = body
+      return true
+    })
+    .optionally()
+    .reply(200, {})
+
+  await npm.exec('owner', ['rm', username, packageName])
+  t.equal(update, undefined, 'does not remove the substituted user')
+  t.equal(joinedOutput(), '', 'does not report a removal')
+  t.match(logs.info.byTitle('owner rm'), [`Not a package owner: ${username}`])
+})
+
 t.test('owner rm <user> <pkg> not a current owner', async t => {
   const { npm, logs } = await loadMockNpm(t, {
     config: { ...auth },
@@ -380,7 +483,7 @@ t.test('owner rm <user> <pkg> not a current owner', async t => {
   registry.couchuser({ username })
   await registry.package({ manifest })
   await npm.exec('owner', ['rm', username, packageName])
-  t.match(logs.info, [['owner rm', `Not a package owner: ${username}`]])
+  t.match(logs.info.byTitle('owner rm'), [`Not a package owner: ${username}`])
 })
 
 t.test('owner rm <user> cwd package', async t => {
@@ -613,9 +716,10 @@ t.test('workspaces', async t => {
 })
 
 t.test('completion', async t => {
+  const mockCompletion = (t, opts) => loadMockNpm(t, { command: 'owner', ...opts })
+
   t.test('basic commands', async t => {
-    const { npm } = await loadMockNpm(t)
-    const owner = await npm.cmd('owner')
+    const { owner } = await mockCompletion(t)
     const testComp = async (argv, expect) => {
       const res = await owner.completion({ conf: { argv: { remain: argv } } })
       t.strictSame(res, expect, argv.join(' '))
@@ -631,10 +735,9 @@ t.test('completion', async t => {
   })
 
   t.test('completion npm owner rm', async t => {
-    const { npm } = await loadMockNpm(t, {
+    const { npm, owner } = await mockCompletion(t, {
       prefixDir: { 'package.json': JSON.stringify({ name: packageName }) },
     })
-    const owner = await npm.cmd('owner')
     const registry = new MockRegistry({
       tap: t,
       registry: npm.config.get('registry'),
@@ -649,26 +752,23 @@ t.test('completion', async t => {
   })
 
   t.test('completion npm owner rm no cwd package', async t => {
-    const { npm } = await loadMockNpm(t)
-    const owner = await npm.cmd('owner')
+    const { owner } = await mockCompletion(t)
     const res = await owner.completion({ conf: { argv: { remain: ['npm', 'owner', 'rm'] } } })
     t.strictSame(res, [], 'should have no owners to autocomplete if not cwd package')
   })
 
   t.test('completion npm owner rm global', async t => {
-    const { npm } = await loadMockNpm(t, {
+    const { owner } = await mockCompletion(t, {
       config: { global: true },
     })
-    const owner = await npm.cmd('owner')
     const res = await owner.completion({ conf: { argv: { remain: ['npm', 'owner', 'rm'] } } })
     t.strictSame(res, [], 'should have no owners to autocomplete if global')
   })
 
   t.test('completion npm owner rm no owners found', async t => {
-    const { npm } = await loadMockNpm(t, {
+    const { npm, owner } = await mockCompletion(t, {
       prefixDir: { 'package.json': JSON.stringify({ name: packageName }) },
     })
-    const owner = await npm.cmd('owner')
     const registry = new MockRegistry({
       tap: t,
       registry: npm.config.get('registry'),

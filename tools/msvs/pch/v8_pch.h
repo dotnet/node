@@ -7,8 +7,6 @@
 #include "src/objects/dictionary-inl.h"
 #include "src/objects/js-objects-inl.h"
 #include "src/objects/fixed-array-inl.h"
-// DOTNET: added include of local-factory-inl.h to fix linking with MSVC
-#include "src/heap/local-factory-inl.h"
 #include "src/utils/utils.h"
 
 

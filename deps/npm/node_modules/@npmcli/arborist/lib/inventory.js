@@ -1,5 +1,4 @@
-// a class to manage an inventory and set of indexes of a set of objects based
-// on specific fields.
+// a class to manage an inventory and set of indexes of a set of objects based on specific fields.
 const { hasOwnProperty } = Object.prototype
 const debug = require('./debug.js')
 
@@ -130,7 +129,7 @@ class Inventory extends Map {
     return super.get(node.location) === node
   }
 
-  set (k, v) {
+  set () {
     throw new Error('direct set() not supported, use inventory.add(node)')
   }
 }

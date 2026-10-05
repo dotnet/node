@@ -6,8 +6,29 @@
 
 const semver = require('semver')
 const npa = require('npm-package-arg')
-const { relative } = require('path')
+const { relative } = require('node:path')
 const fromPath = require('./from-path.js')
+
+// A named ref (tag or branch) resolves to a commit hash, so look up the
+// committish recorded for this edge in the lockfile to detect spec changes.
+const lockedGitCommittish = (child, requestor) => {
+  const lock = requestor.root?.meta?.data?.packages?.[requestor.location]
+  const spec = lock && (
+    lock.dependencies?.[child.name] ||
+    lock.optionalDependencies?.[child.name] ||
+    lock.devDependencies?.[child.name] ||
+    lock.peerDependencies?.[child.name]
+  )
+  if (!spec) {
+    return null
+  }
+  try {
+    const parsed = npa.resolve(child.name, spec, requestor.realpath)
+    return parsed.type === 'git' ? parsed.gitCommittish || '' : null
+  } catch {
+    return null
+  }
+}
 
 const depValid = (child, requested, requestor) => {
   // NB: we don't do much to verify 'tag' type requests.
@@ -82,7 +103,7 @@ const depValid = (child, requested, requestor) => {
       const resRepo = npa(child.resolved || '')
       const resHost = resRepo.hosted
       const reqHost = requested.hosted
-      const reqCommit = /^[a-fA-F0-9]{40}$/.test(requested.gitCommittish || '')
+      const reqCommit = /^[a-fA-F0-9]{40,64}$/.test(requested.gitCommittish || '')
       const nc = { noCommittish: !reqCommit }
       if (!resHost) {
         if (resRepo.fetchSpec !== requested.fetchSpec) {
@@ -94,6 +115,14 @@ const depValid = (child, requested, requestor) => {
         }
       }
       if (!requested.gitRange) {
+        // a named ref can't be verified against the resolved commit offline,
+        // so re-resolve if it differs from the committish in the lockfile
+        if (!reqCommit) {
+          const locked = lockedGitCommittish(child, requestor)
+          if (locked !== null && locked !== (requested.gitCommittish || '')) {
+            return false
+          }
+        }
         return true
       }
       return semver.satisfies(child.package.version, requested.gitRange, {
@@ -101,7 +130,7 @@ const depValid = (child, requested, requestor) => {
       })
     }
 
-    default: // unpossible, just being cautious
+    default: // impossible, just being cautious
       break
   }
 
@@ -124,7 +153,7 @@ const linkValid = (child, requested, requestor) => {
   return isLink && relative(child.realpath, requested.fetchSpec) === ''
 }
 
-const tarballValid = (child, requested, requestor) => {
+const tarballValid = (child, requested) => {
   if (child.isLink) {
     return false
   }

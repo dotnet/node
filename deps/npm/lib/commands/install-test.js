@@ -1,6 +1,3 @@
-// npm install-test
-// Runs `npm install` and then runs `npm test`
-
 const Install = require('./install.js')
 
 class InstallTest extends Install {
@@ -12,4 +9,5 @@ class InstallTest extends Install {
     return this.npm.exec('test', [])
   }
 }
+
 module.exports = InstallTest

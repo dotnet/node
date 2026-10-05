@@ -2,7 +2,7 @@
 
 // Flags: --expose-internals
 
-require('../common');
+const common = require('../common');
 const stream = require('stream');
 const { describe, test } = require('node:test');
 const REPL = require('internal/repl');
@@ -13,7 +13,7 @@ const { REPL_MODE_SLOPPY, REPL_MODE_STRICT } = require('repl');
 const tests = [
   {
     env: {},
-    expected: { terminal: true, useColors: true }
+    expected: { terminal: true, useColors: false }
   },
   {
     env: { NODE_DISABLE_COLORS: '1' },
@@ -29,7 +29,7 @@ const tests = [
   },
   {
     env: { TERM: 'dumb' },
-    expected: { terminal: true, useColors: true }
+    expected: { terminal: true, useColors: false }
   },
   {
     env: { TERM: 'dumb', FORCE_COLOR: '1' },
@@ -41,15 +41,15 @@ const tests = [
   },
   {
     env: { NODE_NO_READLINE: '0' },
-    expected: { terminal: true, useColors: true }
+    expected: { terminal: true, useColors: false }
   },
   {
     env: { NODE_REPL_MODE: 'sloppy' },
-    expected: { terminal: true, useColors: true, replMode: REPL_MODE_SLOPPY }
+    expected: { terminal: true, useColors: false, replMode: REPL_MODE_SLOPPY }
   },
   {
     env: { NODE_REPL_MODE: 'strict' },
-    expected: { terminal: true, useColors: true, replMode: REPL_MODE_STRICT }
+    expected: { terminal: true, useColors: false, replMode: REPL_MODE_STRICT }
   },
 ];
 
@@ -66,9 +66,7 @@ function run(test) {
   Object.assign(process.env, env);
 
   return new Promise((resolve) => {
-    REPL.createInternalRepl(process.env, opts, function(err, repl) {
-      assert.ifError(err);
-
+    REPL.createInternalRepl(process.env, opts, common.mustSucceed((repl) => {
       assert.strictEqual(repl.terminal, expected.terminal,
                          `Expected ${inspect(expected)} with ${inspect(env)}`);
       assert.strictEqual(repl.useColors, expected.useColors,
@@ -80,7 +78,7 @@ function run(test) {
       }
       repl.close();
       resolve();
-    });
+    }));
   });
 }
 

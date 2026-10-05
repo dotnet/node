@@ -1,11 +1,11 @@
 const archy = require('archy')
 const pacote = require('pacote')
 const semver = require('semver')
+const { output } = require('proc-log')
 const npa = require('npm-package-arg')
 const { depth } = require('treeverse')
 const { readTree: getFundingInfo, normalizeFunding, isValidFunding } = require('libnpmfund')
-
-const openUrl = require('../utils/open-url.js')
+const { openUrl } = require('../utils/open-url.js')
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
 
 const getPrintableName = ({ name, version }) => {
@@ -34,11 +34,9 @@ class Fund extends ArboristWorkspaceCmd {
     return `${msg}\``
   }
 
-  // TODO
-  /* istanbul ignore next */
-  async completion (opts) {
-    const completion = require('../utils/completion/installed-deep.js')
-    return completion(this.npm, opts)
+  static async completion (opts, npm) {
+    const completion = require('../utils/installed-deep.js')
+    return completion(npm, opts)
   }
 
   async exec (args) {
@@ -85,14 +83,10 @@ class Fund extends ArboristWorkspaceCmd {
     })
 
     if (this.npm.config.get('json')) {
-      this.npm.output(this.printJSON(fundingInfo))
+      output.buffer(fundingInfo)
     } else {
-      this.npm.output(this.printHuman(fundingInfo))
+      output.standard(this.printHuman(fundingInfo))
     }
-  }
-
-  printJSON (fundingInfo) {
-    return JSON.stringify(fundingInfo, null, 2)
   }
 
   printHuman (fundingInfo) {
@@ -104,37 +98,34 @@ class Fund extends ArboristWorkspaceCmd {
     const result = depth({
       tree: fundingInfo,
 
-      // composes human readable package name
-      // and creates a new archy item for readable output
+      // composes human readable package name and creates a new archy item for readable output
       visit: ({ name, version, funding }) => {
         const [fundingSource] = [].concat(normalizeFunding(funding)).filter(isValidFunding)
         const { url } = fundingSource || {}
         const pkgRef = getPrintableName({ name, version })
-        let item = {
-          label: pkgRef,
-        }
 
-        if (url) {
-          item.label = tree({
-            label: this.npm.chalk.bgBlack.white(url),
+        if (!url) {
+          return { label: pkgRef }
+        }
+        let item
+        if (seenUrls.has(url)) {
+          item = seenUrls.get(url)
+          item.label += `${this.npm.chalk.dim(',')} ${pkgRef}`
+          return null
+        }
+        item = {
+          label: tree({
+            label: this.npm.chalk.blue(url),
             nodes: [pkgRef],
-          }).trim()
-
-          // stacks all packages together under the same item
-          if (seenUrls.has(url)) {
-            item = seenUrls.get(url)
-            item.label += `, ${pkgRef}`
-            return null
-          } else {
-            seenUrls.set(url, item)
-          }
+          }).trim(),
         }
 
+        // stacks all packages together under the same item
+        seenUrls.set(url, item)
         return item
       },
 
-      // puts child nodes back into returned archy
-      // output while also filtering out missing items
+      // puts child nodes back into returned archy output while also filtering out missing items
       leave: (item, children) => {
         if (item) {
           item.nodes = children.filter(Boolean)
@@ -143,8 +134,7 @@ class Fund extends ArboristWorkspaceCmd {
         return item
       },
 
-      // turns tree-like object return by libnpmfund
-      // into children to be properly read by treeverse
+      // turns tree-like object return by libnpmfund into children to be properly read by treeverse
       getChildren: node =>
         Object.keys(node.dependencies || {}).map(key => ({
           name: key,
@@ -153,7 +143,7 @@ class Fund extends ArboristWorkspaceCmd {
     })
 
     const res = tree(result)
-    return this.npm.chalk.reset(res)
+    return res
   }
 
   async openFundingUrl ({ path, tree, spec, fundingSourceNumber }) {
@@ -173,8 +163,7 @@ class Fund extends ArboristWorkspaceCmd {
           }
         }
       } else {
-        // tries to retrieve a package from arborist inventory
-        // by matching resulted package name from the provided spec
+        // tries to retrieve a package from arborist inventory by matching resulted package name from the provided spec
         const [item] = [...tree.inventory.query('name', arg.name)]
           .filter(i => semver.valid(i.package.version))
           .sort((a, b) => semver.rcompare(a.package.version, b.package.version))
@@ -212,7 +201,7 @@ class Fund extends ArboristWorkspaceCmd {
     if (fundingSourceNumber) {
       ambiguousUrlMsg.unshift(`--which=${fundingSourceNumber} is not a valid index`)
     }
-    this.npm.output(ambiguousUrlMsg.join('\n'))
+    output.standard(ambiguousUrlMsg.join('\n'))
   }
 
   urlMessage (source) {
@@ -222,4 +211,5 @@ class Fund extends ArboristWorkspaceCmd {
     return [url, message]
   }
 }
+
 module.exports = Fund

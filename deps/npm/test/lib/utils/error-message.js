@@ -1,8 +1,8 @@
 const t = require('tap')
-const { resolve } = require('path')
-const fs = require('fs/promises')
+const { resolve } = require('node:path')
+const fs = require('node:fs/promises')
 const { load: _loadMockNpm } = require('../../fixtures/mock-npm.js')
-const mockGlobals = require('../../fixtures/mock-globals.js')
+const mockGlobals = require('@npmcli/mock-globals')
 const tmock = require('../../fixtures/tmock')
 const { cleanCwd, cleanDate } = require('../../fixtures/clean-snapshot.js')
 
@@ -40,13 +40,15 @@ const loadMockNpm = async (t, { errorMocks, ...opts } = {}) => {
   })
   return {
     ...res,
-    errorMessage: (er) => mockError(er, res.npm),
+    errorMessage: (er) => mockError.errorMessage(er, res.npm),
   }
 }
 
 t.test('just simple messages', async t => {
   const { errorMessage } = await loadMockNpm(t, {
+    prefixDir: { 'package-lock.json': '{}' },
     command: 'audit',
+    exec: true,
   })
   const codes = [
     'ENOAUDIT',
@@ -89,19 +91,14 @@ t.test('just simple messages', async t => {
   }
 })
 
-t.test('replace message/stack sensistive info', async t => {
+t.test('replace message/stack sensitive info', async t => {
   const { errorMessage } = await loadMockNpm(t, { command: 'audit' })
-  const path = '/some/path'
-  const pkgid = 'some@package'
-  const file = '/some/file'
-  const stack = 'dummy stack trace at https://user:pass@registry.npmjs.org/'
-  const message = 'Error at registry: https://user:pass@registry.npmjs.org/'
-  const er = Object.assign(new Error(message), {
+  const er = Object.assign(new Error('Error at registry: https://user:pass@registry.npmjs.org/'), {
     code: 'ENOAUDIT',
-    path,
-    pkgid,
-    file,
-    stack,
+    path: '/some/path',
+    pkgid: 'some@package',
+    file: '/some/file',
+    stack: 'dummy stack trace at https://user:pass@registry.npmjs.org/',
   })
   t.matchSnapshot(errorMessage(er))
 })
@@ -280,6 +277,17 @@ t.test('eotp/e401', async t => {
     const message = 'one-time pass'
     t.matchSnapshot(errorMessage(Object.assign(new Error(message), {
       code: 'E401',
+    })))
+    t.end()
+  })
+
+  t.test('one-time pass webauth challenge', t => {
+    t.matchSnapshot(errorMessage(Object.assign(new Error('nope'), {
+      code: 'EOTP',
+      body: {
+        authUrl: 'https://registry.npmjs.org/-/auth/login/abc123',
+        doneUrl: 'https://registry.npmjs.org/-/auth/done/abc123',
+      },
     })))
     t.end()
   })

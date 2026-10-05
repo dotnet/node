@@ -4,6 +4,7 @@
 #include "node_builtins.h"
 #include "node_errors.h"
 #include "node_external_reference.h"
+#include "node_url_pattern.h"
 #include "util.h"
 
 #include <string>
@@ -14,22 +15,16 @@
 #define NODE_BUILTIN_OPENSSL_BINDINGS(V)
 #endif
 
-#if NODE_HAVE_I18N_SUPPORT
-#define NODE_BUILTIN_ICU_BINDINGS(V) V(icu)
-#else
-#define NODE_BUILTIN_ICU_BINDINGS(V)
-#endif
-
 #if HAVE_INSPECTOR
 #define NODE_BUILTIN_PROFILER_BINDINGS(V) V(profiler)
 #else
 #define NODE_BUILTIN_PROFILER_BINDINGS(V)
 #endif
 
-#if HAVE_DTRACE || HAVE_ETW
-#define NODE_BUILTIN_DTRACE_BINDINGS(V) V(dtrace)
+#ifdef DEBUG
+#define NODE_BUILTIN_DEBUG_BINDINGS(V) V(debug)
 #else
-#define NODE_BUILTIN_DTRACE_BINDINGS(V)
+#define NODE_BUILTIN_DEBUG_BINDINGS(V)
 #endif
 
 // A list of built-in bindings. In order to do binding registration
@@ -38,16 +33,23 @@
 // function. This helps the built-in bindings are loaded properly when
 // node is built as static library. No need to depend on the
 // __attribute__((constructor)) like mechanism in GCC.
+// The binding IDs that start with 'internal_only' are not exposed to the user
+// land even from internal/test/binding module under --expose-internals.
 #define NODE_BUILTIN_STANDARD_BINDINGS(V)                                      \
+  V(async_context_frame)                                                       \
   V(async_wrap)                                                                \
   V(blob)                                                                      \
   V(block_list)                                                                \
   V(buffer)                                                                    \
   V(builtins)                                                                  \
   V(cares_wrap)                                                                \
+  V(cjs_lexer)                                                                 \
   V(config)                                                                    \
+  V(constants)                                                                 \
   V(contextify)                                                                \
   V(credentials)                                                               \
+  V(diagnostics_channel)                                                       \
+  V(encoding_binding)                                                          \
   V(errors)                                                                    \
   V(fs)                                                                        \
   V(fs_dir)                                                                    \
@@ -56,14 +58,18 @@
   V(http2)                                                                     \
   V(http_parser)                                                               \
   V(inspector)                                                                 \
+  V(internal_only_v8)                                                          \
   V(js_stream)                                                                 \
   V(js_udp_wrap)                                                               \
+  V(locks)                                                                     \
   V(messaging)                                                                 \
+  V(modules)                                                                   \
   V(module_wrap)                                                               \
   V(mksnapshot)                                                                \
   V(options)                                                                   \
   V(os)                                                                        \
   V(performance)                                                               \
+  V(permission)                                                                \
   V(pipe_wrap)                                                                 \
   V(process_wrap)                                                              \
   V(process_methods)                                                           \
@@ -84,6 +90,7 @@
   V(types)                                                                     \
   V(udp_wrap)                                                                  \
   V(url)                                                                       \
+  V(url_pattern)                                                               \
   V(util)                                                                      \
   V(uv)                                                                        \
   V(v8)                                                                        \
@@ -98,7 +105,9 @@
   NODE_BUILTIN_OPENSSL_BINDINGS(V)                                             \
   NODE_BUILTIN_ICU_BINDINGS(V)                                                 \
   NODE_BUILTIN_PROFILER_BINDINGS(V)                                            \
-  NODE_BUILTIN_DTRACE_BINDINGS(V)
+  NODE_BUILTIN_DEBUG_BINDINGS(V)                                               \
+  NODE_BUILTIN_QUIC_BINDINGS(V)                                                \
+  NODE_BUILTIN_SQLITE_BINDINGS(V)
 
 // This is used to load built-in bindings. Instead of using
 // __attribute__((constructor)), we call the _register_<modname>
@@ -108,6 +117,12 @@
 // the NODE_BINDING_CONTEXT_AWARE_INTERNAL.
 #define V(modname) void _register_##modname();
 NODE_BUILTIN_BINDINGS(V)
+#undef V
+
+#define V(modname)                                                             \
+  void _register_isolate_##modname(node::IsolateData* isolate_data,            \
+                                   v8::Local<v8::ObjectTemplate> target);
+NODE_BINDINGS_WITH_PER_ISOLATE_INIT(V)
 #undef V
 
 #ifdef _AIX
@@ -237,11 +252,14 @@ static bool libc_may_be_musl() { return false; }
 namespace node {
 
 using v8::Context;
+using v8::EscapableHandleScope;
 using v8::Exception;
-using v8::Function;
 using v8::FunctionCallbackInfo;
+using v8::HandleScope;
+using v8::Isolate;
 using v8::Local;
 using v8::Object;
+using v8::ObjectTemplate;
 using v8::String;
 using v8::Value;
 
@@ -471,9 +489,9 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
       dlib->Close();
 #ifdef _WIN32
       // Windows needs to add the filename into the error message
-      errmsg += *filename;
+      errmsg += filename.ToStringView();
 #endif  // _WIN32
-      THROW_ERR_DLOPEN_FAILED(env, "%s", errmsg.c_str());
+      THROW_ERR_DLOPEN_FAILED(env, "%s", errmsg);
       return false;
     }
 
@@ -504,13 +522,13 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
         if (mp == nullptr || mp->nm_context_register_func == nullptr) {
           dlib->Close();
           THROW_ERR_DLOPEN_FAILED(
-              env, "Module did not self-register: '%s'.", *filename);
+              env, "Module did not self-register: '%s'.", filename);
           return false;
         }
       }
     }
 
-    // -1 is used for N-API modules
+    // -1 is used for Node-API modules
     if ((mp->nm_version != -1) && (mp->nm_version != NODE_MODULE_VERSION)) {
       // Even if the module did self-register, it may have done so with the
       // wrong version. We must only give up after having checked to see if it
@@ -571,50 +589,69 @@ inline struct node_module* FindModule(struct node_module* list,
   return mp;
 }
 
-static Local<Object> InitInternalBinding(Environment* env,
-                                         node_module* mod,
-                                         Local<String> module) {
-  // Internal bindings don't have a "module" object, only exports.
-  Local<Function> ctor = env->binding_data_ctor_template()
-                             ->GetFunction(env->context())
-                             .ToLocalChecked();
-  Local<Object> exports = ctor->NewInstance(env->context()).ToLocalChecked();
+void CreateInternalBindingTemplates(IsolateData* isolate_data) {
+#define V(modname)                                                             \
+  do {                                                                         \
+    Local<ObjectTemplate> templ =                                              \
+        ObjectTemplate::New(isolate_data->isolate());                          \
+    templ->SetInternalFieldCount(BaseObject::kInternalFieldCount);             \
+    _register_isolate_##modname(isolate_data, templ);                          \
+    isolate_data->set_##modname##_binding_template(templ);                     \
+  } while (0);
+  NODE_BINDINGS_WITH_PER_ISOLATE_INIT(V)
+#undef V
+}
+
+static Local<Object> GetInternalBindingExportObject(IsolateData* isolate_data,
+                                                    const char* mod_name,
+                                                    Local<Context> context) {
+  Local<ObjectTemplate> templ;
+
+#define V(name)                                                                \
+  if (strcmp(mod_name, #name) == 0) {                                          \
+    templ = isolate_data->name##_binding_template();                           \
+  } else  // NOLINT(readability/braces)
+  NODE_BINDINGS_WITH_PER_ISOLATE_INIT(V)
+#undef V
+  {
+    // Default template.
+    templ = isolate_data->binding_data_default_template();
+  }
+
+  Local<Object> obj = templ->NewInstance(context).ToLocalChecked();
+  return obj;
+}
+
+static Local<Object> InitInternalBinding(Realm* realm, node_module* mod) {
+  EscapableHandleScope scope(realm->isolate());
+  Local<Context> context = realm->context();
+  Local<Object> exports = GetInternalBindingExportObject(
+      realm->isolate_data(), mod->nm_modname, context);
   CHECK_NULL(mod->nm_register_func);
   CHECK_NOT_NULL(mod->nm_context_register_func);
-  Local<Value> unused = Undefined(env->isolate());
-  mod->nm_context_register_func(exports, unused, env->context(), mod->nm_priv);
-  return exports;
+  Local<Value> unused = Undefined(realm->isolate());
+  // Internal bindings don't have a "module" object, only exports.
+  mod->nm_context_register_func(exports, unused, context, mod->nm_priv);
+  return scope.Escape(exports);
 }
 
 void GetInternalBinding(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
+  Realm* realm = Realm::GetCurrent(args);
+  Isolate* isolate = realm->isolate();
+  HandleScope scope(isolate);
 
   CHECK(args[0]->IsString());
 
   Local<String> module = args[0].As<String>();
-  node::Utf8Value module_v(env->isolate(), module);
+  node::Utf8Value module_v(isolate, module);
   Local<Object> exports;
 
   node_module* mod = FindModule(modlist_internal, *module_v, NM_F_INTERNAL);
   if (mod != nullptr) {
-    exports = InitInternalBinding(env, mod, module);
-    env->internal_bindings.insert(mod);
-  } else if (!strcmp(*module_v, "constants")) {
-    exports = Object::New(env->isolate());
-    CHECK(
-        exports->SetPrototype(env->context(), Null(env->isolate())).FromJust());
-    DefineConstants(env->isolate(), exports);
-  } else if (!strcmp(*module_v, "natives")) {
-    exports = builtins::BuiltinLoader::GetSourceObject(env->context());
-    // Legacy feature: process.binding('natives').config contains stringified
-    // config.gypi
-    CHECK(exports
-              ->Set(env->context(),
-                    env->config_string(),
-                    builtins::BuiltinLoader::GetConfigString(env->isolate()))
-              .FromJust());
+    exports = InitInternalBinding(realm, mod);
+    realm->internal_bindings.insert(mod);
   } else {
-    return THROW_ERR_INVALID_MODULE(env, "No such binding: %s", *module_v);
+    return THROW_ERR_INVALID_MODULE(isolate, "No such binding: %s", module_v);
   }
 
   args.GetReturnValue().Set(exports);
@@ -645,14 +682,14 @@ void GetLinkedBinding(const FunctionCallbackInfo<Value>& args) {
 
   if (mod == nullptr) {
     return THROW_ERR_INVALID_MODULE(
-        env, "No such binding was linked: %s", *module_name_v);
+        env, "No such binding was linked: %s", module_name_v);
   }
 
   Local<Object> module = Object::New(env->isolate());
   Local<Object> exports = Object::New(env->isolate());
-  Local<String> exports_prop =
-      String::NewFromUtf8Literal(env->isolate(), "exports");
-  module->Set(env->context(), exports_prop, exports).Check();
+  if (module->Set(env->context(), env->exports_string(), exports).IsNothing()) {
+    return;
+  }
 
   if (mod->nm_context_register_func != nullptr) {
     mod->nm_context_register_func(
@@ -664,10 +701,11 @@ void GetLinkedBinding(const FunctionCallbackInfo<Value>& args) {
         env, "Linked binding has no declared entry point.");
   }
 
-  auto effective_exports =
-      module->Get(env->context(), exports_prop).ToLocalChecked();
-
-  args.GetReturnValue().Set(effective_exports);
+  Local<Value> effective_exports;
+  if (module->Get(env->context(), env->exports_string())
+          .ToLocal(&effective_exports)) {
+    args.GetReturnValue().Set(effective_exports);
+  }
 }
 
 // Call built-in bindings' _register_<module name> function to

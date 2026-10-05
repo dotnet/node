@@ -1,12 +1,9 @@
-// Base command for opening urls from a package manifest (bugs, docs, repo)
-
 const pacote = require('pacote')
-const hostedGitInfo = require('hosted-git-info')
+const { openUrl } = require('./utils/open-url.js')
+const { log } = require('proc-log')
+const BaseCommand = require('./base-cmd.js')
 
-const openUrl = require('./utils/open-url.js')
-const log = require('./utils/log-shim')
-
-const BaseCommand = require('./base-command.js')
+// Base command for opening urls from a package manifest (bugs, docs, repo)
 class PackageUrlCommand extends BaseCommand {
   static params = [
     'browser',
@@ -26,12 +23,12 @@ class PackageUrlCommand extends BaseCommand {
     }
 
     for (const arg of args) {
-      // XXX It is very odd that `where` is how pacote knows to look anywhere
-      // other than the cwd.
+      // XXX It is very odd that `where` is how pacote knows to look anywhere other than the cwd.
       const opts = {
         ...this.npm.flatOptions,
         where: this.npm.localPrefix,
         fullMetadata: true,
+        _isRoot: true,
       }
       const mani = await pacote.manifest(arg, opts)
       const url = this.getUrl(arg, mani)
@@ -48,10 +45,10 @@ class PackageUrlCommand extends BaseCommand {
     return this.exec(this.workspacePaths)
   }
 
-  // given a manifest, try to get the hosted git info from it based on
-  // repository (if a string) or repository.url (if an object) returns null
-  // if it's not a valid repo, or not a known hosted repo
+  // given a manifest, try to get the hosted git info from it based on repository (if a string) or repository.url (if an object)
+  // returns null if it's not a valid repo, or not a known hosted repo
   hostedFromMani (mani) {
+    const hostedGitInfo = require('hosted-git-info')
     const r = mani.repository
     const rurl = !r ? null
       : typeof r === 'string' ? r
@@ -62,4 +59,5 @@ class PackageUrlCommand extends BaseCommand {
     return (rurl && hostedGitInfo.fromUrl(rurl.replace(/^git\+/, ''))) || null
   }
 }
+
 module.exports = PackageUrlCommand

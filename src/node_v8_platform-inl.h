@@ -4,6 +4,7 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include <memory>
+#include <string_view>
 
 #include "env-inl.h"
 #include "node.h"
@@ -37,31 +38,11 @@ class NodeTraceStateObserver
     TRACE_EVENT_METADATA1(
         "__metadata", "thread_name", "name", "JavaScriptMainThread");
 
-    auto trace_process = tracing::TracedValue::Create();
-    trace_process->BeginDictionary("versions");
-
-#define V(key)                                                                 \
-  trace_process->SetString(#key, per_process::metadata.versions.key.c_str());
-
-    NODE_VERSIONS_KEYS(V)
-#undef V
-
-    trace_process->EndDictionary();
-
-    trace_process->SetString("arch", per_process::metadata.arch.c_str());
-    trace_process->SetString("platform",
-                             per_process::metadata.platform.c_str());
-
-    trace_process->BeginDictionary("release");
-    trace_process->SetString("name",
-                             per_process::metadata.release.name.c_str());
-#if NODE_VERSION_IS_LTS
-    trace_process->SetString("lts", per_process::metadata.release.lts.c_str());
-#endif
-    trace_process->EndDictionary();
-    TRACE_EVENT_METADATA1(
-        "__metadata", "node", "process", std::move(trace_process));
-
+    tracing::ProcessMeta trace_process;
+    TRACE_EVENT_METADATA1("__metadata",
+                          "node",
+                          "process",
+                          tracing::CastTracedValue(trace_process));
     // This only runs the first time tracing is enabled
     controller_->RemoveTraceStateObserver(this);
   }
@@ -126,15 +107,23 @@ struct V8Platform {
   }
 
   inline void StartTracingAgent() {
+    constexpr auto convert_to_set =
+        [](auto& categories) -> std::set<std::string> {
+      std::set<std::string> out;
+      for (const auto& s : categories) {
+        out.emplace(std::string(s.data(), s.size()));
+      }
+      return out;
+    };
     // Attach a new NodeTraceWriter only if this function hasn't been called
     // before.
     if (tracing_file_writer_.IsDefaultHandle()) {
-      std::vector<std::string> categories =
-          SplitString(per_process::cli_options->trace_event_categories, ',');
+      using std::operator""sv;
+      auto categories = std::views::split(
+          per_process::cli_options->trace_event_categories, ","sv);
 
       tracing_file_writer_ = tracing_agent_->AddClient(
-          std::set<std::string>(std::make_move_iterator(categories.begin()),
-                                std::make_move_iterator(categories.end())),
+          convert_to_set(categories),
           std::unique_ptr<tracing::AsyncTraceWriter>(
               new tracing::NodeTraceWriter(
                   per_process::cli_options->trace_event_file_pattern)),

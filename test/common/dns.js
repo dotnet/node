@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 const os = require('os');
+const { isIP } = require('net');
 
 const types = {
   A: 1,
@@ -12,6 +13,7 @@ const types = {
   PTR: 12,
   MX: 15,
   TXT: 16,
+  SRV: 33,
   ANY: 255,
   CAA: 257,
 };
@@ -39,7 +41,7 @@ function readDomainFromPacket(buffer, offset) {
   }
   // Pointer to another part of the packet.
   assert.strictEqual(length & 0xC0, 0xC0);
-  // eslint-disable-next-line space-infix-ops, space-unary-ops
+  // eslint-disable-next-line @stylistic/js/space-infix-ops, @stylistic/js/space-unary-ops
   const pointeeOffset = buffer.readUInt16BE(offset) &~ 0xC000;
   return {
     nread: 2,
@@ -195,11 +197,11 @@ function writeDNSPacket(parsed) {
 
   buffers.push(new Uint16Array([
     parsed.id,
-    parsed.flags === undefined ? kStandardResponseFlags : parsed.flags,
-    parsed.questions && parsed.questions.length,
-    parsed.answers && parsed.answers.length,
-    parsed.authorityAnswers && parsed.authorityAnswers.length,
-    parsed.additionalRecords && parsed.additionalRecords.length,
+    parsed.flags ?? kStandardResponseFlags,
+    parsed.questions?.length,
+    parsed.answers?.length,
+    parsed.authorityAnswers?.length,
+    parsed.additionalRecords?.length,
   ]));
 
   for (const q of parsed.questions) {
@@ -278,6 +280,15 @@ function writeDNSPacket(parsed) {
         buffers.push(Buffer.from('issue' + rr.issue));
         break;
       }
+      case 'SRV':
+      {
+        // SRV record format: priority (2) + weight (2) + port (2) + target
+        const target = writeDomainName(rr.name);
+        rdLengthBuf[0] = 6 + target.length;
+        buffers.push(new Uint16Array([rr.priority, rr.weight, rr.port]));
+        buffers.push(target);
+        break;
+      }
       default:
         throw new Error(`Unknown RR type ${rr.type}`);
     }
@@ -309,6 +320,25 @@ function errorLookupMock(code = mockedErrorCode, syscall = mockedSysCall) {
   };
 }
 
+function createMockedLookup(...addresses) {
+  addresses = addresses.map((address) => ({ address: address, family: isIP(address) }));
+
+  // Create a DNS server which replies with a AAAA and a A record for the same host
+  return function lookup(hostname, options, cb) {
+    if (options.all === true) {
+      process.nextTick(() => {
+        cb(null, addresses);
+      });
+
+      return;
+    }
+
+    process.nextTick(() => {
+      cb(null, addresses[0].address, addresses[0].family);
+    });
+  };
+}
+
 module.exports = {
   types,
   classes,
@@ -317,4 +347,5 @@ module.exports = {
   errorLookupMock,
   mockedErrorCode,
   mockedSysCall,
+  createMockedLookup,
 };

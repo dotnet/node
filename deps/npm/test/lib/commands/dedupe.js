@@ -1,6 +1,6 @@
 const t = require('tap')
-const path = require('path')
-const fs = require('fs')
+const path = require('node:path')
+const fs = require('node:fs')
 
 const { load: loadMockNpm } = require('../../fixtures/mock-npm')
 const MockRegistry = require('@npmcli/mock-registry')
@@ -93,4 +93,31 @@ t.test('dedupe', async (t) => {
   t.notOk(
     fs.existsSync(path.join(npm.prefix, 'node_modules', 'test-dep-b', 'node_modules', 'test-sub')),
     'test-dep-b/test-sub was removed')
+})
+
+t.test('dedupe threads allowScripts policy through to arborist', async t => {
+  let capturedOpts
+  const FakeArborist = function (opts) {
+    capturedOpts = opts
+    this.options = opts
+    this.actualTree = { inventory: new Map() }
+  }
+  FakeArborist.prototype.dedupe = async () => {}
+
+  const { npm } = await loadMockNpm(t, {
+    prefixDir: {
+      'package.json': JSON.stringify({
+        name: 'host',
+        version: '1.0.0',
+        allowScripts: { canvas: true },
+      }),
+    },
+    mocks: {
+      '@npmcli/arborist': FakeArborist,
+      '{LIB}/utils/reify-finish.js': async () => {},
+    },
+  })
+  await npm.exec('dedupe', [])
+  t.strictSame(capturedOpts.allowScripts, { canvas: true },
+    'opts.allowScripts populated from package.json')
 })

@@ -4,15 +4,13 @@ const common = require('../common');
 const assert = require('assert');
 const timers = require('timers');
 const { promisify } = require('util');
-const child_process = require('child_process');
 
-const { getEventListeners } = require('events');
+const { listenerCount } = require('events');
 const { NodeEventTarget } = require('internal/event_target');
 
 const timerPromises = require('timers/promises');
 
 const setPromiseImmediate = promisify(timers.setImmediate);
-const exec = promisify(child_process.exec);
 
 assert.strictEqual(setPromiseImmediate, timerPromises.setImmediate);
 
@@ -51,7 +49,7 @@ process.on('multipleResolves', common.mustNotCall());
   const ac = new AbortController();
   const signal = ac.signal;
   setPromiseImmediate(10, { signal })
-    .then(common.mustCall(() => { ac.abort(); }))
+    .then(() => { ac.abort(); })
     .then(common.mustCall());
 }
 
@@ -60,7 +58,7 @@ process.on('multipleResolves', common.mustNotCall());
   const signal = new NodeEventTarget();
   signal.aborted = false;
   setPromiseImmediate(0, { signal }).finally(common.mustCall(() => {
-    assert.strictEqual(getEventListeners(signal, 'abort').length, 0);
+    assert.strictEqual(listenerCount(signal, 'abort'), 0);
   }));
 }
 
@@ -91,9 +89,9 @@ process.on('multipleResolves', common.mustNotCall());
 }
 
 {
-  exec(`${process.execPath} -pe "const assert = require('assert');` +
+  common.spawnPromisified(process.execPath, ['-pe', "const assert = require('assert');" +
     'require(\'timers/promises\').setImmediate(null, { ref: false }).' +
-    'then(assert.fail)"').then(common.mustCall(({ stderr }) => {
+    'then(assert.fail)']).then(common.mustCall(({ stderr }) => {
     assert.strictEqual(stderr, '');
   }));
 }

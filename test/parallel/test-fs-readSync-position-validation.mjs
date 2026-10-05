@@ -28,7 +28,7 @@ function testValid(position, allowedErrors = []) {
   }
 }
 
-function testInvalid(code, position, internalCatch = false) {
+function testInvalid(code, position) {
   let fdSync;
   try {
     fdSync = fs.openSync(filepath, 'r');
@@ -61,8 +61,7 @@ function testInvalid(code, position, internalCatch = false) {
 
   testValid(2n ** 63n - 1n - BigInt(length), [ 'EFBIG', 'EOVERFLOW' ]);
   testInvalid('ERR_OUT_OF_RANGE', 2n ** 63n);
-
-  // TODO(LiviaMedeiros): test `2n ** 63n - BigInt(length)`
+  testInvalid('ERR_OUT_OF_RANGE', 2n ** 63n - BigInt(length));
 
   testInvalid('ERR_OUT_OF_RANGE', NaN);
   testInvalid('ERR_OUT_OF_RANGE', -Infinity);
@@ -76,5 +75,23 @@ function testInvalid(code, position, internalCatch = false) {
     false, true, '1', Symbol(1), {}, [], () => {}, Promise.resolve(1),
   ]) {
     testInvalid('ERR_INVALID_ARG_TYPE', badTypeValue);
+  }
+}
+
+{
+  const emptyBuffer = Buffer.alloc(0);
+  let fdSync;
+  try {
+    fdSync = fs.openSync(filepath, 'r');
+    assert.throws(
+      () => fs.readSync(fdSync, emptyBuffer, 0, 0, { not: 'a number' }),
+      { code: 'ERR_INVALID_ARG_TYPE' }
+    );
+    assert.throws(
+      () => fs.readSync(fdSync, emptyBuffer, { offset: 0, length: 0, position: 'string' }),
+      { code: 'ERR_INVALID_ARG_TYPE' }
+    );
+  } finally {
+    if (fdSync) fs.closeSync(fdSync);
   }
 }

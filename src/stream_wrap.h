@@ -35,6 +35,11 @@ class ExternalReferenceRegistry;
 
 class LibuvStreamWrap : public HandleWrap, public StreamBase {
  public:
+  enum InternalFields {
+    kInternalFieldCount = std::max<uint32_t>(HandleWrap::kInternalFieldCount,
+                                             StreamBase::kInternalFieldCount),
+  };
+
   static void Initialize(v8::Local<v8::Object> target,
                          v8::Local<v8::Value> unused,
                          v8::Local<v8::Context> context,
@@ -52,6 +57,7 @@ class LibuvStreamWrap : public HandleWrap, public StreamBase {
   // Resource implementation
   int DoShutdown(ShutdownWrap* req_wrap) override;
   int DoTryWrite(uv_buf_t** bufs, size_t* count) override;
+  inline bool HasDoTryWrite() const override { return true; }
   int DoWrite(WriteWrap* w,
               uv_buf_t* bufs,
               size_t count,

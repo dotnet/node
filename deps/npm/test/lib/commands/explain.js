@@ -1,9 +1,26 @@
 const t = require('tap')
-const { resolve } = require('path')
+const { resolve } = require('node:path')
 const mockNpm = require('../../fixtures/mock-npm.js')
+
+t.test('completion', async t => {
+  const { explain } = await mockNpm(t, {
+    command: 'explain',
+    prefixDir: {
+      node_modules: {
+        foo: {
+          'package.json': JSON.stringify({ name: 'foo', version: '1.0.0' }),
+        },
+      },
+      'package.json': JSON.stringify({ name: 'project', version: '1.0.0' }),
+    },
+  })
+  const res = await explain.completion({ conf: { argv: { remain: ['npm', 'explain'] } } })
+  t.type(res, Array)
+})
 
 const mockExplain = async (t, opts) => {
   const mock = await mockNpm(t, {
+    command: 'explain',
     mocks: {
       // keep the snapshots pared down a bit, since this has its own tests.
       '{LIB}/utils/explain-dep.js': {
@@ -16,15 +33,7 @@ const mockExplain = async (t, opts) => {
     ...opts,
   })
 
-  const usage = await mock.npm.cmd('explain').then(c => c.usage)
-
-  return {
-    ...mock,
-    explain: {
-      usage,
-      exec: (args) => mock.npm.exec('explain', args),
-    },
-  }
+  return mock
 }
 
 t.test('no args throws usage', async t => {
