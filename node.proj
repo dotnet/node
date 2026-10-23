@@ -160,7 +160,8 @@
       <TargetTriple Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64'">-target aarch64-linux-gnu</TargetTriple>
       <TargetTriple Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'x64' and '$(MonoLLVMTargetOS)' == 'linux-musl'">-target x86_64-alpine-linux-musl</TargetTriple>
       <TargetTriple Condition="'$(BuildOS)' == 'Linux' and '$(TargetArchitecture)' == 'arm64' and '$(MonoLLVMTargetOS)' == 'linux-musl'">-target aarch64-alpine-linux-musl</TargetTriple>
-      <ConfigureEnvironment>$(ConfigureEnvironment) CC="$(ClangBinDir)clang $(TargetTriple)"</ConfigureEnvironment>
+      <SysrootFlags Condition="'$(BuildOS)' == 'Linux'">--gcc-toolchain=$(RootFsDirTarget)/usr/ --sysroot=$(RootFsDirTarget)/</SysrootFlags>
+      <ConfigureEnvironment>$(ConfigureEnvironment) CC="$(ClangBinDir)clang $(TargetTriple) $(SysrootFlags)"</ConfigureEnvironment>
       <ConfigureEnvironment>$(ConfigureEnvironment) CC_host="$(ClangBinDir)clang $(HostTriple)"</ConfigureEnvironment>
       <ConfigureEnvironment>$(ConfigureEnvironment) AR=$(ClangBinDir)llvm-ar</ConfigureEnvironment>
       <ConfigureEnvironment>$(ConfigureEnvironment) AR_host=$(ClangBinDir)llvm-ar</ConfigureEnvironment>
