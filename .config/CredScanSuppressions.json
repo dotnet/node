@@ -245,6 +245,7 @@
         "test/fixtures/keys/ml_dsa_44_private_encrypted.pem",
         "test/fixtures/keys/ml_kem_768_private_encrypted.der",
         "test/fixtures/keys/ml_kem_768_private_encrypted.pem",
+        "test/fixtures/keys/non-canonical-ip-dns-key.pem",
         "test/fixtures/keys/rsa_cert.pfx",
         "test/fixtures/keys/rsa_private_2048.pem",
         "test/fixtures/keys/rsa_private_4096.pem",
