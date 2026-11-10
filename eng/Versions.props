@@ -8,10 +8,10 @@
   <PropertyGroup>
     <MicrosoftDotNetBuildTasksPackagingVersion>11.0.0-beta.26528.6</MicrosoftDotNetBuildTasksPackagingVersion>
     <!-- Python -->
-    <runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26505.3</runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
-    <runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26505.3</runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
-    <runtimewinarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26505.3</runtimewinarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
-    <runtimewinx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26505.3</runtimewinx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
+    <runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26552.3</runtimeosxarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
+    <runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26552.3</runtimeosxx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
+    <runtimewinarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26552.3</runtimewinarm64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
+    <runtimewinx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>11.0.0-alpha.1.26552.3</runtimewinx64MicrosoftNETCoreRuntimeWasmPythonTransportVersion>
     <!-- Mono LLVM -->
     <runtimelinuxarm64MicrosoftNETCoreRuntimeMonoLLVMSdkVersion>23.1.0-alpha.1.26552.3</runtimelinuxarm64MicrosoftNETCoreRuntimeMonoLLVMSdkVersion>
     <runtimelinuxarm64MicrosoftNETCoreRuntimeMonoLLVMToolsVersion>23.1.0-alpha.1.26552.3</runtimelinuxarm64MicrosoftNETCoreRuntimeMonoLLVMToolsVersion>
