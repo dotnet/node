@@ -340,6 +340,13 @@ are at the discretion of the release and LTS teams.
 This process only covers full updates to new versions of npm. Cherry-picked
 changes can be reviewed and landed via the normal consensus seeking process.
 
+The .NET fork updates npm's bundled `undici` to `6.29.1` independently of
+npm `11.19.1` to address CVE-2026-109869. This follows the
+[upstream npm dependency update][npm-undici-update] while preserving the
+existing npm distribution layout. A full npm update must retain this fix.
+
+[npm-undici-update]: https://github.com/npm/cli/commit/9a7e3b6588fa6217e6dc7b4354e2e5be55be4fac
+
 ### openssl
 
 The [openssl](https://github.com/quictls/openssl) dependency is a
